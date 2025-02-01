@@ -347,3 +347,19 @@ healthchecksdb
 
 # Backup folder for Package Reference Convert tool in Visual Studio 2017
 MigrationBackup/
+
+# My settings
+bin/
+obj/
+temp/
+/packages/
+riderModule.iml
+/_ReSharper.Caches/
+datagatetgbot.key
+datagatetgbot.pem
+.env*
+*.tar
+appsettings*
+appsettings.json
+appsettings.Development.json
+.idea
