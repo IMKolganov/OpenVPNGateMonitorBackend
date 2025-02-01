@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.Models;
 
-public class OpenVpnUserStatistic
+public class OpenVpnUserSessionStatistic
 {
     [Key]
     public int Id { get; set; }

@@ -1,13 +1,13 @@
-﻿using OpenVPNGateMonitor.Services.BotServices.Interfaces;
+﻿using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.Interfaces;
 
-namespace OpenVPNGateMonitor.Services.BotServices;
+namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
 public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundService
 {
     private readonly ILogger<OpenVpnBackgroundService> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private const int Seconds = 60;
+    private const int Seconds = 3;
 
     public OpenVpnBackgroundService(ILogger<OpenVpnBackgroundService> logger, IServiceProvider serviceProvider)
     {
@@ -23,11 +23,15 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var parserService = scope.ServiceProvider.GetRequiredService<IOpenVpnParserService>();
+                var vpnManagementService = scope.ServiceProvider.GetRequiredService<IVpnManagementService>();
                 try
                 {
                     _logger.LogInformation("Parsing OpenVPN status file at {Time}", DateTimeOffset.Now);
-                    await parserService.ParseAndSaveAsync();
+                    var version = await vpnManagementService.GetVersionAsync();
+                    var state = await vpnManagementService.GetStateAsync();
+                    var stats = await vpnManagementService.GetStatsAsync();
+                    var clients= await vpnManagementService.GetClientsAsync();
+
                 }
                 catch (Exception ex)
                 {

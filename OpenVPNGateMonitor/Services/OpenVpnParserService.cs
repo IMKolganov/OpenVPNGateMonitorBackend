@@ -36,7 +36,7 @@ public class OpenVpnParserService : IOpenVpnParserService
         var users = ParseOpenVpnStatus(_statusFilePath);
 
         _logger.LogInformation("Found {UserCount} users in the status file.", users.Count);
-        var openVpnUserStatisticRepository = _unitOfWork.GetRepository<OpenVpnUserStatistic>();
+        var openVpnUserStatisticRepository = _unitOfWork.GetRepository<OpenVpnUserSessionStatistic>();
 
         foreach (var user in users)
         {
@@ -53,7 +53,7 @@ public class OpenVpnParserService : IOpenVpnParserService
             }
             else
             {
-                await openVpnUserStatisticRepository.AddAsync(new OpenVpnUserStatistic
+                await openVpnUserStatisticRepository.AddAsync(new OpenVpnUserSessionStatistic
                 {
                     SessionId = sessionId,
                     CommonName = user.CommonName,
@@ -80,9 +80,9 @@ public class OpenVpnParserService : IOpenVpnParserService
         return new Guid(hashBytes.Take(16).ToArray());
     }
 
-    private List<OpenVpnUserStatistic> ParseOpenVpnStatus(string filePath)
+    private List<OpenVpnUserSessionStatistic> ParseOpenVpnStatus(string filePath)
     {
-        var users = new List<OpenVpnUserStatistic>();
+        var users = new List<OpenVpnUserSessionStatistic>();
 
         var lines = File.ReadAllLines(filePath);
         foreach (var line in lines)
@@ -101,7 +101,7 @@ public class OpenVpnParserService : IOpenVpnParserService
                         var connectedSince =
                             DateTime.SpecifyKind(DateTime.Parse(parts[7]), DateTimeKind.Utc);
 
-                        users.Add(new OpenVpnUserStatistic
+                        users.Add(new OpenVpnUserSessionStatistic
                         {
                             CommonName = parts[1],
                             RealAddress = parts[2],

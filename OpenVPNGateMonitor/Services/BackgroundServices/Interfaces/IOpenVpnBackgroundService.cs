@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.Services.BotServices.Interfaces;
+﻿namespace OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
 public interface IOpenVpnBackgroundService
 {

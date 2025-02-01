@@ -15,13 +15,13 @@ public class ApplicationDbContext : DbContext
         _defaultSchema = configuration["DataBaseSettings:DefaultSchema"] ?? throw new InvalidOperationException();
     }
     
-    public DbSet<OpenVpnUserStatistic> OpenVpnUserStatistics { get; set; } = null!;
+    public DbSet<OpenVpnUserSessionStatistic> OpenVpnUserStatistics { get; set; } = null!;
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.HasDefaultSchema(_defaultSchema);
         base.OnModelCreating(modelBuilder);
-        modelBuilder.ApplyConfiguration(new OpenVpnUserStatisticConfiguration());
+        modelBuilder.ApplyConfiguration(new OpenVpnUserSessionStatisticConfiguration());
     }
     
 

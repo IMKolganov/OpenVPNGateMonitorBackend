@@ -1,45 +1,52 @@
-﻿using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
-using System.Globalization;
+﻿using System.Globalization;
 using System.Net.Sockets;
 using System.Text;
 using MaxMind.GeoIP2;
 using MaxMind.GeoIP2.Responses;
+using OpenVPNGateMonitor.Models.Helpers;
+using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
-namespace OpenVPNGateMonitor.Services.BotServices;
+namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
-public class VPNManagementService
+public class VpnManagementService : IVpnManagementService
 {
-    private readonly string _host;
-    private readonly int _port;
+    private readonly OpenVpnSettings _openVpnSettings;
     private readonly DatabaseReader? _geoIpReader;
 
-    public VPNManagementService(string host, int port, string geoIpDatabasePath = "")
+    public VpnManagementService(IConfiguration configuration)
     {
-        _host = host;//todo: load from settings
-        _port = port;
+        _openVpnSettings = configuration.GetSection("OpenVpn").Get<OpenVpnSettings>() 
+                           ?? throw new InvalidOperationException("OpenVpn configuration section is missing.");
 
-        if (!string.IsNullOrEmpty(geoIpDatabasePath) && File.Exists(geoIpDatabasePath))
+        if (!string.IsNullOrEmpty(_openVpnSettings.GeoIpDatabasePath) 
+            && File.Exists(_openVpnSettings.GeoIpDatabasePath))
         {
-            _geoIpReader = new DatabaseReader(geoIpDatabasePath);
+            _geoIpReader = new DatabaseReader(_openVpnSettings.GeoIpDatabasePath);
         }
     }
 
     private async Task<string> SendCommandAsync(string command)
     {
-        using var client = new TcpClient();
-        await client.ConnectAsync(_host, _port);
+        using var client = new TcpClient
+        {
+            ReceiveTimeout = 5000 // 5 seconds timeout for response
+        };
+        await client.ConnectAsync(_openVpnSettings.ManagementIp, _openVpnSettings.ManagementPort);
 
-        using var stream = client.GetStream();
-        using var writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
+        await using var stream = client.GetStream();
+        await using var writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
         using var reader = new StreamReader(stream, Encoding.ASCII);
 
         await writer.WriteLineAsync(command);
-        await writer.WriteLineAsync("quit");
 
         StringBuilder response = new();
         string? line;
+
+        // Читаем ответ построчно до появления пустой строки
         while ((line = await reader.ReadLineAsync()) != null)
         {
+            if (string.IsNullOrWhiteSpace(line)) break; // Выход по пустой строке (конец ответа OpenVPN)
             response.AppendLine(line);
         }
 
@@ -78,8 +85,17 @@ public class VPNManagementService
         {
             var parts = line.Split(",");
             if (parts.Length < 5) continue;
-
-            state.UpSince = DateTime.Parse(parts[0], CultureInfo.InvariantCulture);
+            if (!string.IsNullOrWhiteSpace(parts[0]))
+            {
+                if (long.TryParse(parts[0], out long timestamp))
+                {
+                    state.UpSince = DateTimeOffset.FromUnixTimeSeconds(timestamp).UtcDateTime;
+                }
+                else
+                {
+                    throw new Exception("Invalid date.");
+                }
+            }
             state.Connected = parts[1] == "CONNECTED";
             state.Success = parts[2] == "SUCCESS";
             state.LocalIp = parts[3];

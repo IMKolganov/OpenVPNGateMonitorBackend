@@ -3,5 +3,5 @@
 public class OpenVpnServerFullInfo
 {
     public OpenVpnServerInfo OpenVpnServerInfo { get; set; } = new OpenVpnServerInfo();
-    public List<OpenVpnUserStatistic> OpenVpnUserStatistics { get; set; } = new List<OpenVpnUserStatistic>();
+    public List<OpenVpnUserSessionStatistic> OpenVpnUserStatistics { get; set; } = new List<OpenVpnUserSessionStatistic>();
 }

@@ -27,9 +27,9 @@ public class OpenVpnServerController : ControllerBase
             LocalIpAddress = "192.168.1.100"
         };
 
-        var userStatistics = new List<OpenVpnUserStatistic>
+        var userStatistics = new List<OpenVpnUserSessionStatistic>
         {
-            new OpenVpnUserStatistic
+            new OpenVpnUserSessionStatistic
             {
                 Id = 1,
                 SessionId = Guid.NewGuid(),
@@ -40,7 +40,7 @@ public class OpenVpnServerController : ControllerBase
                 ConnectedSince = DateTime.Now.AddHours(-1),
                 LastUpdated = DateTime.Now
             },
-            new OpenVpnUserStatistic
+            new OpenVpnUserSessionStatistic
             {
                 Id = 2,
                 SessionId = Guid.NewGuid(),
