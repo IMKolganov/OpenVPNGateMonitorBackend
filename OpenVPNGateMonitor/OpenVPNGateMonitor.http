@@ -1,0 +1,6 @@
+@OpenVPNGateMonitor_HostAddress = http://localhost:5056
+
+GET {{OpenVPNGateMonitor_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

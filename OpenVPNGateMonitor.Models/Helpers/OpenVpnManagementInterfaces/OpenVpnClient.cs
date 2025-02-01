@@ -1,0 +1,18 @@
+﻿namespace OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+
+public class OpenVpnClient
+{
+    public string CommonName { get; set; } = string.Empty;
+    public string RemoteIp { get; set; } = string.Empty;
+    public string LocalIp { get; set; } = string.Empty;
+    public long BytesReceived { get; set; }
+    public long BytesSent { get; set; }
+    public DateTime ConnectedSince { get; set; }
+    public string Username { get; set; } = string.Empty;
+    
+    public string? Country { get; set; }
+    public string? Region { get; set; }
+    public string? City { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
+}
