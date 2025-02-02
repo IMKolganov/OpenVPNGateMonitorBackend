@@ -1,6 +1,6 @@
 ﻿namespace OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 
-public class OpenVpnStats
+public class OpenVpnSummaryStats
 {
     public int ClientsCount { get; set; }
     public long BytesIn { get; set; }

@@ -1,5 +1,5 @@
 ﻿using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
-using OpenVPNGateMonitor.Services.Interfaces;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
@@ -23,7 +23,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var vpnManagementService = scope.ServiceProvider.GetRequiredService<IVpnManagementService>();
+                var vpnManagementService = scope.ServiceProvider.GetRequiredService<IOpenVpnManagementService>();
                 try
                 {
                     _logger.LogInformation("Parsing OpenVPN status file at {Time}", DateTimeOffset.Now);
