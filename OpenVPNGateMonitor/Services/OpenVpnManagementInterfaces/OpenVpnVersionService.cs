@@ -1,10 +1,8 @@
-﻿using MaxMind.GeoIP2;
-using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
+﻿using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class OpenVpnVersionService
+public class OpenVpnVersionService : IOpenVpnVersionService
 {
     private readonly ILogger<OpenVpnVersionService> _logger;
     private readonly IOpenVpnManagementService _openVpnManagementService;

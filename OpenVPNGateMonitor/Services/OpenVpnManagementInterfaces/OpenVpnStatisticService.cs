@@ -3,7 +3,7 @@ using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class OpenVpnSummaryStatService
+public class OpenVpnSummaryStatService : IOpenVpnSummaryStatService
 {
     private readonly ILogger<OpenVpnSummaryStatService> _logger;
     private readonly IOpenVpnManagementService _openVpnManagementService;

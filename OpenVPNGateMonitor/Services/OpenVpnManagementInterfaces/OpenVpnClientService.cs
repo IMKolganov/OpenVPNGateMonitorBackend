@@ -6,14 +6,14 @@ using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class OpenVpnClientService
+public class OpenVpnClientService : IOpenVpnClientService
 {
     private readonly ILogger<OpenVpnClientService> _logger;
     private readonly IGeoIpService _geoIpService;
     private readonly IOpenVpnManagementService _openVpnManagementService;
     
     public OpenVpnClientService(ILogger<OpenVpnClientService> logger, IGeoIpService geoIpService, 
-        OpenVpnManagementService openVpnManagementService)
+        IOpenVpnManagementService openVpnManagementService)
     {
         _logger = logger;
         _geoIpService = geoIpService;

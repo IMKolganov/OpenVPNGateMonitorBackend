@@ -23,16 +23,28 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         {
             using (var scope = _serviceProvider.CreateScope())
             {
-                var vpnManagementService = scope.ServiceProvider.GetRequiredService<IOpenVpnManagementService>();
+                var openVpnStateService = scope.ServiceProvider.GetRequiredService<IOpenVpnStateService>();
                 try
                 {
-                    _logger.LogInformation("Parsing OpenVPN status file at {Time}", DateTimeOffset.Now);
-                    var version = await vpnManagementService.GetVersionAsync(stoppingToken);
-                    var state = await vpnManagementService.GetStateAsync(stoppingToken);
-                    var stats = await vpnManagementService.GetStatsAsync(stoppingToken);
-                    var clients= await vpnManagementService.GetClientsAsync(stoppingToken);
-                    
-                    
+                    var state = await openVpnStateService.GetStateAsync(stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred while parsing OpenVPN status file.");
+                }
+                var openVpnSummaryStatService = scope.ServiceProvider.GetRequiredService<IOpenVpnSummaryStatService>();
+                try
+                {
+                    var stats = await openVpnSummaryStatService.GetSummaryStatsAsync(stoppingToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred while parsing OpenVPN status file.");
+                }
+                var openVpnClientService = scope.ServiceProvider.GetRequiredService<IOpenVpnClientService>();
+                try
+                {
+                    var clients= await openVpnClientService.GetClientsAsync(stoppingToken);
                 }
                 catch (Exception ex)
                 {

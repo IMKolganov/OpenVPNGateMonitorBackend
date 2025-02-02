@@ -1,6 +1,7 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.UntilsServices;
 using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
@@ -25,7 +26,15 @@ public static class ServiceConfiguration
         });
         
         // services.AddScoped<IOpenVpnParserService, OpenVpnParserService>();
-        services.AddScoped<IVpnManagementService, OpenVpnManagementService>();
+        services.AddScoped<IOpenVpnManagementService, OpenVpnManagementService>();
+        services.AddScoped<IOpenVpnClientService, OpenVpnClientService>();
+        services.AddScoped<IOpenVpnStateService, OpenVpnStateService>();
+        services.AddScoped<IOpenVpnSummaryStatService, OpenVpnSummaryStatService>();
+        services.AddScoped<IOpenVpnVersionService, OpenVpnVersionService>();
+        
+        services.AddScoped<IGeoIpService, GeoIpService>();
+
+        
         services.AddSingleton<IEasyRsaService, EasyRsaService>();
 
         services.AddHostedService<OpenVpnBackgroundService>();
