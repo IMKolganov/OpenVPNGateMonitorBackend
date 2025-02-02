@@ -29,6 +29,7 @@ public class OpenVpnClientService : IOpenVpnClientService
 
     private List<OpenVpnClient> ParseStatus(string data)
     {
+        var id = 0;
         var clients = new List<OpenVpnClient>();
         var lines = data.Split("\n", StringSplitOptions.RemoveEmptyEntries);
 
@@ -43,6 +44,8 @@ public class OpenVpnClientService : IOpenVpnClientService
                 
                 if (client != null)
                 {
+                    client.Id = id;//todo: remove
+                    id++;
                     var geoInfo = _geoIpService.GetGeoInfo(client.RemoteIp);//todo: add mapper for project
                     if (geoInfo != null)
                     {

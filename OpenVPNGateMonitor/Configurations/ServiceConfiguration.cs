@@ -41,7 +41,7 @@ public static class ServiceConfiguration
         
         services.AddSingleton<IEasyRsaService, EasyRsaService>();
 
-        services.AddHostedService<OpenVpnBackgroundService>();
+        // services.AddHostedService<OpenVpnBackgroundService>();
         
 
         services.AddControllers();

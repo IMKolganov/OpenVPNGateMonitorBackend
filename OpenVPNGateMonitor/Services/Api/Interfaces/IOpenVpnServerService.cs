@@ -1,10 +1,7 @@
-﻿using OpenVPNGateMonitor.Models.Helpers.Api;
-using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
-
-namespace OpenVPNGateMonitor.Services.Api.Interfaces;
+﻿namespace OpenVPNGateMonitor.Services.Api.Interfaces;
 
 public interface IOpenVpnServerService
 {
-    Task<List<OpenVpnClient>> GetConnectedClientsAsync(CancellationToken cancellationToken);
-    Task<ServerInfo> GetServerInfoAsync(CancellationToken cancellationToken);
+    Task SaveConnectedClientsAsync(CancellationToken cancellationToken);
+    Task SaveOpenVpnServerStatusLogAsync(CancellationToken cancellationToken);
 }
