@@ -50,11 +50,24 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                     foreach (var client in clients)
                     {
                         _logger.LogInformation($"Clients: {client.CommonName} {client.RemoteIp} {client.LocalIp} {client.BytesReceived} {client.BytesSent} {client.Country}");
+                        _logger.LogInformation($"Clients: {client.Country} {client.Region} {client.City} {client.Latitude} {client.Longitude}");
+
                     }
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error occurred while parsing OpenVPN clients.");
+                }
+                
+                var openVpnVersionService = scope.ServiceProvider.GetRequiredService<IOpenVpnVersionService>();
+                try
+                {
+                    var version= await openVpnVersionService.GetVersionAsync(stoppingToken);
+                    _logger.LogInformation($"Version: {version}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error occurred while parsing OpenVPN version.");
                 }
             }
 
