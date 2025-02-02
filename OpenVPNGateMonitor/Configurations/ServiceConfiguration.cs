@@ -1,4 +1,6 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
+using OpenVPNGateMonitor.Services.Api;
+using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
@@ -33,6 +35,8 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnVersionService, OpenVpnVersionService>();
         
         services.AddScoped<IGeoIpService, GeoIpService>();
+        
+        services.AddScoped<IOpenVpnServerService, OpenVpnServerService>();
 
         
         services.AddSingleton<IEasyRsaService, EasyRsaService>();

@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers;
+using OpenVPNGateMonitor.Services.Api;
+using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Controllers;
 
@@ -8,58 +10,26 @@ namespace OpenVPNGateMonitor.Controllers;
 [Route("[controller]")]
 public class OpenVpnServerController : ControllerBase
 {
-    public OpenVpnServerController()
+    private readonly ILogger<OpenVpnServerController> _logger;
+    private readonly IOpenVpnServerService _openVpnServerService;
+    public OpenVpnServerController(ILogger<OpenVpnServerController> logger, IOpenVpnServerService openVpnServerService)
     {
+        _logger = logger;
+        _openVpnServerService = openVpnServerService;
     }
 
-    [HttpGet("servers")]
-    public IActionResult GetServers()
+    [HttpGet("GetAllConnectedClients")]
+    public async Task<IActionResult> GetAllConnectedClients(CancellationToken cancellationToken = default)
     {
-        var serverInfo = new OpenVpnServerInfo
-        {
-            VpnMode = "server",
-            Status = "running",
-            Pingable = true,
-            Clients = 2,
-            TotalBytesIn = 5120,
-            TotalBytesOut = 10240,
-            UpSince = DateTime.Now.AddHours(-5).ToString("yyyy-MM-dd HH:mm:ss"),
-            LocalIpAddress = "192.168.1.100"
-        };
+        var clients = await _openVpnServerService.GetConnectedClientsAsync(cancellationToken);
+        return Ok(clients);
+    }
 
-        var userStatistics = new List<OpenVpnUserSessionStatistic>
-        {
-            new OpenVpnUserSessionStatistic
-            {
-                Id = 1,
-                SessionId = Guid.NewGuid(),
-                CommonName = "User 1",
-                RealAddress = "192.168.1.1",
-                BytesReceived = 1024,
-                BytesSent = 2048,
-                ConnectedSince = DateTime.Now.AddHours(-1),
-                LastUpdated = DateTime.Now
-            },
-            new OpenVpnUserSessionStatistic
-            {
-                Id = 2,
-                SessionId = Guid.NewGuid(),
-                CommonName = "User 2",
-                RealAddress = "192.168.1.2",
-                BytesReceived = 4096,
-                BytesSent = 8192,
-                ConnectedSince = DateTime.Now.AddHours(-2),
-                LastUpdated = DateTime.Now
-            }
-        };
-
-        var response = new OpenVpnServerFullInfo
-        {
-            OpenVpnServerInfo = serverInfo,
-            OpenVpnUserStatistics = userStatistics
-        };
-
-        return Ok(response);
+    [HttpGet("GetServerInfo")]
+    public async Task<IActionResult> GetServerInfo(CancellationToken cancellationToken = default)
+    {
+        var serverInfo = await _openVpnServerService.GetServerInfoAsync(cancellationToken);
+        return Ok(serverInfo);
     }
 
 }

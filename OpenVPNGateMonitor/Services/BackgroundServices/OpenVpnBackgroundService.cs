@@ -7,7 +7,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 {
     private readonly ILogger<OpenVpnBackgroundService> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private const int Seconds = 3;
+    private const int Seconds = 120;
 
     public OpenVpnBackgroundService(ILogger<OpenVpnBackgroundService> logger, IServiceProvider serviceProvider)
     {
@@ -51,7 +51,6 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                     {
                         _logger.LogInformation($"Clients: {client.CommonName} {client.RemoteIp} {client.LocalIp} {client.BytesReceived} {client.BytesSent} {client.Country}");
                         _logger.LogInformation($"Clients: {client.Country} {client.Region} {client.City} {client.Latitude} {client.Longitude}");
-
                     }
                 }
                 catch (Exception ex)
