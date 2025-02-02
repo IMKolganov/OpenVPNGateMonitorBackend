@@ -1,20 +1,22 @@
 ﻿using System.Globalization;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Text;
 using MaxMind.GeoIP2;
 using MaxMind.GeoIP2.Responses;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
-namespace OpenVPNGateMonitor.Services.BackgroundServices;
+namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
-public class VpnManagementService : IVpnManagementService
+public class OpenVpnManagementService : IOpenVpnManagementService
 {
     private readonly OpenVpnSettings _openVpnSettings;
     private readonly DatabaseReader? _geoIpReader;
 
-    public VpnManagementService(IConfiguration configuration)
+    public OpenVpnManagementService(IConfiguration configuration)
     {
         _openVpnSettings = configuration.GetSection("OpenVpn").Get<OpenVpnSettings>() 
                            ?? throw new InvalidOperationException("OpenVpn configuration section is missing.");
@@ -26,13 +28,11 @@ public class VpnManagementService : IVpnManagementService
         }
     }
 
-    private async Task<string> SendCommandAsync(string command)
+    private async Task<string> SendCommandAsync(string command, CancellationToken cancellationToken)
     {
-        using var client = new TcpClient
-        {
-            ReceiveTimeout = 5000 // 5 seconds timeout for response
-        };
-        await client.ConnectAsync(_openVpnSettings.ManagementIp, _openVpnSettings.ManagementPort);
+        using var client = new TcpClient();
+        client.ReceiveTimeout = 5000;
+        await client.ConnectAsync(_openVpnSettings.ManagementIp, _openVpnSettings.ManagementPort, cancellationToken);
 
         await using var stream = client.GetStream();
         await using var writer = new StreamWriter(stream, Encoding.ASCII) { AutoFlush = true };
@@ -42,37 +42,43 @@ public class VpnManagementService : IVpnManagementService
 
         StringBuilder response = new();
         string? line;
+    
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, timeoutCts.Token);
 
-        // Читаем ответ построчно до появления пустой строки
-        while ((line = await reader.ReadLineAsync()) != null)
+        try
         {
-            if (string.IsNullOrWhiteSpace(line)) break; // Выход по пустой строке (конец ответа OpenVPN)
-            response.AppendLine(line);
+            while ((line = await reader.ReadLineAsync().WaitAsync(linkedCts.Token)) != null)
+            {
+                response.AppendLine(line);
+
+                if (line.Trim() == "END") break;  
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            response.AppendLine("[ERROR] Timeout while reading response.");
         }
 
         return response.ToString();
     }
 
-    public async Task<string> GetVersionAsync()
-    {
-        return await SendCommandAsync("version");
-    }
 
-    public async Task<OpenVpnState> GetStateAsync()
+    public async Task<OpenVpnState> GetStateAsync(CancellationToken cancellationToken)
     {
-        var response = await SendCommandAsync("state");
+        var response = await SendCommandAsync("state", cancellationToken);
         return ParseState(response);
     }
 
-    public async Task<OpenVpnStats> GetStatsAsync()
+    public async Task<OpenVpnStats> GetStatsAsync(CancellationToken cancellationToken)
     {
-        var response = await SendCommandAsync("load-stats");
+        var response = await SendCommandAsync("load-stats", cancellationToken);
         return ParseStats(response);
     }
 
-    public async Task<List<OpenVpnClient>> GetClientsAsync()
+    public async Task<List<OpenVpnClient>> GetClientsAsync(CancellationToken cancellationToken)
     {
-        var response = await SendCommandAsync("status 3");
+        var response = await SendCommandAsync("status 3", cancellationToken);
         return ParseStatus(response);
     }
 
@@ -113,15 +119,15 @@ public class VpnManagementService : IVpnManagementService
         {
             if (line.Contains("nclients="))
             {
-                stats.ClientsCount = int.Parse(line.Split("nclients=")[1]);
+                stats.ClientsCount = int.Parse(line.Split("nclients=")[1].Split(',')[0]);
             }
             if (line.Contains("bytesin="))
             {
-                stats.BytesIn = long.Parse(line.Split("bytesin=")[1]);
+                stats.BytesIn = long.Parse(line.Split("bytesin=")[1].Split(',')[0]);
             }
             if (line.Contains("bytesout="))
             {
-                stats.BytesOut = long.Parse(line.Split("bytesout=")[1]);
+                stats.BytesOut = long.Parse(line.Split("bytesout=")[1].Split(',')[0]);
             }
         }
         return stats;
@@ -150,7 +156,7 @@ public class VpnManagementService : IVpnManagementService
                     Username = parts[7] == "UNDEF" ? parts[1] : parts[7]
                 };
                 
-                var geoInfo = GetGeoInfo(client.RemoteIp);
+                var geoInfo = GetGeoInfo(client.RemoteIp);//todo: add mapper for project
                 if (geoInfo != null)
                 {
                     client.Country = geoInfo.Country;
@@ -159,7 +165,11 @@ public class VpnManagementService : IVpnManagementService
                     client.Latitude = geoInfo.Latitude;
                     client.Longitude = geoInfo.Longitude;
                 }
-
+                var sessionId = GenerateSessionId(client.CommonName, 
+                    client.RemoteIp, client.ConnectedSince);
+                
+                client.SessionId = sessionId;
+                //save to db
                 clients.Add(client);
             }
         }
@@ -187,5 +197,13 @@ public class VpnManagementService : IVpnManagementService
             Console.WriteLine($"GeoIP Error: {ex.Message}");
             return null;
         }
+    }
+    
+    private Guid GenerateSessionId(string commonName, string realAddress, DateTime connectedSince)
+    {
+        var sessionString = $"{commonName}-{realAddress}-{connectedSince:o}";
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(sessionString));
+        return new Guid(hashBytes.Take(16).ToArray());
     }
 }

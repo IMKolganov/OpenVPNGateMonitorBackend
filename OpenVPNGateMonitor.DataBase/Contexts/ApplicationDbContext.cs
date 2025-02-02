@@ -21,7 +21,7 @@ public class ApplicationDbContext : DbContext
     {
         modelBuilder.HasDefaultSchema(_defaultSchema);
         base.OnModelCreating(modelBuilder);
-        modelBuilder.ApplyConfiguration(new OpenVpnUserSessionStatisticConfiguration());
+        modelBuilder.ApplyConfiguration(new OpenVpnUserStatisticConfiguration());
     }
     
 

@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class OpenVpnUserSessionStatisticConfiguration : IEntityTypeConfiguration<OpenVpnUserSessionStatistic>
+public class OpenVpnUserStatisticConfiguration : IEntityTypeConfiguration<OpenVpnUserSessionStatistic>
 {
     public void Configure(EntityTypeBuilder<OpenVpnUserSessionStatistic> entity)
     {
