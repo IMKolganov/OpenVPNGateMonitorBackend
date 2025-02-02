@@ -27,28 +27,34 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 try
                 {
                     var state = await openVpnStateService.GetStateAsync(stoppingToken);
+                    _logger.LogInformation($"State: {state.RemoteIp} {state.Success} {state.Connected} {state.LocalIp} ");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error occurred while parsing OpenVPN status file.");
+                    _logger.LogError(ex, "Error occurred while parsing OpenVPN state.");
                 }
                 var openVpnSummaryStatService = scope.ServiceProvider.GetRequiredService<IOpenVpnSummaryStatService>();
                 try
                 {
-                    var stats = await openVpnSummaryStatService.GetSummaryStatsAsync(stoppingToken);
+                    var summaryStats = await openVpnSummaryStatService.GetSummaryStatsAsync(stoppingToken);
+                    _logger.LogInformation($"Summary stats: {summaryStats.BytesIn} {summaryStats.BytesOut} {summaryStats.ClientsCount} ");
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error occurred while parsing OpenVPN status file.");
+                    _logger.LogError(ex, "Error occurred while parsing OpenVPN summary stats.");
                 }
                 var openVpnClientService = scope.ServiceProvider.GetRequiredService<IOpenVpnClientService>();
                 try
                 {
                     var clients= await openVpnClientService.GetClientsAsync(stoppingToken);
+                    foreach (var client in clients)
+                    {
+                        _logger.LogInformation($"Clients: {client.CommonName} {client.RemoteIp} {client.LocalIp} {client.BytesReceived} {client.BytesSent} {client.Country}");
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error occurred while parsing OpenVPN status file.");
+                    _logger.LogError(ex, "Error occurred while parsing OpenVPN clients.");
                 }
             }
 
