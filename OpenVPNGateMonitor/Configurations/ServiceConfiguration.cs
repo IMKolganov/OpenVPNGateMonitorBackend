@@ -17,11 +17,10 @@ public static class ServiceConfiguration
         services.AddCors(options =>
         {   
             
-            options.AddPolicy("AllowSpecificOrigin",
+            options.AddPolicy("AllowAllOrigins",
                 policy =>
                 {
-                    policy.WithOrigins(frontendSettings?.FrontUrl ?? 
-                                       throw new InvalidOperationException("FrontUrl not found")) 
+                    policy.AllowAnyOrigin()
                         .AllowAnyMethod()
                         .AllowAnyHeader();
                 });

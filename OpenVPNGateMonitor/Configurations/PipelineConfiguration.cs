@@ -8,7 +8,7 @@ public static class PipelineConfiguration
     public static void ConfigurePipeline(this WebApplication app)
     {
         app.UseWebSockets();
-        app.UseCors("AllowSpecificOrigin");
+        app.UseCors("AllowAllOrigins"); 
         if (app.Environment.IsDevelopment())
         {
             // app.MapOpenApi();
