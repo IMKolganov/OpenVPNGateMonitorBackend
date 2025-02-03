@@ -58,7 +58,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         }
     }
 
-    private async Task ExecuteTask(CancellationToken cancellationToken)
+    private new async Task ExecuteTask(CancellationToken cancellationToken)
     {
         if (_status == BackgroundServiceStatus.Running) return;
 

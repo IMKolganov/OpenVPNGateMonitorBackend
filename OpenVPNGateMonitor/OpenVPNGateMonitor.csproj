@@ -33,12 +33,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Content Include="..\.dockerignore">
-        <Link>.dockerignore</Link>
-      </Content>
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\OpenVPNGateMonitor.DataBase\OpenVPNGateMonitor.DataBase.csproj" />
       <ProjectReference Include="..\OpenVPNGateMonitor.Models\OpenVPNGateMonitor.Models.csproj" />
     </ItemGroup>
