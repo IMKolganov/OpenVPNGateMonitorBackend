@@ -1,23 +1,50 @@
-﻿FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS base
-USER $APP_UID
-WORKDIR /app
-EXPOSE 8080
-EXPOSE 8081
+﻿# Use the ARM64 SDK image for building the app
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-ARG BUILD_CONFIGURATION=Release
+# Set the working directory
 WORKDIR /src
-COPY ["OpenVPNGateMonitor/OpenVPNGateMonitor.csproj", "OpenVPNGateMonitor/"]
-RUN dotnet restore "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj"
-COPY . .
-WORKDIR "/src/OpenVPNGateMonitor"
-RUN dotnet build "OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
+# Copy the project file and restore dependencies
+COPY ["OpenVPNGateMonitor/OpenVPNGateMonitor.csproj", "OpenVPNGateMonitor/"]
+WORKDIR /src/OpenVPNGateMonitor
+RUN dotnet restore "OpenVPNGateMonitor.csproj"
+
+# Copy the rest of the application source code
+WORKDIR /src
+COPY . .
+
+# Build the application
+ARG BUILD_CONFIGURATION=Release
+RUN dotnet build "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/build --runtime linux-arm64 --self-contained false
+
+# Publish the application
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN echo "Using build configuration: $BUILD_CONFIGURATION" && \
+    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish --runtime linux-arm64 --self-contained false
 
-FROM base AS final
+# Use the ASP.NET runtime for the final image
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final
+
+# Install curl (optional, if needed for debugging or HTTP requests)
+RUN apt-get update && apt-get install -y curl
+
+# Set up a non-root user for security
+RUN if ! id -u app > /dev/null 2>&1; then useradd -m app; fi
+RUN mkdir -p /app && chown -R app:app /app
+
+# Switch to the non-root user
+USER app
+
+# Set the working directory
 WORKDIR /app
+
+# Copy the published application from the build stage
 COPY --from=publish /app/publish .
+
+# Copy configuration files (if they exist in the context)
+COPY appsettings.json .
+COPY appsettings.Development.json .
+
+# Specify the entry point for the application
 ENTRYPOINT ["dotnet", "OpenVPNGateMonitor.dll"]
