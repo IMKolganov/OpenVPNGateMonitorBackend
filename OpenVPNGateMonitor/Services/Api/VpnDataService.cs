@@ -35,7 +35,7 @@ public class VpnDataService : IVpnDataService
     {
         return await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
             .AsQueryable()
-            .OrderBy(x=>x.Id)
+            .OrderByDescending(x=>x.Id)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
