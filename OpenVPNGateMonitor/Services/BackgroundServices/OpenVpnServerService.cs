@@ -34,6 +34,15 @@ public class OpenVpnServerService : IOpenVpnServerService
     {
         var openVpnClients = await _openVpnClientService.GetClientsAsync(cancellationToken);
         var openVpnServerClientRepository = _unitOfWork.GetRepository<OpenVpnServerClient>();
+        
+        var existingClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
+            .AsQueryable().Where(x=> x.IsConnected)
+            .ToListAsync(cancellationToken);
+        foreach (var client in existingClients)
+        {
+            client.IsConnected = false;
+        }
+        await _unitOfWork.SaveChangesAsync();
 
         foreach (var openVpnClient in openVpnClients)
         {
@@ -54,6 +63,7 @@ public class OpenVpnServerService : IOpenVpnServerService
                 existingClient.City = openVpnClient.City;
                 existingClient.Latitude = openVpnClient.Latitude;
                 existingClient.Longitude = openVpnClient.Longitude;
+                existingClient.IsConnected = true;
 
                 openVpnServerClientRepository.Update(existingClient);
             }
@@ -74,6 +84,7 @@ public class OpenVpnServerService : IOpenVpnServerService
                     City = openVpnClient.City,
                     Latitude = openVpnClient.Latitude,
                     Longitude = openVpnClient.Longitude,
+                    IsConnected = true,
                     LastUpdate = DateTime.UtcNow,
                     CreateDate = DateTime.UtcNow
                 };

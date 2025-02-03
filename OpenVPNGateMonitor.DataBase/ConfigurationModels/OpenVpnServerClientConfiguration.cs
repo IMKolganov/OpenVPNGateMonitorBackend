@@ -37,6 +37,7 @@ public class OpenVpnServerClientConfiguration : IEntityTypeConfiguration<OpenVpn
             .HasMaxLength(100);
         entity.Property(e => e.Latitude);
         entity.Property(e => e.Longitude);
+        entity.Property(e => e.IsConnected);
         entity.Property(e => e.LastUpdate)
             .IsRequired();
         entity.Property(e => e.CreateDate)

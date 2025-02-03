@@ -1,4 +1,5 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
+using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
@@ -39,7 +40,12 @@ public static class ServiceConfiguration
         
         services.AddSingleton<IEasyRsaService, EasyRsaService>();
 
-        services.AddHostedService<OpenVpnBackgroundService>();
+        services.AddScoped<IVpnDataService, VpnDataService>();
+
+
+        services.AddSingleton<OpenVpnBackgroundService>();
+        services.AddSingleton<IOpenVpnBackgroundService>(sp => sp.GetRequiredService<OpenVpnBackgroundService>());
+        services.AddHostedService(sp => sp.GetRequiredService<OpenVpnBackgroundService>());
 
         services.AddControllers();
 

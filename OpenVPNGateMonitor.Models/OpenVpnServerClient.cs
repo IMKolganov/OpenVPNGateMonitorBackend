@@ -16,6 +16,7 @@ public class OpenVpnServerClient
     public string? City { get; set; }
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
+    public bool IsConnected { get; set; }
     public DateTime LastUpdate { get; set; }
     public DateTime CreateDate { get; set; }
 }
