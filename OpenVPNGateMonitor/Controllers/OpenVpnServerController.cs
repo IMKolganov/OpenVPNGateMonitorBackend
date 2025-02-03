@@ -28,6 +28,13 @@ public class OpenVpnServerController : ControllerBase
     {
         return Ok(await _vpnDataService.GetAllConnectedOpenVpnServerClients(cancellationToken));
     }
+    
+    
+    [HttpGet("GetAllHistoryClients")]
+    public async Task<IActionResult> GetAllHistoryClients(CancellationToken cancellationToken = default)
+    {
+        return Ok(await _vpnDataService.GetAllHistoryOpenVpnServerClients(cancellationToken));
+    }
 
     [HttpGet("GetServerInfo")]
     public async Task<IActionResult> GetServerInfo(CancellationToken cancellationToken = default)

@@ -19,7 +19,14 @@ public class VpnDataService : IVpnDataService
     public async Task<List<OpenVpnServerClient>> GetAllConnectedOpenVpnServerClients(CancellationToken cancellationToken)
     {
         var openVpnServerClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
-            .AsQueryable().Where(x=> x.IsConnected)
+            .AsQueryable().Where(x=> x.IsConnected).OrderBy(x=>x.Id)
+            .ToListAsync(cancellationToken);
+        return openVpnServerClients;
+    }
+    public async Task<List<OpenVpnServerClient>> GetAllHistoryOpenVpnServerClients(CancellationToken cancellationToken)
+    {
+        var openVpnServerClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
+            .AsQueryable().OrderBy(x=>x.Id)
             .ToListAsync(cancellationToken);
         return openVpnServerClients;
     }
@@ -28,7 +35,7 @@ public class VpnDataService : IVpnDataService
     {
         return await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
             .AsQueryable()
-            .OrderByDescending(x => x.CreateDate)
+            .OrderBy(x=>x.Id)
             .FirstOrDefaultAsync(cancellationToken);
     }
 
