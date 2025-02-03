@@ -1,0 +1,6 @@
+﻿services:
+  openvpngatemonitor:
+    image: openvpngatemonitor
+    build:
+      context: .
+      dockerfile: OpenVPNGateMonitor/Dockerfile
