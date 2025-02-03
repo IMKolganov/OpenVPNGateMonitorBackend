@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using OpenVPNGateMonitor.Services.Interfaces;
 using Newtonsoft.Json;
 
 namespace OpenVPNGateMonitor.Middlewares;

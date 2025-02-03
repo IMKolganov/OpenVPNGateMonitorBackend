@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Controllers;
 

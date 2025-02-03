@@ -9,7 +9,12 @@ public class OpenVpnClient
     public string LocalIp { get; set; } = string.Empty;
     public long BytesReceived { get; set; }
     public long BytesSent { get; set; }
-    public DateTime ConnectedSince { get; set; }
+    private DateTime _connectedSince;
+    public DateTime ConnectedSince
+    {
+        get => _connectedSince;
+        set => _connectedSince = DateTime.SpecifyKind(value, DateTimeKind.Utc);
+    }
     public string Username { get; set; } = string.Empty;
     
     public string? Country { get; set; }
