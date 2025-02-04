@@ -8,8 +8,6 @@ public class VpnDataService : IVpnDataService
 {
     private readonly ILogger<VpnDataService> _logger;
     private readonly IUnitOfWork _unitOfWork;
-
-    
     public VpnDataService(ILogger<VpnDataService> logger, IUnitOfWork unitOfWork)
     {
         _logger = logger;

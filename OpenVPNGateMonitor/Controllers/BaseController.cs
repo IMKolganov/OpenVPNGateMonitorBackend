@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class BaseController : ControllerBase
 {
     public BaseController()
