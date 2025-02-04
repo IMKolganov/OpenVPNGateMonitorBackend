@@ -17,12 +17,12 @@ public class CertVpnService : ICertVpnService
         _easyRsaService = easyRsaService;
     }
 
-    public List<CertificateCaInfo> GetAllCertVpnCertificates()
+    public List<CertificateCaInfo> GetAllVpnCertificates()
     {
         return _easyRsaService.GetAllCertificateInfoInIndexFile();
     }
     
-    public List<CertificateCaInfo> GetAllCertVpnCertificatesByStatus(CertificateStatus certificateStatus)
+    public List<CertificateCaInfo> GetAllVpnCertificatesByStatus(CertificateStatus certificateStatus)
     {
         return _easyRsaService.GetAllCertificateInfoInIndexFile()
             .Where(x=> x.Status == certificateStatus).ToList();

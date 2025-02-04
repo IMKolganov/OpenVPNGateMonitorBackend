@@ -5,6 +5,6 @@ namespace OpenVPNGateMonitor.Services.Api;
 
 public interface ICertVpnService
 {
-    List<CertificateCaInfo> GetAllCertVpnCertificates();
-    List<CertificateCaInfo> GetAllCertVpnCertificatesByStatus(CertificateStatus certificateStatus);
+    List<CertificateCaInfo> GetAllVpnCertificates();
+    List<CertificateCaInfo> GetAllVpnCertificatesByStatus(CertificateStatus certificateStatus);
 }
