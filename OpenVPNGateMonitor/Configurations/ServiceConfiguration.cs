@@ -40,7 +40,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IEasyRsaService, EasyRsaService>();
 
         services.AddScoped<IVpnDataService, VpnDataService>();
-
+        services.AddScoped<ICertVpnService, CertVpnService>();
 
         services.AddSingleton<OpenVpnBackgroundService>();
         services.AddSingleton<IOpenVpnBackgroundService>(sp => sp.GetRequiredService<OpenVpnBackgroundService>());

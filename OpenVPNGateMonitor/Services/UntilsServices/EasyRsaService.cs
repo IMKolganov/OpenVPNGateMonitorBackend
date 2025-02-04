@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
@@ -80,7 +81,8 @@ public class EasyRsaService : IEasyRsaService
         _logger.LogInformation($"Certificate generated successfully:\n{output}");
 
         var certPath = Path.Combine(_pkiPath, "issued", $"{baseFileName}.crt");
-        var certificateInfoInIndexFile = FindAllCertificateInfoInIndexFile(baseFileName);
+        var certificateInfoInIndexFile = GetAllCertificateInfoInIndexFile()
+            .Where(x=> x.Status == CertificateStatus.Active && x.CommonName == baseFileName).ToList();
         if (certificateInfoInIndexFile.Count <= 0)
         {
             throw new Exception($"Error certificate is not found in CA {certPath}");
@@ -119,56 +121,7 @@ public class EasyRsaService : IEasyRsaService
         return serial;
     }
 
-    #region CA index.txt - batabase CA for all sertificate 
-    // parts[3] - serial number
-    // CN (Common Name) is a field that specifies the 
-    // common name of the subject in the certificate. It is used to identify
-    // the client or server and is part of X.509 certificates used in OpenVPN
-    // and other systems for authentication.
-    // V	555555555555Z		5D5C5F5555D555F5555C5C5555555B5C	unknown	/CN=imkolganov
-    public List<CertificateCaInfo> FindAllCertificateInfoInIndexFile(string baseFileName)
-    {
-        var result = new List<CertificateCaInfo>();
-        string indexFilePath = Path.Combine(_pkiPath, "index.txt");
 
-        foreach (var line in File.ReadLines(indexFilePath))
-        {
-            if (line.StartsWith("V") && line.Contains($"/CN={baseFileName}"))
-            {
-                var parts = line.Split('\t');
-                if (parts.Length >= 5)
-                {
-                    result.Add(new CertificateCaInfo
-                    {
-                        Status = parts[1],
-                        // ExpiryDate = ParseExpiryDate(parts[2]),
-                        SerialNumber = parts[3],
-                        UnknownField = parts[4],
-                        CommonName = parts[5].StartsWith("/CN=") ? parts[5].Substring(4) : parts[5]
-                    });
-                }
-            }
-        }
-
-        return result;
-    }
-
-    // private DateTime ParseExpiryDate(string dateString)
-    // {
-    //     // date format from index.txt: "250128120000Z" (YYMMDDHHMMSSZ)
-    //     if (DateTime.TryParseExact(dateString.Substring(0, dateString.Length - 1), 
-    //             "yyMMddHHmmss", 
-    //             null, 
-    //             System.Globalization.DateTimeStyles.AssumeUniversal, 
-    //             out var date))
-    //     {
-    //         return date;
-    //     }
-    //
-    //     throw new FormatException($"Invalid date format: {dateString}");
-    // }
-    
-    #endregion
     public string ReadPemContent(string filePath)
     {
         var lines = File.ReadAllLines(filePath);
@@ -270,6 +223,55 @@ public class EasyRsaService : IEasyRsaService
 
         _logger.LogInformation("Certificate successfully revoked, CRL updated and deployed.");
         return resultmessage;
+    }
+    
+    public List<CertificateCaInfo> GetAllCertificateInfoInIndexFile()
+    {
+        var result = new List<CertificateCaInfo>();
+        string indexFilePath = Path.Combine(_pkiPath, "index.txt");
+
+        foreach (var line in File.ReadLines(indexFilePath))
+        {
+            var parts = line.Split('\t');
+            if (parts.Length >= 5)
+            {
+                result.Add(new CertificateCaInfo
+                {
+                    Status = ParseStatus(parts[1]),
+                    ExpiryDate = ParseExpiryDate(parts[2]),
+                    SerialNumber = parts[3],
+                    UnknownField = parts[4],
+                    CommonName = parts[5].StartsWith("/CN=") ? parts[5].Substring(4) : parts[5]
+                });
+            }
+        }
+
+        return result;
+    }
+    
+    private static CertificateStatus ParseStatus(string status)
+    {
+        return status switch
+        {
+            "V" => CertificateStatus.Active,
+            "R" => CertificateStatus.Revoked,
+            _ => CertificateStatus.Unknown
+        };
+    }
+    
+    private DateTime ParseExpiryDate(string dateString)
+    {
+        // date format from index.txt: "250128120000Z" (YYMMDDHHMMSSZ)
+        if (DateTime.TryParseExact(dateString.Substring(0, dateString.Length - 1), 
+                "yyMMddHHmmss", 
+                null, 
+                System.Globalization.DateTimeStyles.AssumeUniversal, 
+                out var date))
+        {
+            return date;
+        }
+    
+        throw new FormatException($"Invalid date format: {dateString}");
     }
 
     private (bool IsSuccess, string Output, int ExitCode, string Error) ExecuteEasyRsaCommand(string arguments, bool confirm = false)

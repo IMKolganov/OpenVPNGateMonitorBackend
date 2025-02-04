@@ -8,11 +8,12 @@ using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("api/[controller]")]
 public class OpenVpnServerController : ControllerBase
 {
     private readonly ILogger<OpenVpnServerController> _logger;
     private readonly IVpnDataService _vpnDataService;
+    
     private readonly IOpenVpnBackgroundService _openVpnBackgroundService;
 
     public OpenVpnServerController(ILogger<OpenVpnServerController> logger, IVpnDataService vpnDataService,
