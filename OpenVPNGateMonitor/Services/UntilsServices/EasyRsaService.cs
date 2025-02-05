@@ -8,15 +8,20 @@ namespace OpenVPNGateMonitor.Services.UntilsServices;
 public class EasyRsaService : IEasyRsaService
 {
     private readonly ILogger<EasyRsaService> _logger;
+    private readonly IEasyRsaParseDbService _easyRsaParseDbService;
+    private readonly IEasyRsaExecCommandService _easyRsaExecCommandService;
     private readonly string _pkiPath;
     private readonly OpenVpnSettings _openVpnSettings;
     private readonly string _caCertPath;
     private readonly string _revokedDirPath;
 
 
-    public EasyRsaService(ILogger<EasyRsaService> logger, IConfiguration configuration)
+    public EasyRsaService(ILogger<EasyRsaService> logger, IConfiguration configuration, 
+        IEasyRsaParseDbService easyRsaParseDbService, IEasyRsaExecCommandService easyRsaExecCommandService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _easyRsaParseDbService = easyRsaParseDbService;
+        _easyRsaExecCommandService = easyRsaExecCommandService;
 
         var openVpnSection = configuration.GetSection("OpenVpn");
         if (!openVpnSection.Exists())
@@ -59,25 +64,29 @@ public class EasyRsaService : IEasyRsaService
         _logger.LogInformation($"PKI path initialized to: {_pkiPath}");
     }
 
+    #region easyrsa build-client-full
+// # ==============================================================================
+// # EasyRSA build-client-full command variations
+// # ==============================================================================
+//
+// # | Command Example                                      | Description                                      |
+// # |------------------------------------------------------|--------------------------------------------------|
+// # | ./easyrsa build-client-full client1                 | Creates a client certificate with a password prompt |
+// # | ./easyrsa build-client-full client1 nopass          | Creates a client certificate without a password |
+// # | EASYRSA_BATCH=1 ./easyrsa build-client-full client1 nopass  | Skips confirmation prompts during execution |
+// # | EASYRSA_CERT_EXPIRE=3650 ./easyrsa build-client-full client1 nopass | Sets the certificate expiration to 10 years (3650 days) |
+// # | EASYRSA_KEY_SIZE=4096 ./easyrsa build-client-full client1 nopass | Generates a 4096-bit key instead of the default 2048-bit |
+// # | EASYRSA_DIGEST="sha512" ./easyrsa build-client-full client1 nopass | Uses SHA-512 hashing instead of the default SHA-256 |
+// # | EASYRSA_ALGO="ec" EASYRSA_CURVE="secp384r1" ./easyrsa build-client-full client1 nopass | Uses ECDSA instead of RSA with secp384r1 curve |
+// # | EASYRSA_PASSIN="mypassword" ./easyrsa build-client-full client1 | Automatically provides the password instead of prompting |
+// # | EASYRSA_PASSIN=file:/path/to/password.txt ./easyrsa build-client-full client1 | Reads the password from a file |
+// # ==============================================================================
 
-    public void InstallEasyRsa()
-    {
-        if (!Directory.Exists(_pkiPath))
-        {
-            _logger.LogInformation("PKI directory does not exist. Initializing PKI...");
-            RunCommand($"cd {_openVpnSettings.EasyRsaPath} && ./easyrsa init-pki");
-            throw new Exception("PKI directory does not exist.");
-        }
-        else
-        {
-            _logger.LogInformation("PKI directory exists. Skipping initialization...");
-        }
-    }
-
-    public CertificateResult BuildCertificate(string baseFileName = "client1")
+    #endregion
+    public CertificateBuildResult BuildCertificate(string baseFileName = "client1")
     {
         var command = $"cd {_openVpnSettings.EasyRsaPath} && ./easyrsa build-client-full {baseFileName} nopass";
-        var (output, error, exitCode) = RunCommand(command);
+        var (output, error, exitCode) = _easyRsaExecCommandService.RunCommand(command);
 
         if (exitCode != 0)
         {
@@ -101,7 +110,7 @@ public class EasyRsaService : IEasyRsaService
             $"{certificateInfoInIndexFile.FirstOrDefault()!.SerialNumber}.pem");
 
         _logger.LogInformation($"Certificate path: {pemSerialPath}");
-        return new CertificateResult
+        return new CertificateBuildResult
         {
             CertificatePath = certPath,
             KeyPath = Path.Combine(_pkiPath, "private", $"{baseFileName}.key"),
@@ -114,7 +123,7 @@ public class EasyRsaService : IEasyRsaService
     private string CheckCertInOpenssl(string certPath)
     {
         var certPathCommand = $"openssl x509 -in {certPath} -serial -noout";
-        var (certOutput, certError, certExitCode) = RunCommand(certPathCommand);
+        var (certOutput, certError, certExitCode) = _easyRsaExecCommandService.RunCommand(certPathCommand);
 
         if (certExitCode != 0)
         {
@@ -136,62 +145,73 @@ public class EasyRsaService : IEasyRsaService
             .Append("-----END CERTIFICATE-----"));
     }
 
-    public string RevokeCertificate(string clientName)
+    public CertificateRevokeResult RevokeCertificate(string cnName)
     {
-        var resultmessage = string.Empty;
-        var certPath = Path.Combine(_pkiPath, "issued", $"{clientName}.crt");
-        if (!File.Exists(certPath))
+        var certificateRevokeResult = new CertificateRevokeResult();
+        certificateRevokeResult.CertificatePath = Path.Combine(_pkiPath, "issued", $"{cnName}.crt");
+        if (!File.Exists(certificateRevokeResult.CertificatePath))
         {
             _logger.LogInformation($"EasyRsa path: {_openVpnSettings.EasyRsaPath}");
             _logger.LogInformation($"PKI path: {_pkiPath}");
-            throw new Exception($"Certificate file not found: {certPath}");
+            throw new Exception($"Certificate file not found: {certificateRevokeResult.CertificatePath}");
         }
 
-        _logger.LogInformation($"Attempting to revoke certificate for: {clientName}");
+        _logger.LogInformation($"Attempting to revoke certificate for: {cnName}");
         _logger.LogInformation($"EasyRsaPath: {_openVpnSettings.EasyRsaPath}");
         _logger.LogInformation($"PKI Path: {_pkiPath}");
-        _logger.LogInformation($"Certificate Path: {certPath}");
+        _logger.LogInformation($"Certificate Path: {certificateRevokeResult.CertificatePath}");
 
         // Revoke the certificate
-        var revokeResult = ExecuteEasyRsaCommand($"revoke {clientName}", confirm: true);
-        if (!revokeResult.IsSuccess)
+        var revokeResult = _easyRsaExecCommandService.ExecuteEasyRsaCommand($"revoke {cnName}", 
+            _openVpnSettings.EasyRsaPath, confirm: true);
+        certificateRevokeResult.IsRevoked = revokeResult.IsSuccess;
+        if (!certificateRevokeResult.IsRevoked)
         {
             switch (revokeResult.ExitCode)
             {
                 case 0:
-                    resultmessage += $"Certificate revoked successfully: {clientName}";
-                    _logger.LogInformation($"Certificate revoked successfully: {clientName}");
+                    certificateRevokeResult.Message += $"Certificate revoked successfully: {cnName}";
+                    _logger.LogInformation($"Certificate revoked successfully: {cnName}");
                     break;
 
                 case 1:
                     if (revokeResult.Output.Contains("ERROR:Already revoked") 
                         || revokeResult.Error.Contains("ERROR:Already revoked"))
                     {
-                        resultmessage += $"Certificate is already revoked: {clientName}";
-                        _logger.LogWarning($"Certificate is already revoked: {clientName}");
+                        certificateRevokeResult.Message += $"Certificate is already revoked: {cnName}";
+                        _logger.LogWarning($"Certificate is already revoked: {cnName}");
                     }
                     else if (revokeResult.Output.Contains("ERROR: Certificate not found") 
                              || revokeResult.Output.Contains("ERROR: Certificate not found"))
                     {
-                        resultmessage += $"Certificate not found: {clientName}";
-                        _logger.LogWarning($"Certificate not found: {clientName}");
+                        certificateRevokeResult.Message += $"Certificate not found: {cnName}";
+                        _logger.LogWarning($"Certificate not found: {cnName}");
                     }
                     else
                     {
-                        throw new Exception($"Failed to revoke certificate. Unknown error: {clientName}, " +
+                        throw new Exception($"Failed to revoke certificate. Unknown error: {cnName}, " +
                                             $"ExitCode: {revokeResult.ExitCode}, Output: {revokeResult.Output}");
                     }
                     break;
 
                 default:
-                    _logger.LogError("Unexpected exit code ({ExitCode}) while revoking certificate: {ClientName}", revokeResult.ExitCode, clientName); 
-                    throw new Exception($"Unexpected exit code ({revokeResult.ExitCode}) while revoking certificate: {clientName}");
+                    throw new Exception($"Unexpected exit code ({revokeResult.ExitCode}) " +
+                                        $"while revoking certificate: {cnName}");
             }
         }
 
         _logger.LogInformation("Revocation successful. Generating CRL...");
+        if (UpdateCrl())
+            _logger.LogInformation("CRL successfully updated and deployed.");
 
-        var crlResult = ExecuteEasyRsaCommand("gen-crl");
+        _logger.LogInformation("Certificate successfully revoked, CRL updated and deployed.");
+        return certificateRevokeResult;
+    }
+
+    private bool UpdateCrl()
+    {
+        var crlResult = _easyRsaExecCommandService.ExecuteEasyRsaCommand("gen-crl", 
+            _openVpnSettings.EasyRsaPath);
         if (!crlResult.IsSuccess)
         {
             _logger.LogInformation($"Command Output: {crlResult.Output}");
@@ -200,19 +220,19 @@ public class EasyRsaService : IEasyRsaService
         
         if (!File.Exists(_openVpnSettings.CrlPkiPath))
         {
-            _logger.LogInformation($"Command Output: {crlResult.Output}");
-            throw new Exception($"Generated CRL not found at {_openVpnSettings.CrlPkiPath}");
+            throw new Exception($"Generated CRL not found at {_openVpnSettings.CrlPkiPath}," +
+                                $" Command Output: {crlResult.Output}");
         }
-
+        
         try
         {
             // Copy the CRL to the OpenVPN directory
             string copyCommand = $"cp {_openVpnSettings.CrlPkiPath} {_openVpnSettings.CrlOpenvpnPath}";
-            var copyResult = RunCommand(copyCommand);
+            var copyResult = _easyRsaExecCommandService.RunCommand(copyCommand);
 
             if (copyResult.ExitCode != 0)
             {
-                _logger.LogInformation($"Command Output: {crlResult.Output}");
+                _logger.LogInformation($"Command Output: {copyResult.Output}");
                 throw new Exception($"Failed to copy CRL file: {copyResult.Error}");
             }
 
@@ -223,36 +243,13 @@ public class EasyRsaService : IEasyRsaService
         {
             throw new Exception($"Error during CRL update: {ex.Message}");
         }
-        _logger.LogInformation("CRL successfully updated and deployed.");
 
-
-        _logger.LogInformation("Certificate successfully revoked, CRL updated and deployed.");
-        return resultmessage;
+        return true;
     }
     
     public List<CertificateCaInfo> GetAllCertificateInfoInIndexFile()
     {
-        var result = new List<CertificateCaInfo>();
-        string indexFilePath = Path.Combine(_pkiPath, "index.txt");
-
-        foreach (var line in File.ReadLines(indexFilePath))
-        {
-            var parts = line.Split('\t');
-            if (parts.Length >= 5)
-            {
-                result.Add(new CertificateCaInfo
-                {
-                    Status = ParseStatus(parts[0]),
-                    ExpiryDate = ParseDate(parts[1]),
-                    RevokeDate = parts[2] != string.Empty ? ParseDate(parts[2]) : DateTime.MinValue,
-                    SerialNumber = parts[3],
-                    UnknownField = parts[4],
-                    CommonName = parts[5].StartsWith("/CN=") ? parts[5].Substring(4) : parts[5]
-                });
-            }
-        }
-
-        return result;
+        return _easyRsaParseDbService.ParseCertificateInfoInIndexFile(_pkiPath);
     }
     
     public bool CheckHealthFileSystem()
@@ -287,84 +284,17 @@ public class EasyRsaService : IEasyRsaService
         return true;
     }
     
-    private static CertificateStatus ParseStatus(string status)
+    private void InstallEasyRsa()
     {
-        return status switch
+        if (!Directory.Exists(_pkiPath))
         {
-            "V" => CertificateStatus.Active,
-            "R" => CertificateStatus.Revoked,
-            "E" => CertificateStatus.Expired,
-            _ => CertificateStatus.Unknown
-        };
-    }
-    
-    private DateTime ParseDate(string dateString)
-    {
-        // date format from index.txt: "250128120000Z" (YYMMDDHHMMSSZ)
-        if (DateTime.TryParseExact(dateString.Substring(0, dateString.Length - 1), 
-                "yyMMddHHmmss", 
-                null, 
-                System.Globalization.DateTimeStyles.AssumeUniversal, 
-                out var date))
-        {
-            return date;
+            _logger.LogInformation("PKI directory does not exist. Initializing PKI...");
+            _easyRsaExecCommandService.RunCommand($"cd {_openVpnSettings.EasyRsaPath} && ./easyrsa init-pki");
+            throw new Exception("PKI directory does not exist.");
         }
-    
-        throw new FormatException($"Invalid date format: {dateString}");
-    }
-
-    private (bool IsSuccess, string Output, int ExitCode, string Error) ExecuteEasyRsaCommand(string arguments, bool confirm = false)
-    {
-        try
+        else
         {
-            var command = $"cd {_openVpnSettings.EasyRsaPath} && ./easyrsa {arguments}";
-            if (confirm)
-            {
-                _logger.LogInformation($"Confirming command with 'yes': {arguments}");
-                command = $"cd {_openVpnSettings.EasyRsaPath} && echo yes | ./easyrsa {arguments}";
-            }
-
-            _logger.LogInformation($"Executing command: {command}");
-            var result = RunCommand(command);
-
-            _logger.LogInformation($"Command Output: {result.Output}");
-            _logger.LogInformation($"Command Error: {result.Error}");
-            _logger.LogInformation($"Command Exit Code: {result.ExitCode}");
-
-            return result.ExitCode == 0
-                ? (true, result.Output, result.ExitCode, string.Empty)
-                : (false, result.Output, result.ExitCode, result.Error);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError($"Exception during command execution: {ex.Message}");
-            return (false, string.Empty, 404,ex.Message);
+            _logger.LogInformation("PKI directory exists. Skipping initialization...");
         }
     }
-
-    private (string Output, string Error, int ExitCode) RunCommand(string command)
-    {
-        var processInfo = new ProcessStartInfo("bash", $"-c \"{command}\"")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        _logger.LogInformation($"Starting process: {command}");
-        using var process = Process.Start(processInfo);
-        if (process == null)
-        {
-            throw new InvalidOperationException("Failed to start command process.");
-        }
-
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        _logger.LogInformation($"Process completed with ExitCode: {process.ExitCode}, Error: {error}, Output: {output}");
-        return (output, error, process.ExitCode);
-    }
-
 }

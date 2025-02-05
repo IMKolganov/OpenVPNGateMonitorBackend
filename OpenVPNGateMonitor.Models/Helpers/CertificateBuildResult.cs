@@ -1,6 +1,6 @@
 ﻿namespace OpenVPNGateMonitor.Models.Helpers;
 
-public class CertificateResult
+public class CertificateBuildResult
 {
     public string CertificatePath { get; set; } = string.Empty;
     public string KeyPath { get; set; } = string.Empty;

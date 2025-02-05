@@ -38,6 +38,8 @@ public static class ServiceConfiguration
 
         
         services.AddSingleton<IEasyRsaService, EasyRsaService>();
+        services.AddSingleton<IEasyRsaParseDbService, EasyRsaParseDbService>();
+        services.AddSingleton<IEasyRsaExecCommandService, EasyRsaExecCommandService>();
 
         services.AddScoped<IVpnDataService, VpnDataService>();
         services.AddScoped<ICertVpnService, CertVpnService>();

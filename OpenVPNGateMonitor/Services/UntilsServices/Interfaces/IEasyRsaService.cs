@@ -4,10 +4,9 @@ namespace OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
 public interface IEasyRsaService
 {
-    void InstallEasyRsa();
-    CertificateResult BuildCertificate(string certName = "client1");
+    CertificateBuildResult BuildCertificate(string certName = "client1");
     string ReadPemContent(string filePath);
-    string RevokeCertificate(string clientName);
+    CertificateRevokeResult RevokeCertificate(string clientName);
     List<CertificateCaInfo> GetAllCertificateInfoInIndexFile();
     bool CheckHealthFileSystem();
 }
