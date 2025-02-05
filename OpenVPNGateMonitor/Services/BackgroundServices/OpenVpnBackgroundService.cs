@@ -6,14 +6,14 @@ namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
 public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundService
 {
-    private readonly ILogger<OpenVpnBackgroundService> _logger;
+    private readonly ILogger<IOpenVpnBackgroundService> _logger;
     private readonly IServiceProvider _serviceProvider;
     private readonly int _seconds;
     private DateTime _nextRunTime;
     private readonly SemaphoreSlim _executionLock = new(1, 1);
     private BackgroundServiceStatus _status = BackgroundServiceStatus.Idle;
 
-    public OpenVpnBackgroundService(ILogger<OpenVpnBackgroundService> logger, 
+    public OpenVpnBackgroundService(ILogger<IOpenVpnBackgroundService> logger, 
         IServiceProvider serviceProvider, IConfiguration configuration)
     {
         _logger = logger;

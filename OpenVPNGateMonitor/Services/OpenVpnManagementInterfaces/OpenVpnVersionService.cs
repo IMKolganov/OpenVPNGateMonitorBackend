@@ -5,10 +5,10 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
 public class OpenVpnVersionService : IOpenVpnVersionService
 {
-    private readonly ILogger<OpenVpnVersionService> _logger;
+    private readonly ILogger<IOpenVpnVersionService> _logger;
     private readonly IOpenVpnManagementService _openVpnManagementService;
     
-    public OpenVpnVersionService(ILogger<OpenVpnVersionService> logger, 
+    public OpenVpnVersionService(ILogger<IOpenVpnVersionService> logger, 
         IOpenVpnManagementService openVpnManagementService)
     {
         _logger = logger;

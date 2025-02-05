@@ -6,9 +6,9 @@ namespace OpenVPNGateMonitor.Services.Api;
 
 public class VpnDataService : IVpnDataService
 {
-    private readonly ILogger<VpnDataService> _logger;
+    private readonly ILogger<IVpnDataService> _logger;
     private readonly IUnitOfWork _unitOfWork;
-    public VpnDataService(ILogger<VpnDataService> logger, IUnitOfWork unitOfWork)
+    public VpnDataService(ILogger<IVpnDataService> logger, IUnitOfWork unitOfWork)
     {
         _logger = logger;
         _unitOfWork = unitOfWork;

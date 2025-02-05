@@ -32,4 +32,18 @@ public class OpenVpnCertsController : ControllerBase
         return Task.FromResult<IActionResult>(
             Ok(_certVpnService.GetAllVpnCertificatesByStatus(certificateStatus)));
     }
+    
+    [HttpGet("AddCertificate")]
+    public Task<IActionResult> AddCertificate(string cnName, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IActionResult>(
+            Ok(_certVpnService.AddCertificate(cnName, cancellationToken)));
+    }
+    
+    [HttpGet("RemoveCertificate")]
+    public Task<IActionResult> RemoveCertificate(string cnName, CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult<IActionResult>(
+            Ok(_certVpnService.RemoveCertificate(cnName, cancellationToken)));
+    }
 }
