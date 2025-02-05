@@ -10,7 +10,7 @@ public class EasyRsaService : IEasyRsaService
     private readonly ILogger<EasyRsaService> _logger;
     private readonly string _pkiPath;
     private readonly OpenVpnSettings _openVpnSettings;
-    private readonly string _caCetrPath;
+    private readonly string _caCertPath;
     private readonly string _revokedDirPath;
 
 
@@ -54,9 +54,9 @@ public class EasyRsaService : IEasyRsaService
         }
 
         _pkiPath = Path.Combine(_openVpnSettings.EasyRsaPath, "pki");
-        _caCetrPath = Path.Combine(_pkiPath, "ca.crt");
+        _caCertPath = Path.Combine(_pkiPath, "ca.crt");
         _revokedDirPath = Path.Combine(_openVpnSettings.OutputDir, "revoked");
-        _logger.LogInformation("PKI path initialized to: {PkiPath}", _pkiPath);
+        _logger.LogInformation($"PKI path initialized to: {_pkiPath}");
     }
 
 
@@ -278,8 +278,8 @@ public class EasyRsaService : IEasyRsaService
             throw new FileNotFoundException($"Index file not found at path: {indexFilePath}");
         }
 
-        if (string.IsNullOrEmpty(_caCetrPath))
-            throw new ArgumentNullException(nameof(_caCetrPath));
+        if (string.IsNullOrEmpty(_caCertPath))
+            throw new ArgumentNullException(nameof(_caCertPath));
         if (string.IsNullOrEmpty(_openVpnSettings.TlsAuthKey))
             throw new ArgumentNullException(nameof(_openVpnSettings.TlsAuthKey));
 
