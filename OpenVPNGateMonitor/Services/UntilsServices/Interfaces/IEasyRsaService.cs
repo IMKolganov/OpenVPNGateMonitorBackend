@@ -9,4 +9,5 @@ public interface IEasyRsaService
     string ReadPemContent(string filePath);
     string RevokeCertificate(string clientName);
     List<CertificateCaInfo> GetAllCertificateInfoInIndexFile();
+    bool CheckHealthFileSystem();
 }
