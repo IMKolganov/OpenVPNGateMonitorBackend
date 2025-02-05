@@ -242,8 +242,9 @@ public class EasyRsaService : IEasyRsaService
             {
                 result.Add(new CertificateCaInfo
                 {
-                    Status = ParseStatus(parts[1]),
-                    ExpiryDate = parts[2] != string.Empty ? ParseExpiryDate(parts[2]) : null,
+                    Status = ParseStatus(parts[0]),
+                    ExpiryDate = ParseDate(parts[1]),
+                    RevokeDate = parts[2] != string.Empty ? ParseDate(parts[2]) : DateTime.MinValue,
                     SerialNumber = parts[3],
                     UnknownField = parts[4],
                     CommonName = parts[5].StartsWith("/CN=") ? parts[5].Substring(4) : parts[5]
@@ -297,7 +298,7 @@ public class EasyRsaService : IEasyRsaService
         };
     }
     
-    private DateTime ParseExpiryDate(string dateString)
+    private DateTime ParseDate(string dateString)
     {
         // date format from index.txt: "250128120000Z" (YYMMDDHHMMSSZ)
         if (DateTime.TryParseExact(dateString.Substring(0, dateString.Length - 1), 
