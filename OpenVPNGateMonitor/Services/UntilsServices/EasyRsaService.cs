@@ -243,7 +243,7 @@ public class EasyRsaService : IEasyRsaService
                 result.Add(new CertificateCaInfo
                 {
                     Status = ParseStatus(parts[1]),
-                    ExpiryDate = ParseExpiryDate(parts[2]),
+                    ExpiryDate = parts[2] != string.Empty ? ParseExpiryDate(parts[2]) : null,
                     SerialNumber = parts[3],
                     UnknownField = parts[4],
                     CommonName = parts[5].StartsWith("/CN=") ? parts[5].Substring(4) : parts[5]
@@ -292,6 +292,7 @@ public class EasyRsaService : IEasyRsaService
         {
             "V" => CertificateStatus.Active,
             "R" => CertificateStatus.Revoked,
+            "E" => CertificateStatus.Expired,
             _ => CertificateStatus.Unknown
         };
     }

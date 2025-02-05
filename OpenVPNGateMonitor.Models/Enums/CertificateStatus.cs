@@ -4,5 +4,6 @@ public enum CertificateStatus
 {
     Active,
     Revoked,
+    Expired,
     Unknown
 }
