@@ -1,5 +1,5 @@
 ﻿using System.Reflection;
-using OpenVPNGateMonitor.Services.UntilsServices;
+using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
 namespace OpenVPNGateMonitor.Configurations;
 
@@ -29,7 +29,7 @@ public static class PipelineConfiguration
         var environmentName = app.Environment.EnvironmentName;
         
         app.MapGet("/",
-            (ILogger<EasyRsaService> logger) => Results.Text(statusCode: 200, 
+            (ILogger<IEasyRsaService> logger) => Results.Text(statusCode: 200, 
                 content: $"OpenVPNGateMonitor Application version: {version}; Environment: {environmentName};"));
 
         app.Logger.LogInformation($"Application version: {version}; Environment: {environmentName};");

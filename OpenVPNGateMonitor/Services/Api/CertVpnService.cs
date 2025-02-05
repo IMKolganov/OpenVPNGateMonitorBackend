@@ -8,10 +8,10 @@ namespace OpenVPNGateMonitor.Services.Api;
 
 public class CertVpnService : ICertVpnService
 {
-    private readonly ILogger<CertVpnService> _logger;
+    private readonly ILogger<ICertVpnService> _logger;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IEasyRsaService _easyRsaService;
-    public CertVpnService(ILogger<CertVpnService> logger, IUnitOfWork unitOfWork, IEasyRsaService easyRsaService)
+    public CertVpnService(ILogger<ICertVpnService> logger, IUnitOfWork unitOfWork, IEasyRsaService easyRsaService)
     {
         _logger = logger;
         _unitOfWork = unitOfWork;

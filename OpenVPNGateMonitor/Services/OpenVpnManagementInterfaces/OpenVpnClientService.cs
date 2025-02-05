@@ -8,11 +8,11 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
 public class OpenVpnClientService : IOpenVpnClientService
 {
-    private readonly ILogger<OpenVpnClientService> _logger;
+    private readonly ILogger<IOpenVpnClientService> _logger;
     private readonly IGeoIpService _geoIpService;
     private readonly IOpenVpnManagementService _openVpnManagementService;
     
-    public OpenVpnClientService(ILogger<OpenVpnClientService> logger, IGeoIpService geoIpService, 
+    public OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoIpService geoIpService, 
         IOpenVpnManagementService openVpnManagementService)
     {
         _logger = logger;

@@ -17,10 +17,11 @@ public class OpenVpnServerService : IOpenVpnServerService
     private readonly IOpenVpnVersionService _openVpnVersionService;
     private readonly IOpenVpnStateService _openVpnStateService;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly List<string> _externalIpServices;
     
-    public OpenVpnServerService(ILogger<IOpenVpnServerService> logger, IOpenVpnClientService openVpnClientService,
-        IOpenVpnSummaryStatService openVpnSummaryStatService, IOpenVpnVersionService openVpnVersionService,
-        IOpenVpnStateService openVpnStateService, IUnitOfWork unitOfWork)
+    public OpenVpnServerService(ILogger<IOpenVpnServerService> logger, IConfiguration configuration,
+        IOpenVpnClientService openVpnClientService, IOpenVpnSummaryStatService openVpnSummaryStatService, 
+        IOpenVpnVersionService openVpnVersionService, IOpenVpnStateService openVpnStateService, IUnitOfWork unitOfWork)
     {
         _logger = logger;
         _openVpnClientService = openVpnClientService;
@@ -28,6 +29,13 @@ public class OpenVpnServerService : IOpenVpnServerService
         _openVpnVersionService = openVpnVersionService;
         _openVpnStateService = openVpnStateService;
         _unitOfWork = unitOfWork;
+
+        IConfiguration config = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .Build();
+
+        _externalIpServices = configuration.GetSection("ExternalIpServices").
+            Get<List<string>>() ?? throw new InvalidOperationException();
     }
 
     public async Task SaveConnectedClientsAsync(CancellationToken cancellationToken)
@@ -102,6 +110,7 @@ public class OpenVpnServerService : IOpenVpnServerService
         {
             serverInfo.OpenVpnState = await _openVpnStateService.GetStateAsync(cancellationToken);
             serverInfo.OpenVpnSummaryStats = await _openVpnSummaryStatService.GetSummaryStatsAsync(cancellationToken);
+            serverInfo.OpenVpnState.RemoteIp = await GetRemoteIpAddress();
             if (serverInfo.OpenVpnState != null)
             {
                 serverInfo.Version = await _openVpnVersionService.GetVersionAsync(cancellationToken);
@@ -159,6 +168,32 @@ public class OpenVpnServerService : IOpenVpnServerService
         }
 
         await _unitOfWork.SaveChangesAsync();
+    }
+
+    #region GetRemoteIpAddress
+    // ttps://api.ipify.org
+    // https://checkip.amazonaws.com
+    // https://ifconfig.me
+    // https://icanhazip.com
+    #endregion
+    private async Task<string> GetRemoteIpAddress()
+    {
+        using HttpClient client = new HttpClient();
+        
+        foreach (string externalIpService in _externalIpServices)
+        {
+            try
+            {
+                string ip = await client.GetStringAsync(externalIpService);
+                return ip.Trim();
+            }
+            catch (Exception)
+            {
+                _logger.LogError($"Failed to get IP from: {externalIpService}");
+            }
+        }
+
+        throw new Exception("Unable to retrieve external IP.");
     }
     
     private Guid GenerateSessionId(string commonName, string realAddress, DateTime connectedSince)
