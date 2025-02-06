@@ -29,11 +29,21 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 # Install curl (optional, if needed for debugging or HTTP requests)
 RUN apt-get update && apt-get install -y curl
 
-# Set up a non-root user for security
-RUN if ! id -u app > /dev/null 2>&1; then useradd -m app; fi
+# Get the host user ID and group ID via build args
+ARG HOST_UID=1000
+ARG HOST_GID=1000
+
+# Create a user 'app' with the same UID/GID as the host user
+RUN groupadd -g $HOST_GID app && useradd -m -u $HOST_UID -g app app
+
+# Ensure the /app directory is owned by the 'app' user
 RUN mkdir -p /app && chown -R app:app /app
 
-# Switch to the non-root user
+# Install vsdbg debugger for Rider
+RUN mkdir -p /vsdbg && \
+    curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg
+
+# Switch to the 'app' user
 USER app
 
 # Set the working directory
