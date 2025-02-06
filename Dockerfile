@@ -1,5 +1,15 @@
-﻿# Use the ARM64 SDK image for building the app
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+﻿# Use the ASP.NET runtime for the final image
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+
+# Install curl (optional, if needed for debugging or HTTP requests)
+RUN apt-get update && apt-get install -y curl unzip
+
+# Install vsdbg (official .NET debugger)
+RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg
+
+# Set up a non-root user for security
+RUN if ! id -u app > /dev/null 2>&1; then useradd -m app; fi
+RUN mkdir -p /app && chown -R app:app /app
 
 # Set the working directory
 WORKDIR /src
