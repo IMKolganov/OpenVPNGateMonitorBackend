@@ -42,9 +42,5 @@ WORKDIR /app
 # Copy the published application from the build stage
 COPY --from=publish /app/publish .
 
-# Copy configuration files (if they exist in the context)
-COPY appsettings.json .
-COPY appsettings.Development.json .
-
 # Specify the entry point for the application
 ENTRYPOINT ["dotnet", "OpenVPNGateMonitor.dll"]
