@@ -17,7 +17,7 @@ public class OpenVpnServerService : IOpenVpnServerService
     private readonly IOpenVpnVersionService _openVpnVersionService;
     private readonly IOpenVpnStateService _openVpnStateService;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly List<string> _externalIpServices;
+    private readonly List<string>? _externalIpServices;
     
     public OpenVpnServerService(ILogger<IOpenVpnServerService> logger, IConfiguration configuration,
         IOpenVpnClientService openVpnClientService, IOpenVpnSummaryStatService openVpnSummaryStatService, 
@@ -35,7 +35,7 @@ public class OpenVpnServerService : IOpenVpnServerService
             .Build();
 
         _externalIpServices = configuration.GetSection("ExternalIpServices").
-            Get<List<string>>() ?? throw new InvalidOperationException();
+            Get<List<string>>();
     }
 
     public async Task SaveConnectedClientsAsync(CancellationToken cancellationToken)
@@ -179,19 +179,25 @@ public class OpenVpnServerService : IOpenVpnServerService
     private async Task<string> GetRemoteIpAddress()
     {
         using HttpClient client = new HttpClient();
-        
-        foreach (string externalIpService in _externalIpServices)
+        if (_externalIpServices is { Count: <= 0 })
         {
-            try
-            {
-                string ip = await client.GetStringAsync(externalIpService);
-                return ip.Trim();
-            }
-            catch (Exception)
-            {
-                _logger.LogError($"Failed to get IP from: {externalIpService}");
-            }
+            _logger.LogError("No external IP configured.");
+            return "127.0.0.1";
         }
+
+        if (_externalIpServices != null)
+            foreach (string externalIpService in _externalIpServices)
+            {
+                try
+                {
+                    string ip = await client.GetStringAsync(externalIpService);
+                    return ip.Trim();
+                }
+                catch (Exception)
+                {
+                    _logger.LogError($"Failed to get IP from: {externalIpService}");
+                }
+            }
 
         throw new Exception("Unable to retrieve external IP.");
     }
