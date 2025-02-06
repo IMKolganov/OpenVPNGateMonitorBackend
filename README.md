@@ -25,7 +25,7 @@ id ivan
 This guide explains how to correctly set up a non-root user in a Docker container with a specific **UID/GID (1000:1000)** for seamless file access between the container and host.
 
 ## Why Use a Specific UID/GID?
-By default, files on the host may belong to `rackot` (`uid=1000`, `gid=1000`).  
+By default, files on the host may belong to `ivan` (`uid=1000`, `gid=1000`).  
 If the container runs a different user, it might **lack permissions** to access mounted volumes like `/etc/openvpn/easy-rsa`.
 
 ## Solution: Set UID/GID in Dockerfile
