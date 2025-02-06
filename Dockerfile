@@ -1,15 +1,5 @@
-﻿# Use the ASP.NET runtime for the final image
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
-
-# Install curl (optional, if needed for debugging or HTTP requests)
-RUN apt-get update && apt-get install -y curl unzip
-
-# Install vsdbg (official .NET debugger)
-RUN curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg
-
-# Set up a non-root user for security
-RUN if ! id -u app > /dev/null 2>&1; then useradd -m app; fi
-RUN mkdir -p /app && chown -R app:app /app
+﻿# Use the ARM64 SDK image for building the app
+FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
 # Set the working directory
 WORKDIR /src
@@ -30,14 +20,13 @@ RUN dotnet build "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIG
 # Publish the application
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Debug
-RUN echo "Using build configuration: $BUILD_CONFIGURATION" && \
-    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish --runtime linux-arm64 --self-contained false
+RUN dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish --runtime linux-arm64 --self-contained false
 
-# Use the ASP.NET runtime for the final image
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 
-# Install curl (optional, if needed for debugging or HTTP requests)
-RUN apt-get update && apt-get install -y curl
+# Install curl & vsdbg for debugging
+RUN apt-get update && apt-get install -y curl unzip && \
+    curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg
 
 # Set up a non-root user for security
 RUN if ! id -u app > /dev/null 2>&1; then useradd -m app; fi
