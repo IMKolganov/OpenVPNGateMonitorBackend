@@ -29,15 +29,15 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 # Install curl (optional, if needed for debugging or HTTP requests)
 RUN apt-get update && apt-get install -y curl
 
-# Get the host user ID and group ID via build args
+## Get the host user ID and group ID via build args
 ARG HOST_UID=1000
 ARG HOST_GID=1000
 
-# Create a user 'app' with the same UID/GID as the host user
-RUN groupadd -g $HOST_GID app && useradd -m -u $HOST_UID -g app app
+# Check if the group exists before creating it
+RUN getent group app || groupadd -g $HOST_GID app
 
-# Ensure the /app directory is owned by the 'app' user
-RUN mkdir -p /app && chown -R app:app /app
+# Check if the user exists before creating it
+RUN id -u app &>/dev/null || useradd -m -u $HOST_UID -g app app
 
 # Install vsdbg debugger for Rider
 RUN mkdir -p /vsdbg && \
