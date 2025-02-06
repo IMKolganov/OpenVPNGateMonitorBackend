@@ -10,9 +10,9 @@ public class OpenVpnServerStatusLog
     public Guid SessionId { get; set; }
     public DateTime UpSince { get; set; }
     [MaxLength(255)]
-    public string LocalIp { get; set; } = string.Empty;
+    public string ServerLocalIp { get; set; } = string.Empty;
     [MaxLength(255)]
-    public string RemoteIp { get; set; } = string.Empty;
+    public string ServerRemoteIp { get; set; } = string.Empty;
     public long BytesIn { get; set; }
     public long BytesOut { get; set; }
     [MaxLength(255)]

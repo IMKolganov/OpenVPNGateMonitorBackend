@@ -13,9 +13,9 @@ public class OpenVpnServerStatusLogConfiguration : IEntityTypeConfiguration<Open
             .IsRequired();
         entity.Property(e => e.UpSince)
             .IsRequired();
-        entity.Property(e => e.LocalIp)
+        entity.Property(e => e.ServerLocalIp)
             .HasMaxLength(255);
-        entity.Property(e => e.RemoteIp)
+        entity.Property(e => e.ServerRemoteIp)
             .HasMaxLength(255);
         entity.Property(e => e.BytesIn)
             .IsRequired();
