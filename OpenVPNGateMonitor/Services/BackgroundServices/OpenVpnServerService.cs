@@ -153,6 +153,8 @@ public class OpenVpnServerService : IOpenVpnServerService
 
         if (existingStatusLog != null)
         {
+            existingStatusLog.ServerLocalIp = serverInfo.OpenVpnState.ServerLocalIp;
+            existingStatusLog.ServerRemoteIp = serverInfo.OpenVpnState.ServerRemoteIp;
             existingStatusLog.BytesIn = serverInfo.OpenVpnSummaryStats?.BytesIn ?? 0;
             existingStatusLog.BytesOut = serverInfo.OpenVpnSummaryStats?.BytesOut ?? 0;
             existingStatusLog.Version = serverInfo.Version;
@@ -167,8 +169,8 @@ public class OpenVpnServerService : IOpenVpnServerService
             {
                 SessionId = sessionId,
                 UpSince = serverInfo.OpenVpnState.UpSince,
-                LocalIp = serverInfo.OpenVpnState.ServerLocalIp,
-                RemoteIp = serverInfo.OpenVpnState.ServerRemoteIp,
+                ServerLocalIp = serverInfo.OpenVpnState.ServerLocalIp,
+                ServerRemoteIp = serverInfo.OpenVpnState.ServerRemoteIp,
                 BytesIn = serverInfo.OpenVpnSummaryStats?.BytesIn ?? 0,
                 BytesOut = serverInfo.OpenVpnSummaryStats?.BytesOut ?? 0,
                 Version = serverInfo.Version,
