@@ -20,13 +20,14 @@ RUN dotnet build "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIG
 # Publish the application
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Debug
-RUN dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish --runtime linux-arm64 --self-contained false
+RUN echo "Using build configuration: $BUILD_CONFIGURATION" && \
+    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish --runtime linux-arm64 --self-contained false
 
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
+# Use the ASP.NET runtime for the final image
+FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 
-# Install curl & vsdbg for debugging
-RUN apt-get update && apt-get install -y curl unzip && \
-    curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg
+# Install curl (optional, if needed for debugging or HTTP requests)
+RUN apt-get update && apt-get install -y curl
 
 # Set up a non-root user for security
 RUN if ! id -u app > /dev/null 2>&1; then useradd -m app; fi
