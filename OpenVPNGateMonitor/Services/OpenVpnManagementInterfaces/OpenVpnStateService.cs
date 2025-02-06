@@ -42,8 +42,8 @@ public class OpenVpnStateService : IOpenVpnStateService
             }
             state.Connected = parts[1] == "CONNECTED";
             state.Success = parts[2] == "SUCCESS";
-            state.LocalIp = parts[3];
-            state.RemoteIp = parts[4];
+            state.ServerLocalIp = parts[3];
+            state.ServerRemoteIp = parts[4];
         }
         return state;
     }
