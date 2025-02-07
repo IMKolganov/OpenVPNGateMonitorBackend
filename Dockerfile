@@ -29,20 +29,6 @@ FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 # Install curl (optional, if needed for debugging or HTTP requests)
 RUN apt-get update && apt-get install -y curl
 
-## Get the host user ID and group ID via build args
-ARG HOST_UID=1000
-ARG HOST_GID=1000
-
-# Check if the group exists before creating it
-RUN getent group app || groupadd -g $HOST_GID app
-
-# Check if the user exists before creating it
-RUN id -u app &>/dev/null || useradd -m -u $HOST_UID -g app app
-
-# Install vsdbg debugger for Rider
-RUN mkdir -p /vsdbg && \
-    curl -sSL https://aka.ms/getvsdbgsh | bash /dev/stdin -v latest -l /vsdbg
-
 # Switch to the 'app' user
 USER app
 
