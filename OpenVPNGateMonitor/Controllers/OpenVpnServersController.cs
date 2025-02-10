@@ -2,6 +2,7 @@ using System.Net.WebSockets;
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
+using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
@@ -9,14 +10,14 @@ namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class OpenVpnServerController : ControllerBase
+public class OpenVpnServersController : ControllerBase
 {
-    private readonly ILogger<OpenVpnServerController> _logger;
+    private readonly ILogger<OpenVpnServersController> _logger;
     private readonly IVpnDataService _vpnDataService;
     
     private readonly IOpenVpnBackgroundService _openVpnBackgroundService;
 
-    public OpenVpnServerController(ILogger<OpenVpnServerController> logger, IVpnDataService vpnDataService,
+    public OpenVpnServersController(ILogger<OpenVpnServersController> logger, IVpnDataService vpnDataService,
         IOpenVpnBackgroundService openVpnBackgroundService)
     {
         _logger = logger;
@@ -35,6 +36,24 @@ public class OpenVpnServerController : ControllerBase
     public async Task<IActionResult> GetAllHistoryClients(CancellationToken cancellationToken = default)
     {
         return Ok(await _vpnDataService.GetAllHistoryOpenVpnServerClients(cancellationToken));
+    }
+    
+    [HttpGet("GetAllServers")]
+    public async Task<IActionResult> GetAllServers(CancellationToken cancellationToken = default)
+    {
+        return Ok(await _vpnDataService.GetAllOpenVpnServers(cancellationToken));
+    }
+    
+    [HttpPost("AddServer")]
+    public async Task<IActionResult> AddServer(OpenVpnServer openVpnServer,CancellationToken cancellationToken = default)
+    {
+        return Ok(await _vpnDataService.AddOpenVpnServer(openVpnServer, cancellationToken));
+    }
+    
+    [HttpGet("DeleteServer")]
+    public async Task<IActionResult> DeleteServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken = default)
+    {
+        return Ok(await _vpnDataService.DeleteOpenVpnServer(openVpnServer, cancellationToken));
     }
 
     [HttpGet("GetServerInfo")]

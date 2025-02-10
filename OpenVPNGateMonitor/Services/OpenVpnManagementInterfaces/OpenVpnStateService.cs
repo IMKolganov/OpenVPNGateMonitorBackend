@@ -14,9 +14,11 @@ public class OpenVpnStateService : IOpenVpnStateService
         _openVpnManagementService = openVpnManagementService;
     }
     
-    public async Task<OpenVpnState> GetStateAsync(CancellationToken cancellationToken)
+    public async Task<OpenVpnState> GetStateAsync(string managementIp, int managementPort, 
+        CancellationToken cancellationToken)
     {
-        var response = await _openVpnManagementService.SendCommandAsync("state", cancellationToken);
+        var response = await _openVpnManagementService.SendCommandAsync( managementIp, managementPort, 
+            "state", cancellationToken);
         return ParseState(response);
     }
     

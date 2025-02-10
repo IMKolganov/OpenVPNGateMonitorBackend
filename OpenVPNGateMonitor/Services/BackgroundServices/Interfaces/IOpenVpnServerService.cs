@@ -2,6 +2,6 @@
 
 public interface IOpenVpnServerService
 {
-    Task SaveConnectedClientsAsync(CancellationToken cancellationToken);
-    Task SaveOpenVpnServerStatusLogAsync(CancellationToken cancellationToken);
+    Task SaveConnectedClientsAsync(string managementIp, int managementPort, CancellationToken cancellationToken);
+    Task SaveOpenVpnServerStatusLogAsync(string managementIp, int managementPort, CancellationToken cancellationToken);
 }

@@ -28,7 +28,7 @@ public class VpnDataService : IVpnDataService
             .ToListAsync(cancellationToken);
         return openVpnServerClients;
     }
-    
+
     public async Task<OpenVpnServerStatusLog?> GetOpenVpnServerStatusLog(CancellationToken cancellationToken)
     {
         return await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
@@ -37,4 +37,26 @@ public class VpnDataService : IVpnDataService
             .FirstOrDefaultAsync(cancellationToken);
     }
 
+    public async Task<List<OpenVpnServer>> GetAllOpenVpnServers(CancellationToken cancellationToken)
+    {
+        return await _unitOfWork.GetQuery<OpenVpnServer>()
+            .AsQueryable().OrderByDescending(x=>x.Id)
+            .ToListAsync(cancellationToken: cancellationToken);
+    }
+    
+    public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
+    {
+        var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
+        await openVpnServerRepository.AddAsync(openVpnServer);
+        await _unitOfWork.SaveChangesAsync(); 
+        return openVpnServer;
+    }
+    
+    public async Task<OpenVpnServer> DeleteOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
+    {
+        var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
+        openVpnServerRepository.Delete(openVpnServer);
+        await _unitOfWork.SaveChangesAsync(); 
+        return openVpnServer;
+    }
 }

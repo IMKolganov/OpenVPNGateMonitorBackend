@@ -1,5 +1,4 @@
-﻿using System.Diagnostics;
-using OpenVPNGateMonitor.Models.Enums;
+﻿using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 

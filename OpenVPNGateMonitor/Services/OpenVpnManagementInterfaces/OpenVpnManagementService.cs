@@ -1,33 +1,29 @@
 ﻿using System.Net.Sockets;
 using System.Text;
-using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
 public class OpenVpnManagementService : IOpenVpnManagementService
 {
-    private readonly OpenVpnSettings _openVpnSettings;
     private readonly ILogger<IOpenVpnManagementService> _logger;
 
-    public OpenVpnManagementService(IConfiguration configuration, ILogger<IOpenVpnManagementService> logger)
+    public OpenVpnManagementService(ILogger<IOpenVpnManagementService> logger)
     {
-        _openVpnSettings = configuration.GetSection("OpenVpn").Get<OpenVpnSettings>() 
-                           ?? throw new InvalidOperationException("OpenVpn configuration section is missing.");
         _logger = logger;
     }
 
-    public async Task<string> SendCommandAsync(string command, CancellationToken cancellationToken)
+    public async Task<string> SendCommandAsync(string managementIp, int managementPort, 
+        string command, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Connecting to OpenVPN management interface at {Ip}:{Port}",
-            _openVpnSettings.ManagementIp, _openVpnSettings.ManagementPort);
+        _logger.LogInformation($"Connecting to OpenVPN management interface at {managementIp}:{managementPort}");
 
         using var client = new TcpClient();
         client.ReceiveTimeout = 5000;
 
         try
         {
-            await client.ConnectAsync(_openVpnSettings.ManagementIp, _openVpnSettings.ManagementPort, cancellationToken);
+            await client.ConnectAsync(managementIp, managementPort, cancellationToken);
             _logger.LogInformation("Connected successfully.");
 
             await using var stream = client.GetStream();
@@ -67,8 +63,9 @@ public class OpenVpnManagementService : IOpenVpnManagementService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error communicating with OpenVPN management interface.");
-            return $"[ERROR] {ex.Message}";
+            _logger.LogError(ex, $"Error communicating with OpenVPN management interface. " +
+                                 $"{managementIp}:{managementPort}");
+            return $"[ERROR] {ex.Message} {managementIp}:{managementPort}";
         }
     }
 }

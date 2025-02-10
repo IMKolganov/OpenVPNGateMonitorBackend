@@ -20,9 +20,11 @@ public class OpenVpnClientService : IOpenVpnClientService
         _openVpnManagementService = openVpnManagementService;
     }
     
-    public async Task<List<OpenVpnClient>> GetClientsAsync(CancellationToken cancellationToken)
+    public async Task<List<OpenVpnClient>> GetClientsAsync(string managementIp, int managementPort, 
+        CancellationToken cancellationToken)
     {
-        var response = await _openVpnManagementService.SendCommandAsync("status 3", cancellationToken);
+        var response = await _openVpnManagementService.SendCommandAsync(managementIp, managementPort, 
+            "status 3", cancellationToken);
         return ParseStatus(response);
     }
     

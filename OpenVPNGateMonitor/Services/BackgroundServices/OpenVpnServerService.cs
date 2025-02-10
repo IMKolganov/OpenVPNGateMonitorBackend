@@ -35,11 +35,13 @@ public class OpenVpnServerService : IOpenVpnServerService
         _logger.LogInformation("OpenVpnServerService initialized.");
     }
 
-    public async Task SaveConnectedClientsAsync(CancellationToken cancellationToken)
+    public async Task SaveConnectedClientsAsync(string managementIp, int managementPort, 
+        CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting SaveConnectedClientsAsync...");
 
-        var openVpnClients = await _openVpnClientService.GetClientsAsync(cancellationToken);
+        var openVpnClients = await _openVpnClientService.GetClientsAsync(managementIp, managementPort, 
+            cancellationToken);
         _logger.LogInformation("Retrieved {Count} clients from OpenVPN.", openVpnClients.Count);
 
         var openVpnServerClientRepository = _unitOfWork.GetRepository<OpenVpnServerClient>();
@@ -110,20 +112,24 @@ public class OpenVpnServerService : IOpenVpnServerService
         _logger.LogInformation("SaveConnectedClientsAsync completed successfully.");
     }
 
-    public async Task SaveOpenVpnServerStatusLogAsync(CancellationToken cancellationToken)
+    public async Task SaveOpenVpnServerStatusLogAsync(string managementIp, int managementPort, 
+        CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting SaveOpenVpnServerStatusLogAsync...");
 
         var serverInfo = new ServerInfo();
         try
         {
-            serverInfo.OpenVpnState = await _openVpnStateService.GetStateAsync(cancellationToken);
-            serverInfo.OpenVpnSummaryStats = await _openVpnSummaryStatService.GetSummaryStatsAsync(cancellationToken);
+            serverInfo.OpenVpnState = await _openVpnStateService.GetStateAsync(managementIp, managementPort, 
+                cancellationToken);
+            serverInfo.OpenVpnSummaryStats = await _openVpnSummaryStatService.GetSummaryStatsAsync(managementIp, 
+                managementPort, cancellationToken);
             serverInfo.OpenVpnState.ServerRemoteIp = await GetRemoteIpAddress();
 
             if (serverInfo.OpenVpnState != null)
             {
-                serverInfo.Version = await _openVpnVersionService.GetVersionAsync(cancellationToken);
+                serverInfo.Version = await _openVpnVersionService.GetVersionAsync(managementIp, managementPort, 
+                    cancellationToken);
             }
         }
         catch (Exception ex)
@@ -143,7 +149,8 @@ public class OpenVpnServerService : IOpenVpnServerService
 
         var sessionId = GenerateSessionId(
             "RaspberryVPN", // TODO: make server name
-            serverInfo.OpenVpnState.ServerLocalIp ?? throw new InvalidOperationException("LocalIp cannot be null"),
+            serverInfo.OpenVpnState.ServerLocalIp ?? 
+            throw new InvalidOperationException("LocalIp cannot be null"),
             serverInfo.OpenVpnState.UpSince
         );
 

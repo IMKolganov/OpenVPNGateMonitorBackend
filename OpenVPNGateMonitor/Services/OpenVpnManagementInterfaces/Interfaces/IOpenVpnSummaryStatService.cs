@@ -4,5 +4,6 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 public interface IOpenVpnSummaryStatService
 {
-    Task<OpenVpnSummaryStats> GetSummaryStatsAsync(CancellationToken cancellationToken);
+    Task<OpenVpnSummaryStats> GetSummaryStatsAsync(string managementIp, int managementPort, 
+        CancellationToken cancellationToken);
 }
