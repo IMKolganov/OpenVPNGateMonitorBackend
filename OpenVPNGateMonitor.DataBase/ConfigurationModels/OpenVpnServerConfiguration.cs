@@ -22,6 +22,7 @@ public class OpenVpnServerConfiguration : IEntityTypeConfiguration<OpenVpnServer
         entity.Property(e => e.Password)
             .IsRequired()
             .HasMaxLength(50);
+        entity.Property(e => e.IsOnline);
         entity.Property(e => e.LastUpdate)
             .IsRequired();
         entity.Property(e => e.CreateDate)

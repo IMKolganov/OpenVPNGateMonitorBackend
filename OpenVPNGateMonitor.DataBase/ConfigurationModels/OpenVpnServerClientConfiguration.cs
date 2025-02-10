@@ -9,6 +9,8 @@ public class OpenVpnServerClientConfiguration : IEntityTypeConfiguration<OpenVpn
     public void Configure(EntityTypeBuilder<OpenVpnServerClient> entity)
     {
         entity.HasKey(e => e.Id);
+        entity.Property(e => e.VpnServerId)
+            .IsRequired();
         entity.Property(e => e.SessionId)
             .IsRequired();
         entity.Property(e => e.CommonName)

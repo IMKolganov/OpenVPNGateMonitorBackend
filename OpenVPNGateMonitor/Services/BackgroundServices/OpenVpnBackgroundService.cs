@@ -100,6 +100,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                             _logger.LogInformation(
                                 $"Saving OpenVPN server status for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                             await openVpnServerService.SaveOpenVpnServerStatusLogAsync(
+                                openVpnServer.Id,
                                 openVpnServer.ManagementIp,
                                 openVpnServer.ManagementPort,
                                 cancellationToken
@@ -108,11 +109,14 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                             _logger.LogInformation(
                                 $"Saving connected clients for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                             await openVpnServerService.SaveConnectedClientsAsync(
+                                openVpnServer.Id,
                                 openVpnServer.ManagementIp,
                                 openVpnServer.ManagementPort,
                                 cancellationToken
                             );
                         }
+                        // openVpnServer.IsOnline = true;//todo: make it
+                        // await unitOfWork.SaveChangesAsync();
 
                         _logger.LogInformation(
                             $"Finished processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");

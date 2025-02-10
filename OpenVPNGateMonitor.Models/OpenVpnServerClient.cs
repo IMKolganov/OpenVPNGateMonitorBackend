@@ -3,6 +3,7 @@
 public class OpenVpnServerClient
 {
     public int Id { get; set; }
+    public int VpnServerId { get; set; }
     public Guid SessionId { get; set; }
     public string CommonName { get; set; } = string.Empty;
     public string RemoteIp { get; set; } = string.Empty;

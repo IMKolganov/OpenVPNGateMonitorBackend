@@ -9,6 +9,8 @@ public class OpenVpnServerStatusLogConfiguration : IEntityTypeConfiguration<Open
     public void Configure(EntityTypeBuilder<OpenVpnServerStatusLog> entity)
     {
         entity.HasKey(e => e.Id);
+        entity.Property(e => e.VpnServerId)
+            .IsRequired();
         entity.Property(e => e.SessionId)
             .IsRequired();
         entity.Property(e => e.UpSince)

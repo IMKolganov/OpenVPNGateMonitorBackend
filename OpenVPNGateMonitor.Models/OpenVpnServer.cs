@@ -9,6 +9,7 @@ public class OpenVpnServer
 
     public string Login { get; set; } = string.Empty;
     public string Password { get; set; } = string.Empty;
+    public bool IsOnline { get; set; } = false;
     public DateTime LastUpdate { get; set; }
     public DateTime CreateDate { get; set; }
 }
