@@ -26,16 +26,16 @@ public class OpenVpnServersController : ControllerBase
     }
 
     [HttpGet("GetAllConnectedClients")]
-    public async Task<IActionResult> GetAllConnectedClients(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetAllConnectedClients(int vpnServerId, CancellationToken cancellationToken = default)
     {
-        return Ok(await _vpnDataService.GetAllConnectedOpenVpnServerClients(cancellationToken));
+        return Ok(await _vpnDataService.GetAllConnectedOpenVpnServerClients(vpnServerId, cancellationToken));
     }
     
     
     [HttpGet("GetAllHistoryClients")]
-    public async Task<IActionResult> GetAllHistoryClients(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetAllHistoryClients(int vpnServerId, CancellationToken cancellationToken = default)
     {
-        return Ok(await _vpnDataService.GetAllHistoryOpenVpnServerClients(cancellationToken));
+        return Ok(await _vpnDataService.GetAllHistoryOpenVpnServerClients(vpnServerId, cancellationToken));
     }
     
     [HttpGet("GetAllServers")]
@@ -44,22 +44,34 @@ public class OpenVpnServersController : ControllerBase
         return Ok(await _vpnDataService.GetAllOpenVpnServers(cancellationToken));
     }
     
-    [HttpPost("AddServer")]
+    [HttpGet("GetServer/{vpnServerId}")]
+    public async Task<IActionResult> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
+    {
+        return Ok(await _vpnDataService.GetOpenVpnServer(vpnServerId, cancellationToken));
+    }
+    
+    [HttpPut("AddServer")]
     public async Task<IActionResult> AddServer(OpenVpnServer openVpnServer,CancellationToken cancellationToken = default)
     {
         return Ok(await _vpnDataService.AddOpenVpnServer(openVpnServer, cancellationToken));
     }
     
-    [HttpGet("DeleteServer")]
-    public async Task<IActionResult> DeleteServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken = default)
+    [HttpPost("UpdateServer")]
+    public async Task<IActionResult> UpdateServer(OpenVpnServer openVpnServer,CancellationToken cancellationToken = default)
     {
-        return Ok(await _vpnDataService.DeleteOpenVpnServer(openVpnServer, cancellationToken));
+        return Ok(await _vpnDataService.UpdateOpenVpnServer(openVpnServer, cancellationToken));
+    }
+    
+    [HttpDelete("DeleteServer")]
+    public async Task<IActionResult> DeleteServer([FromQuery] int vpnServerId, CancellationToken cancellationToken = default)
+    {
+        return Ok(await _vpnDataService.DeleteOpenVpnServer(vpnServerId, cancellationToken));
     }
 
     [HttpGet("GetServerInfo")]
-    public async Task<IActionResult> GetServerInfo(CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetServerInfo(int vpnServerId, CancellationToken cancellationToken = default)
     {
-        return Ok(await _vpnDataService.GetOpenVpnServerStatusLog(cancellationToken));
+        return Ok(await _vpnDataService.GetOpenVpnServerStatusLog(vpnServerId, cancellationToken));
     }
 
     [HttpGet("status")]
