@@ -60,7 +60,7 @@ public class VpnDataService : IVpnDataService
             var openVpnServerStatusLog = await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
                 .AsQueryable()
                 .Where(x => x.VpnServerId == openVpnServer.Id)
-                .OrderByDescending(x => x.Id)
+                .OrderBy(x => x.Id)
                 .LastOrDefaultAsync(cancellationToken);
             
             var totalBytesIn = serverTraffic.ContainsKey(openVpnServer.Id) ? serverTraffic[openVpnServer.Id].TotalBytesIn : 0;

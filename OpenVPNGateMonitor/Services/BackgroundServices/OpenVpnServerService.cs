@@ -43,45 +43,35 @@ public class OpenVpnServerService : IOpenVpnServerService
         var openVpnClients = await _openVpnClientService.GetClientsAsync(managementIp, managementPort, 
             cancellationToken);
         _logger.LogInformation("Retrieved {Count} clients from OpenVPN.", openVpnClients.Count);
-
+        
+        await SetDisconnectForAllUsers(cancellationToken);
+        
         var openVpnServerClientRepository = _unitOfWork.GetRepository<OpenVpnServerClient>();
-
-        var existingClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
-            .AsQueryable().Where(x => x.IsConnected)
-            .ToListAsync(cancellationToken);
-
-        foreach (var client in existingClients)
-        {
-            client.IsConnected = false;
-        }
-        await _unitOfWork.SaveChangesAsync();
-        _logger.LogInformation("Marked {Count} existing clients as disconnected.", existingClients.Count);
-
         foreach (var openVpnClient in openVpnClients)
         {
             var sessionId = GenerateSessionId(openVpnClient.CommonName,
                 openVpnClient.RemoteIp, openVpnClient.ConnectedSince);
 
-            var existingClient = await _unitOfWork.GetQuery<OpenVpnServerClient>()
+            var existingOpenVpnServerClient = await _unitOfWork.GetQuery<OpenVpnServerClient>()
                 .AsQueryable()
                 .FirstOrDefaultAsync(x => 
                     x.SessionId == sessionId && x.VpnServerId == vpnServerId
                     , cancellationToken);
 
-            if (existingClient != null)
+            if (existingOpenVpnServerClient != null)
             {
-                existingClient.VpnServerId = existingClient.VpnServerId;
-                existingClient.BytesReceived = openVpnClient.BytesReceived;
-                existingClient.BytesSent = openVpnClient.BytesSent;
-                existingClient.LastUpdate = DateTime.UtcNow;
-                existingClient.Country = openVpnClient.Country;
-                existingClient.Region = openVpnClient.Region;
-                existingClient.City = openVpnClient.City;
-                existingClient.Latitude = openVpnClient.Latitude;
-                existingClient.Longitude = openVpnClient.Longitude;
-                existingClient.IsConnected = true;
+                existingOpenVpnServerClient.VpnServerId = existingOpenVpnServerClient.VpnServerId;
+                existingOpenVpnServerClient.BytesReceived = openVpnClient.BytesReceived;
+                existingOpenVpnServerClient.BytesSent = openVpnClient.BytesSent;
+                existingOpenVpnServerClient.LastUpdate = DateTime.UtcNow;
+                existingOpenVpnServerClient.Country = openVpnClient.Country;
+                existingOpenVpnServerClient.Region = openVpnClient.Region;
+                existingOpenVpnServerClient.City = openVpnClient.City;
+                existingOpenVpnServerClient.Latitude = openVpnClient.Latitude;
+                existingOpenVpnServerClient.Longitude = openVpnClient.Longitude;
+                existingOpenVpnServerClient.IsConnected = true;
 
-                openVpnServerClientRepository.Update(existingClient);
+                openVpnServerClientRepository.Update(existingOpenVpnServerClient);
                 _logger.LogDebug("Updated client session {SessionId}.", sessionId);
             }
             else
@@ -248,5 +238,20 @@ public class OpenVpnServerService : IOpenVpnServerService
         _logger.LogDebug("Generated SessionId: {SessionId}", sessionId);
 
         return sessionId;
+    }
+
+    private async Task<bool> SetDisconnectForAllUsers(CancellationToken cancellationToken)
+    {
+        var existingAllOpenVpnServerClient = await _unitOfWork.GetQuery<OpenVpnServerClient>()
+            .AsQueryable().Where(x => x.IsConnected)
+            .ToListAsync(cancellationToken);
+
+        foreach (var client in existingAllOpenVpnServerClient)
+        {
+            client.IsConnected = false;
+        }
+        await _unitOfWork.SaveChangesAsync();
+        _logger.LogInformation("Marked {Count} existing clients as disconnected.", existingAllOpenVpnServerClient.Count);
+        return true;
     }
 }
