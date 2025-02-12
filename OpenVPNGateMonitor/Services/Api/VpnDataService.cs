@@ -35,38 +35,72 @@ public class VpnDataService : IVpnDataService
         return openVpnServerClients;
     }
 
-    public async Task<OpenVpnServerStatusLog?> GetOpenVpnServerStatusLog(int vpnServerId, 
-        CancellationToken cancellationToken)
-    {
-        return await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
-            .AsQueryable()
-            .Where(x=> x.VpnServerId == vpnServerId)
-            .OrderByDescending(x=>x.Id)
-            .FirstOrDefaultAsync(cancellationToken);
-    }
-
     public async Task<List<OpenVpnServerInfoResponse>> GetAllOpenVpnServers(CancellationToken cancellationToken)
     {
         var openVpnServers = await _unitOfWork.GetQuery<OpenVpnServer>()
-            .AsQueryable().OrderByDescending(x=>x.Id)
-            .ToListAsync(cancellationToken: cancellationToken);
+            .AsQueryable()
+            .OrderByDescending(x => x.Id)
+            .ToListAsync(cancellationToken);
         
+        var serverTraffic = await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
+            .AsQueryable()
+            .GroupBy(x => x.VpnServerId)
+            .Select(g => new
+            {
+                ServerId = g.Key,
+                TotalBytesIn = g.Sum(x => x.BytesIn),
+                TotalBytesOut = g.Sum(x => x.BytesOut)
+            })
+            .ToDictionaryAsync(x => x.ServerId, cancellationToken);
+
         var openVpnServerInfoResponses = new List<OpenVpnServerInfoResponse>();
+
         foreach (var openVpnServer in openVpnServers)
         {
             var openVpnServerStatusLog = await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
                 .AsQueryable()
                 .Where(x => x.VpnServerId == openVpnServer.Id)
-                .OrderByDescending(x=>x.Id)
+                .OrderByDescending(x => x.Id)
                 .LastOrDefaultAsync(cancellationToken);
+            
+            var totalBytesIn = serverTraffic.ContainsKey(openVpnServer.Id) ? serverTraffic[openVpnServer.Id].TotalBytesIn : 0;
+            var totalBytesOut = serverTraffic.ContainsKey(openVpnServer.Id) ? serverTraffic[openVpnServer.Id].TotalBytesOut : 0;
             
             openVpnServerInfoResponses.Add(new OpenVpnServerInfoResponse()
             {
                 OpenVpnServer = openVpnServer,
-                OpenVpnServerStatusLog = openVpnServerStatusLog
+                OpenVpnServerStatusLog = openVpnServerStatusLog,
+                TotalBytesIn = totalBytesIn,
+                TotalBytesOut = totalBytesOut
             });
         }
+
         return openVpnServerInfoResponses;
+    }
+    
+    public async Task<OpenVpnServerInfoResponse> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
+    {
+        var openVpnServer = await _unitOfWork.GetQuery<OpenVpnServer>()
+            .AsQueryable()
+            .Where(x=> x.Id == vpnServerId)
+            .OrderByDescending(x=>x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+        
+        if (openVpnServer == null) throw new NullReferenceException("OpenVPN Server not found");
+        
+        var openVpnServerStatusLog = await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
+            .AsQueryable()
+            .Where(x => x.VpnServerId == openVpnServer.Id)
+            .OrderBy(x=>x.Id)
+            .LastOrDefaultAsync(cancellationToken);
+        
+        var openVpnServerInfoResponse = new OpenVpnServerInfoResponse()
+        {
+            OpenVpnServer = openVpnServer,
+            OpenVpnServerStatusLog = openVpnServerStatusLog
+        };
+
+        return openVpnServerInfoResponse;
     }
     
     public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
@@ -83,12 +117,6 @@ public class VpnDataService : IVpnDataService
         openVpnServerRepository.Update(openVpnServer);
         await _unitOfWork.SaveChangesAsync();
         return openVpnServer;
-    }
-    
-    public async Task<OpenVpnServer> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
-    {
-        var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
-        return await openVpnServerRepository.GetByIdAsync(vpnServerId) ?? throw new InvalidOperationException();
     }
     
     public async Task<OpenVpnServer> DeleteOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)

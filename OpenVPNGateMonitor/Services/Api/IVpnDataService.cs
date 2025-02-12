@@ -7,10 +7,8 @@ public interface IVpnDataService
 {
     Task<List<OpenVpnServerClient>> GetAllConnectedOpenVpnServerClients(int vpnServerId, CancellationToken cancellationToken);
     Task<List<OpenVpnServerClient>> GetAllHistoryOpenVpnServerClients(int vpnServerId, CancellationToken cancellationToken);
-    // Task<List<OpenVpnServerStatusLog>> GetOpenVpnServers(CancellationToken cancellationToken);
-    Task<OpenVpnServerStatusLog?> GetOpenVpnServerStatusLog(int vpnServerId, CancellationToken cancellationToken);
     Task<List<OpenVpnServerInfoResponse>> GetAllOpenVpnServers(CancellationToken cancellationToken);
-    Task<OpenVpnServer> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken);
+    Task<OpenVpnServerInfoResponse> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken);
     Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken);
     Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken);
     Task<OpenVpnServer> DeleteOpenVpnServer(int vpnServerId, CancellationToken cancellationToken);

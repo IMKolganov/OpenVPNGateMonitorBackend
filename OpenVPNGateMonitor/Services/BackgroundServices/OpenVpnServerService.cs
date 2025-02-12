@@ -126,6 +126,11 @@ public class OpenVpnServerService : IOpenVpnServerService
         {
             serverInfo.OpenVpnState = await _openVpnStateService.GetStateAsync(managementIp, managementPort, 
                 cancellationToken);
+            if (serverInfo.OpenVpnState.UpSince <= DateTime.MinValue)
+            {
+                throw new Exception("UpSince is not set. Check your configuration or server.");
+            }
+            
             serverInfo.OpenVpnSummaryStats = await _openVpnSummaryStatService.GetSummaryStatsAsync(managementIp, 
                 managementPort, cancellationToken);
             serverInfo.OpenVpnState.ServerRemoteIp = await GetRemoteIpAddress();
@@ -138,7 +143,8 @@ public class OpenVpnServerService : IOpenVpnServerService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get OpenVPN Summary Stats.");
+            _logger.LogError(ex, $"Failed to get OpenVPN Summary Stats. Error: {ex.Message}");
+            throw;
         }
 
         serverInfo.Status = serverInfo.OpenVpnState != null ? "CONNECTED" : "DISCONNECTED";
@@ -167,6 +173,7 @@ public class OpenVpnServerService : IOpenVpnServerService
         if (existingStatusLog != null)
         {
             existingStatusLog.VpnServerId = vpnServerId;
+            existingStatusLog.UpSince = serverInfo.OpenVpnState.UpSince;
             existingStatusLog.ServerLocalIp = serverInfo.OpenVpnState.ServerLocalIp;
             existingStatusLog.ServerRemoteIp = serverInfo.OpenVpnState.ServerRemoteIp;
             existingStatusLog.BytesIn = serverInfo.OpenVpnSummaryStats?.BytesIn ?? 0;

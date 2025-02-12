@@ -115,14 +115,18 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                                 cancellationToken
                             );
                         }
-                        // openVpnServer.IsOnline = true;//todo: make it
-                        // await unitOfWork.SaveChangesAsync();
+
+                        openVpnServer.IsOnline = true;
+                        openVpnServerRepository.Update(openVpnServer);
+                        await unitOfWork.SaveChangesAsync();
 
                         _logger.LogInformation(
                             $"Finished processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                     }
                     catch (Exception ex)
                     {
+                        openVpnServer.IsOnline = false;
+                        openVpnServerRepository.Update(openVpnServer);
                         _logger.LogError(ex,
                             $"Error processing OpenVPN server {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                     }

@@ -25,16 +25,22 @@ public class OpenVpnServersController : ControllerBase
         _openVpnBackgroundService = openVpnBackgroundService;
     }
 
-    [HttpGet("GetAllConnectedClients")]
-    public async Task<IActionResult> GetAllConnectedClients(int vpnServerId, CancellationToken cancellationToken = default)
+    [HttpGet("GetAllConnectedClients/{vpnServerId}")]
+    public async Task<IActionResult> GetAllConnectedClients(
+        int vpnServerId, CancellationToken cancellationToken = default)
     {
+        if (vpnServerId == 0)
+            return BadRequest("vpnServerId is required.");
         return Ok(await _vpnDataService.GetAllConnectedOpenVpnServerClients(vpnServerId, cancellationToken));
     }
     
     
-    [HttpGet("GetAllHistoryClients")]
-    public async Task<IActionResult> GetAllHistoryClients(int vpnServerId, CancellationToken cancellationToken = default)
+    [HttpGet("GetAllHistoryClients/{vpnServerId}")]
+    public async Task<IActionResult> GetAllHistoryClients(
+        int vpnServerId, CancellationToken cancellationToken = default)
     {
+        if (vpnServerId == 0)
+            return BadRequest("vpnServerId is required.");
         return Ok(await _vpnDataService.GetAllHistoryOpenVpnServerClients(vpnServerId, cancellationToken));
     }
     
@@ -45,8 +51,10 @@ public class OpenVpnServersController : ControllerBase
     }
     
     [HttpGet("GetServer/{vpnServerId}")]
-    public async Task<IActionResult> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetServer(int vpnServerId, CancellationToken cancellationToken)
     {
+        if (vpnServerId == 0)
+            return BadRequest("vpnServerId is required.");
         return Ok(await _vpnDataService.GetOpenVpnServer(vpnServerId, cancellationToken));
     }
     
@@ -67,13 +75,7 @@ public class OpenVpnServersController : ControllerBase
     {
         return Ok(await _vpnDataService.DeleteOpenVpnServer(vpnServerId, cancellationToken));
     }
-
-    [HttpGet("GetServerInfo")]
-    public async Task<IActionResult> GetServerInfo(int vpnServerId, CancellationToken cancellationToken = default)
-    {
-        return Ok(await _vpnDataService.GetOpenVpnServerStatusLog(vpnServerId, cancellationToken));
-    }
-
+    
     [HttpGet("status")]
     public IActionResult GetStatus()
     {
