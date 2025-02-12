@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OpenVPNGateMonitor.DataBase.Contexts;
@@ -11,9 +12,11 @@ using OpenVPNGateMonitor.DataBase.Contexts;
 namespace OpenVPNGateMonitor.DataBase.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250210164956_OpenVpnServer_init")]
+    partial class OpenVpnServer_init
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -33,9 +36,6 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
 
                     b.Property<DateTime>("CreateDate")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsOnline")
-                        .HasColumnType("boolean");
 
                     b.Property<DateTime>("LastUpdate")
                         .HasColumnType("timestamp with time zone");
@@ -134,9 +134,6 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
 
-                    b.Property<int>("VpnServerId")
-                        .HasColumnType("integer");
-
                     b.HasKey("Id");
 
                     b.ToTable("OpenVpnServerClients", "xgb_dashopnvpn");
@@ -182,9 +179,6 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)");
-
-                    b.Property<int>("VpnServerId")
-                        .HasColumnType("integer");
 
                     b.HasKey("Id");
 

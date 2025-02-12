@@ -7,6 +7,8 @@ public class OpenVpnServerStatusLog
     [Key]
     public int Id { get; set; }
     [Required]
+    public int VpnServerId { get; set; }
+    [Required]
     public Guid SessionId { get; set; }
     public DateTime UpSince { get; set; }
     [MaxLength(255)]

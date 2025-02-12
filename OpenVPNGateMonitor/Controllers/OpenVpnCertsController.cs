@@ -27,7 +27,8 @@ public class OpenVpnCertsController : ControllerBase
     }
     
     [HttpGet("GetAllVpnCertificatesByStatus")]
-    public Task<IActionResult> GetAllVpnCertificatesByStatus(CertificateStatus certificateStatus, CancellationToken cancellationToken = default)
+    public Task<IActionResult> GetAllVpnCertificatesByStatus(CertificateStatus certificateStatus, 
+        CancellationToken cancellationToken = default)
     {
         return Task.FromResult<IActionResult>(
             Ok(_certVpnService.GetAllVpnCertificatesByStatus(certificateStatus)));

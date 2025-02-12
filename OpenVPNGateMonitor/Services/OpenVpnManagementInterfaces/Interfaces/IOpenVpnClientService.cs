@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 public interface IOpenVpnClientService
 {
-    Task<List<OpenVpnClient>> GetClientsAsync(CancellationToken cancellationToken);
+    Task<List<OpenVpnClient>> GetClientsAsync(string managementIp, int managementPort, CancellationToken cancellationToken);
 }

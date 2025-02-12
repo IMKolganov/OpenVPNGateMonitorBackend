@@ -4,5 +4,5 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 public interface IOpenVpnStateService
 {
-    Task<OpenVpnState> GetStateAsync(CancellationToken cancellationToken);
+    Task<OpenVpnState> GetStateAsync(string managementIp, int managementPort, CancellationToken cancellationToken);
 }
