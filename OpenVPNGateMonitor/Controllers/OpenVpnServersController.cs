@@ -50,6 +50,14 @@ public class OpenVpnServersController : ControllerBase
         return Ok(await _vpnDataService.GetAllOpenVpnServers(cancellationToken));
     }
     
+    [HttpGet("GetServerWithStats/{vpnServerId}")]
+    public async Task<IActionResult> GetServerWithStats(int vpnServerId, CancellationToken cancellationToken)
+    {
+        if (vpnServerId == 0)
+            return BadRequest("vpnServerId is required.");
+        return Ok(await _vpnDataService.GetOpenVpnServerWithStats(vpnServerId, cancellationToken));
+    }
+    
     [HttpGet("GetServer/{vpnServerId}")]
     public async Task<IActionResult> GetServer(int vpnServerId, CancellationToken cancellationToken)
     {
