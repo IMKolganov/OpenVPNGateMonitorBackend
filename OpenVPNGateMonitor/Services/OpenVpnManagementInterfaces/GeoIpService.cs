@@ -24,6 +24,10 @@ public class GeoIpService : IGeoIpService
         {
             _geoIpReader = new DatabaseReader(openVpnSettings.GeoIpDatabasePath);
         }
+        else
+        {
+            _logger.LogError("GeoIp database configuration section is missing.");
+        }
     }
     
     public OpenVpnGeoInfo? GetGeoInfo(string ip)
@@ -72,7 +76,7 @@ public class GeoIpService : IGeoIpService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"Error getting GeoIP for {ip}");
+            _logger.LogError(ex, $"Error getting GeoIP for {ip} Error: {ex.Message}");
             return null;
         }
     }
@@ -80,9 +84,9 @@ public class GeoIpService : IGeoIpService
     private bool IsPrivateIp(IPAddress ip)
     {
         byte[] bytes = ip.GetAddressBytes();
-        return (bytes[0] == 10) || // 10.0.0.0/8
-               (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) || // 172.16.0.0/12
-               (bytes[0] == 192 && bytes[1] == 168) || // 192.168.0.0/16
+        return (bytes[0] == 10) ||
+               (bytes[0] == 172 && bytes[1] >= 16 && bytes[1] <= 31) ||
+               (bytes[0] == 192 && bytes[1] == 168) ||
                IPAddress.IsLoopback(ip);
     }
 }

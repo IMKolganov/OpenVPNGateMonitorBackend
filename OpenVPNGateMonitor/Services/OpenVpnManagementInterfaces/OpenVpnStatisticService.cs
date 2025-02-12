@@ -14,9 +14,11 @@ public class OpenVpnSummaryStatService : IOpenVpnSummaryStatService
         _openVpnManagementService = openVpnManagementService;
     }
     
-    public async Task<OpenVpnSummaryStats> GetSummaryStatsAsync(CancellationToken cancellationToken)
+    public async Task<OpenVpnSummaryStats> GetSummaryStatsAsync(string managementIp, int managementPort, 
+        CancellationToken cancellationToken)
     {
-        var response = await _openVpnManagementService.SendCommandAsync("load-stats", cancellationToken);
+        var response = await _openVpnManagementService.SendCommandAsync(managementIp, managementPort, 
+            "load-stats", cancellationToken);
         return ParseSummaryStats(response);
     }
     

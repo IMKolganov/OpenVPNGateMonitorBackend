@@ -2,5 +2,5 @@
 
 public interface IOpenVpnVersionService
 {
-    Task<string> GetVersionAsync(CancellationToken cancellationToken);
+    Task<string> GetVersionAsync(string managementIp, int managementPort, CancellationToken cancellationToken);
 }
