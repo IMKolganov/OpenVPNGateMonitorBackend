@@ -20,7 +20,7 @@ public class CertVpnService : ICertVpnService
         _easyRsaService = easyRsaService;
     }
 
-    public async Task<List<CertificateCaInfo>> GetAllVpnCertificates(int vpnServerId, 
+    public async Task<List<CertificateCaInfo>> GetAllVpnServerCertificates(int vpnServerId, 
         CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
@@ -33,7 +33,7 @@ public class CertVpnService : ICertVpnService
         return _easyRsaService.GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath);
     }
     
-    public async Task<List<CertificateCaInfo>> GetAllVpnCertificatesByStatus(int vpnServerId,
+    public async Task<List<CertificateCaInfo>> GetAllVpnServerCertificatesByStatus(int vpnServerId,
         CertificateStatus certificateStatus, CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
@@ -46,7 +46,7 @@ public class CertVpnService : ICertVpnService
             .Where(x=> x.Status == certificateStatus).ToList();
     }
 
-    public async Task<CertificateBuildResult> AddCertificate(int vpnServerId, string cnName, 
+    public async Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string cnName, 
         CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
@@ -54,7 +54,7 @@ public class CertVpnService : ICertVpnService
         return _easyRsaService.BuildCertificate(openVpnServerCertConfig, cnName);
     }
     
-    public async Task<CertificateRevokeResult> RemoveCertificate(int vpnServerId, string cnName, 
+    public async Task<CertificateRevokeResult> RemoveServerCertificate(int vpnServerId, string cnName, 
         CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);

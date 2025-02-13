@@ -19,35 +19,35 @@ public class OpenVpnCertsController : ControllerBase
     }
     
 
-    [HttpGet("GetAllVpnCertificates/{vpnServerId}")]
-    public async Task<IActionResult> GetAllVpnCertificates(
+    [HttpGet("GetAllVpnServerCertificates/{vpnServerId}")]
+    public async Task<IActionResult> GetAllVpnServerCertificates(
         int vpnServerId, CancellationToken cancellationToken = default)
     {
         if (vpnServerId == 0)
             return BadRequest("vpnServerId is required.");
         
-        return Ok(await _certVpnService.GetAllVpnCertificates(vpnServerId, cancellationToken));
+        return Ok(await _certVpnService.GetAllVpnServerCertificates(vpnServerId, cancellationToken));
     }
     
-    [HttpGet("GetAllVpnCertificatesByStatus/{vpnServerId}")]
-    public async Task<IActionResult> GetAllVpnCertificatesByStatus(int vpnServerId, CertificateStatus certificateStatus, 
+    [HttpGet("GetAllVpnServerCertificatesByStatus/{vpnServerId}")]
+    public async Task<IActionResult> GetAllVpnServerCertificatesByStatus(int vpnServerId, CertificateStatus certificateStatus, 
         CancellationToken cancellationToken = default)
     {
-        return Ok(await _certVpnService.GetAllVpnCertificatesByStatus(vpnServerId, certificateStatus, 
+        return Ok(await _certVpnService.GetAllVpnServerCertificatesByStatus(vpnServerId, certificateStatus, 
             cancellationToken));
     }
     
-    [HttpGet("AddCertificate/{vpnServerId}")]
-    public async Task<IActionResult> AddCertificate(int vpnServerId, string cnName, 
+    [HttpGet("AddServerCertificate/{vpnServerId}")]
+    public async Task<IActionResult> AddServerCertificate(int vpnServerId, string cnName, 
         CancellationToken cancellationToken = default)
     {
-        return Ok(await _certVpnService.AddCertificate(vpnServerId, cnName, cancellationToken));
+        return Ok(await _certVpnService.AddServerCertificate(vpnServerId, cnName, cancellationToken));
     }
     
-    [HttpGet("RemoveCertificate/{vpnServerId}")]
-    public async Task<IActionResult> RemoveCertificate(int vpnServerId, string cnName, 
+    [HttpGet("RemoveServerCertificate/{vpnServerId}")]
+    public async Task<IActionResult> RemoveServerCertificate(int vpnServerId, string cnName, 
         CancellationToken cancellationToken = default)
     {
-        return Ok(await _certVpnService.RemoveCertificate(vpnServerId, cnName, cancellationToken));
+        return Ok(await _certVpnService.RemoveServerCertificate(vpnServerId, cnName, cancellationToken));
     }
 }
