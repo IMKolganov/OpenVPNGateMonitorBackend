@@ -10,5 +10,5 @@ public interface IEasyRsaService
     string ReadPemContent(string filePath);
     CertificateRevokeResult RevokeCertificate(OpenVpnServerCertConfig openVpnServerCertConfig, string cnName);
     List<CertificateCaInfo> GetAllCertificateInfoInIndexFile(string pkiPath);
-    bool CheckHealthFileSystem(OpenVpnServerCertConfig openVpnServerCertConfig, int vpnServerId);
+    bool CheckHealthFileSystem(OpenVpnServerCertConfig openVpnServerCertConfig);
 }

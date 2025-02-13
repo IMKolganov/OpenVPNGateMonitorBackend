@@ -24,29 +24,28 @@ public class OpenVpnCertsController : ControllerBase
         if (vpnServerId == 0)
             return BadRequest("vpnServerId is required.");
         
-        return Task.FromResult<IActionResult>(
-            Ok(await _certVpnService.GetAllVpnCertificates()));
+        return Ok(await _certVpnService.GetAllVpnCertificates(vpnServerId, cancellationToken));
     }
     
-    [HttpGet("GetAllVpnCertificatesByStatus")]
-    public Task<IActionResult> GetAllVpnCertificatesByStatus(CertificateStatus certificateStatus, 
+    [HttpGet("GetAllVpnCertificatesByStatus/{vpnServerId}")]
+    public async Task<IActionResult> GetAllVpnCertificatesByStatus(int vpnServerId, CertificateStatus certificateStatus, 
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult<IActionResult>(
-            Ok(_certVpnService.GetAllVpnCertificatesByStatus(certificateStatus)));
+        return Ok(await _certVpnService.GetAllVpnCertificatesByStatus(vpnServerId, certificateStatus, 
+            cancellationToken));
     }
     
-    [HttpGet("AddCertificate")]
-    public Task<IActionResult> AddCertificate(string cnName, CancellationToken cancellationToken = default)
+    [HttpGet("AddCertificate/{vpnServerId}")]
+    public async Task<IActionResult> AddCertificate(int vpnServerId, string cnName, 
+        CancellationToken cancellationToken = default)
     {
-        return Task.FromResult<IActionResult>(
-            Ok(_certVpnService.AddCertificate(cnName, cancellationToken)));
+        return Ok(await _certVpnService.AddCertificate(vpnServerId, cnName, cancellationToken));
     }
     
-    [HttpGet("RemoveCertificate")]
-    public Task<IActionResult> RemoveCertificate(string cnName, CancellationToken cancellationToken = default)
+    [HttpGet("RemoveCertificate/{vpnServerId}")]
+    public async Task<IActionResult> RemoveCertificate(int vpnServerId, string cnName, 
+        CancellationToken cancellationToken = default)
     {
-        return Task.FromResult<IActionResult>(
-            Ok(_certVpnService.RemoveCertificate(cnName, cancellationToken)));
+        return Ok(await _certVpnService.RemoveCertificate(vpnServerId, cnName, cancellationToken));
     }
 }

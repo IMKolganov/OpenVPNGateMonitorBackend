@@ -158,7 +158,7 @@ public class EasyRsaService : IEasyRsaService
         return _easyRsaParseDbService.ParseCertificateInfoInIndexFile(pkiPath);
     }
     
-    public bool CheckHealthFileSystem(OpenVpnServerCertConfig openVpnServerCertConfig, int vpnServerId)
+    public bool CheckHealthFileSystem(OpenVpnServerCertConfig openVpnServerCertConfig)
     {
         InstallEasyRsa(openVpnServerCertConfig);
         

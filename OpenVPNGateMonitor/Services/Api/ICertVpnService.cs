@@ -5,8 +5,12 @@ namespace OpenVPNGateMonitor.Services.Api;
 
 public interface ICertVpnService
 {
-    List<CertificateCaInfo> GetAllVpnCertificates(int vpnServerId);
-    List<CertificateCaInfo> GetAllVpnCertificatesByStatus(int vpnServerId, CertificateStatus certificateStatus);
-    CertificateBuildResult AddCertificate(string cnName, CancellationToken cancellationToken);
-    public CertificateRevokeResult RemoveCertificate(string cnName, CancellationToken cancellationToken);
+    Task<List<CertificateCaInfo>> GetAllVpnCertificates(int vpnServerId,
+        CancellationToken cancellationToken);
+    Task<List<CertificateCaInfo>> GetAllVpnCertificatesByStatus(int vpnServerId,
+        CertificateStatus certificateStatus, CancellationToken cancellationToken);
+    Task<CertificateBuildResult> AddCertificate(int vpnServerId, string cnName,
+        CancellationToken cancellationToken);
+    public Task<CertificateRevokeResult> RemoveCertificate(int vpnServerId, string cnName,
+        CancellationToken cancellationToken);
 }
