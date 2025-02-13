@@ -1,19 +1,21 @@
+using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.Contexts;
-using OpenVPNGateMonitor.DataBase.Repositories;
 using OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
 using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
 
 namespace OpenVPNGateMonitor.DataBase.UnitOfWork;
 
-public class UnitOfWork : IUnitOfWork
+public class UnitOfWork : IUnitOfWork, IDisposable
 {
-    private readonly ApplicationDbContext _context;
+    private readonly ApplicationDbContext? _context;
+    private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
     private readonly IRepositoryFactory _repositoryFactory;
     private readonly IQueryFactory _queryFactory;
 
-    public UnitOfWork(ApplicationDbContext context, IRepositoryFactory repositoryFactory, IQueryFactory queryFactory)
+    public UnitOfWork(ApplicationDbContext? context, IDbContextFactory<ApplicationDbContext> dbContextFactory, IRepositoryFactory repositoryFactory, IQueryFactory queryFactory)
     {
-        _context = context;
+        _context = context; // for API (Scoped)
+        _dbContextFactory = dbContextFactory; // for BackgroundService
         _repositoryFactory = repositoryFactory;
         _queryFactory = queryFactory;
     }
@@ -30,16 +32,22 @@ public class UnitOfWork : IUnitOfWork
 
     public async Task<int> SaveChangesAsync()
     {
-        return await _context.SaveChangesAsync();
+        if (_context != null)
+        {
+            return await _context.SaveChangesAsync();
+        }
+
+        using var dbContext = await _dbContextFactory.CreateDbContextAsync();
+        return await dbContext.SaveChangesAsync();
     }
 
     public void SaveChanges()
     {
-        _context.SaveChanges();
+        _context?.SaveChanges();
     }
 
     public void Dispose()
     {
-        _context.Dispose();
+        _context?.Dispose();
     }
 }

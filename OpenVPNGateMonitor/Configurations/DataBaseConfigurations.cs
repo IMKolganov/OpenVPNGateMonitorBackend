@@ -15,6 +15,7 @@ public static class DataBaseConfigurations
         var dbSettings = configuration.GetSection("DataBaseSettings").Get<DataBaseSettings>() 
                          ?? throw new InvalidOperationException("DataBaseSettings section is missing in configuration.");
 
+        // Scoped ApplicationDbContext
         services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
         {
             var config = serviceProvider.GetRequiredService<IConfiguration>();
@@ -26,7 +27,21 @@ public static class DataBaseConfigurations
                     dbSettings.DefaultSchema ?? "public"
                 )
             );
-        });
+        }, ServiceLifetime.Scoped);
+
+        // Scoped DbContextFactory
+        services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, options) =>
+        {
+            var config = serviceProvider.GetRequiredService<IConfiguration>();
+            options.UseNpgsql(
+                config.GetConnectionString("DefaultConnection")
+                ?? throw new InvalidOperationException("Connection string not found."),
+                npgsqlOptions => npgsqlOptions.MigrationsHistoryTable(
+                    dbSettings.MigrationTable ?? "__EFMigrationsHistory",
+                    dbSettings.DefaultSchema ?? "public"
+                )
+            );
+        }, ServiceLifetime.Scoped);
         
         services.AddScoped<IRepositoryFactory, RepositoryFactory>();
         services.AddScoped<IQueryFactory, QueryFactory>();
