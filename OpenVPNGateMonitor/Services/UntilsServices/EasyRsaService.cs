@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.Models.Enums;
+﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
@@ -9,12 +10,6 @@ public class EasyRsaService : IEasyRsaService
     private readonly ILogger<IEasyRsaService> _logger;
     private readonly IEasyRsaParseDbService _easyRsaParseDbService;
     private readonly IEasyRsaExecCommandService _easyRsaExecCommandService;
-    private readonly string _pkiPath;
-    private readonly OpenVpnSettings _openVpnSettings;
-    private readonly string _caCertPath;
-    private readonly string _revokedDirPath;
-
-
     public EasyRsaService(ILogger<IEasyRsaService> logger, IConfiguration configuration, 
         IEasyRsaParseDbService easyRsaParseDbService, IEasyRsaExecCommandService easyRsaExecCommandService)
     {
@@ -27,40 +22,6 @@ public class EasyRsaService : IEasyRsaService
         {
             throw new InvalidOperationException("OpenVpn section is missing in the configuration.");
         }
-
-        _openVpnSettings = openVpnSection.Get<OpenVpnSettings>()
-                           ?? throw new InvalidOperationException("Failed to load OpenVpnSettings from configuration.");
-        
-        _logger.LogInformation("Loaded OpenVpnSettings: EasyRsaPath: {EasyRsaPath}, OutputDir: {OutputDir}, TlsAuthKey: {TlsAuthKey}, ServerIp: {ServerIp}", 
-            _openVpnSettings.EasyRsaPath, 
-            _openVpnSettings.OutputDir, 
-            _openVpnSettings.TlsAuthKey, 
-            _openVpnSettings.ServerIp);
-
-        if (string.IsNullOrEmpty(_openVpnSettings.EasyRsaPath))
-        {
-            throw new InvalidOperationException("OpenVpnSettings: EasyRsaPath is missing or empty.");
-        }
-
-        if (string.IsNullOrEmpty(_openVpnSettings.OutputDir))
-        {
-            throw new InvalidOperationException("OpenVpnSettings: OutputDir is missing or empty.");
-        }
-
-        if (string.IsNullOrEmpty(_openVpnSettings.TlsAuthKey))
-        {
-            throw new InvalidOperationException("OpenVpnSettings: TlsAuthKey is missing or empty.");
-        }
-
-        if (string.IsNullOrEmpty(_openVpnSettings.ServerIp))
-        {
-            throw new InvalidOperationException("OpenVpnSettings: ServerIp is missing or empty.");
-        }
-
-        _pkiPath = Path.Combine(_openVpnSettings.EasyRsaPath, "pki");
-        _caCertPath = Path.Combine(_pkiPath, "ca.crt");
-        _revokedDirPath = Path.Combine(_openVpnSettings.OutputDir, "revoked");
-        _logger.LogInformation($"PKI path initialized to: {_pkiPath}");
     }
 
     #region easyrsa build-client-full
@@ -82,9 +43,10 @@ public class EasyRsaService : IEasyRsaService
 // # ==============================================================================
 
     #endregion
-    public CertificateBuildResult BuildCertificate(string baseFileName = "client1")
+    public CertificateBuildResult BuildCertificate(OpenVpnServerCertConfig openVpnServerCertConfig,
+        string baseFileName = "client1")
     {
-        var command = $"cd {_openVpnSettings.EasyRsaPath} && ./easyrsa build-client-full {baseFileName} nopass";
+        var command = $"cd {openVpnServerCertConfig.EasyRsaPath} && ./easyrsa build-client-full {baseFileName} nopass";
         var (output, error, exitCode) = _easyRsaExecCommandService.RunCommand(command);
 
         if (exitCode != 0)
@@ -93,8 +55,8 @@ public class EasyRsaService : IEasyRsaService
         }
         _logger.LogInformation($"Certificate generated successfully:\n{output}");
 
-        var certPath = Path.Combine(_pkiPath, "issued", $"{baseFileName}.crt");
-        var certificateInfoInIndexFile = GetAllCertificateInfoInIndexFile()
+        var certPath = Path.Combine(openVpnServerCertConfig.PkiPath, "issued", $"{baseFileName}.crt");//todo: maybe move issued
+        var certificateInfoInIndexFile = GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath)
             .Where(x=> x.Status == CertificateStatus.Active && x.CommonName == baseFileName).ToList();
         if (certificateInfoInIndexFile.Count <= 0)
         {
@@ -105,35 +67,19 @@ public class EasyRsaService : IEasyRsaService
             throw new Exception($"Certificate serial number " +
                                 $"{certificateInfoInIndexFile.FirstOrDefault()!.SerialNumber} is invalid.");
         }
-        var pemSerialPath = Path.Combine(_pkiPath, "certs_by_serial", 
+        var pemSerialPath = Path.Combine(openVpnServerCertConfig.PkiPath, "certs_by_serial", //todo: maybe move certs_by_serial
             $"{certificateInfoInIndexFile.FirstOrDefault()!.SerialNumber}.pem");
 
         _logger.LogInformation($"Certificate path: {pemSerialPath}");
         return new CertificateBuildResult
         {
             CertificatePath = certPath,
-            KeyPath = Path.Combine(_pkiPath, "private", $"{baseFileName}.key"),
-            RequestPath = Path.Combine(_pkiPath, "reqs", $"{baseFileName}.req"),
+            KeyPath = Path.Combine(openVpnServerCertConfig.PkiPath, "private", $"{baseFileName}.key"),//todo: maybe move private
+            RequestPath = Path.Combine(openVpnServerCertConfig.PkiPath, "reqs", $"{baseFileName}.req"),//todo: maybe move reqs
             PemPath = pemSerialPath,
             CertId = certificateInfoInIndexFile.FirstOrDefault()!.SerialNumber
         };
     }
-
-    private string CheckCertInOpenssl(string certPath)
-    {
-        var certPathCommand = $"openssl x509 -in {certPath} -serial -noout";
-        var (certOutput, certError, certExitCode) = _easyRsaExecCommandService.RunCommand(certPathCommand);
-
-        if (certExitCode != 0)
-        {
-            throw new Exception($"Error occurred while retrieving certificate serial: {certError}");
-        }
-
-        var serial = certOutput.Split('=')[1].Trim();
-        _logger.LogInformation($"Certificate serial retrieved:\n{serial} Full response: \n{certOutput}");
-        return serial;
-    }
-
 
     public string ReadPemContent(string filePath)
     {
@@ -144,25 +90,25 @@ public class EasyRsaService : IEasyRsaService
             .Append("-----END CERTIFICATE-----"));
     }
 
-    public CertificateRevokeResult RevokeCertificate(string cnName)
+    public CertificateRevokeResult RevokeCertificate(OpenVpnServerCertConfig openVpnServerCertConfig, string cnName)
     {
         var certificateRevokeResult = new CertificateRevokeResult();
-        certificateRevokeResult.CertificatePath = Path.Combine(_pkiPath, "issued", $"{cnName}.crt");
+        certificateRevokeResult.CertificatePath = Path.Combine(openVpnServerCertConfig.PkiPath, "issued", $"{cnName}.crt");
         if (!File.Exists(certificateRevokeResult.CertificatePath))
         {
-            _logger.LogInformation($"EasyRsa path: {_openVpnSettings.EasyRsaPath}");
-            _logger.LogInformation($"PKI path: {_pkiPath}");
+            _logger.LogInformation($"EasyRsa path: {openVpnServerCertConfig.EasyRsaPath}");
+            _logger.LogInformation($"PKI path: {openVpnServerCertConfig.PkiPath}");
             throw new Exception($"Certificate file not found: {certificateRevokeResult.CertificatePath}");
         }
 
         _logger.LogInformation($"Attempting to revoke certificate for: {cnName}");
-        _logger.LogInformation($"EasyRsaPath: {_openVpnSettings.EasyRsaPath}");
-        _logger.LogInformation($"PKI Path: {_pkiPath}");
+        _logger.LogInformation($"EasyRsaPath: {openVpnServerCertConfig.EasyRsaPath}");
+        _logger.LogInformation($"PKI Path: {openVpnServerCertConfig.PkiPath}");
         _logger.LogInformation($"Certificate Path: {certificateRevokeResult.CertificatePath}");
 
         // Revoke the certificate
         var revokeResult = _easyRsaExecCommandService.ExecuteEasyRsaCommand($"revoke {cnName}", 
-            _openVpnSettings.EasyRsaPath, confirm: true);
+            openVpnServerCertConfig.EasyRsaPath, confirm: true);
         certificateRevokeResult.IsRevoked = revokeResult.IsSuccess;
         if (!certificateRevokeResult.IsRevoked)
         {
@@ -200,33 +146,98 @@ public class EasyRsaService : IEasyRsaService
         }
 
         _logger.LogInformation("Revocation successful. Generating CRL...");
-        if (UpdateCrl())
+        if (UpdateCrl(openVpnServerCertConfig))
             _logger.LogInformation("CRL successfully updated and deployed.");
 
         _logger.LogInformation("Certificate successfully revoked, CRL updated and deployed.");
         return certificateRevokeResult;
     }
+    
+    public List<CertificateCaInfo> GetAllCertificateInfoInIndexFile(string pkiPath)
+    {
+        return _easyRsaParseDbService.ParseCertificateInfoInIndexFile(pkiPath);
+    }
+    
+    public bool CheckHealthFileSystem(OpenVpnServerCertConfig openVpnServerCertConfig, int vpnServerId)
+    {
+        InstallEasyRsa(openVpnServerCertConfig);
+        
+        Directory.CreateDirectory(openVpnServerCertConfig.OvpnFileDir);
+        Directory.CreateDirectory(openVpnServerCertConfig.RevokedOvpnFilesDirPath);
+        
+        if (!Directory.Exists(openVpnServerCertConfig.OvpnFileDir))
+        {
+            throw new FileNotFoundException("The output directory could not be found.");
+        }
+        if (!Directory.Exists(openVpnServerCertConfig.RevokedOvpnFilesDirPath))
+        {
+            throw new FileNotFoundException("Revoked folder not found");
+        }
+        
+        string indexFilePath = Path.Combine(openVpnServerCertConfig.PkiPath, "index.txt");
+        if (!File.Exists(indexFilePath))
+        {
+            throw new FileNotFoundException($"Index file not found at path: {indexFilePath}");
+        }
 
-    private bool UpdateCrl()
+        if (string.IsNullOrEmpty(openVpnServerCertConfig.CaCertPath))
+            throw new ArgumentNullException(nameof(openVpnServerCertConfig.CaCertPath));
+        if (string.IsNullOrEmpty(openVpnServerCertConfig.TlsAuthKey))
+            throw new ArgumentNullException(nameof(openVpnServerCertConfig.TlsAuthKey));
+
+        return true;
+    }
+    
+    private void InstallEasyRsa(OpenVpnServerCertConfig openVpnServerCertConfig)
+    {
+        if (!Directory.Exists(openVpnServerCertConfig.PkiPath))
+        {
+            _logger.LogInformation("PKI directory does not exist. Initializing PKI...");
+            _easyRsaExecCommandService.RunCommand($"cd {openVpnServerCertConfig.EasyRsaPath} && ./easyrsa init-pki");
+            throw new Exception("PKI directory does not exist.");
+        }
+        else
+        {
+            _logger.LogInformation("PKI directory exists. Skipping initialization...");
+        }
+    }
+    
+    private string CheckCertInOpenssl(string certPath)
+    {
+        var certPathCommand = $"openssl x509 -in {certPath} -serial -noout";
+        var (certOutput, certError, certExitCode) = _easyRsaExecCommandService.RunCommand(certPathCommand);
+
+        if (certExitCode != 0)
+        {
+            throw new Exception($"Error occurred while retrieving certificate serial: {certError}");
+        }
+
+        var serial = certOutput.Split('=')[1].Trim();
+        _logger.LogInformation($"Certificate serial retrieved:\n{serial} Full response: \n{certOutput}");
+        return serial;
+    }
+
+    
+    private bool UpdateCrl(OpenVpnServerCertConfig openVpnServerCertConfig)
     {
         var crlResult = _easyRsaExecCommandService.ExecuteEasyRsaCommand("gen-crl", 
-            _openVpnSettings.EasyRsaPath);
+            openVpnServerCertConfig.EasyRsaPath);
         if (!crlResult.IsSuccess)
         {
             _logger.LogInformation($"Command Output: {crlResult.Output}");
             throw new Exception($"Failed to generate CRL: {crlResult.Error}");
         }
         
-        if (!File.Exists(_openVpnSettings.CrlPkiPath))
+        if (!File.Exists(openVpnServerCertConfig.CrlPkiPath))
         {
-            throw new Exception($"Generated CRL not found at {_openVpnSettings.CrlPkiPath}," +
+            throw new Exception($"Generated CRL not found at {openVpnServerCertConfig.CrlPkiPath}," +
                                 $" Command Output: {crlResult.Output}");
         }
         
         try
         {
             // Copy the CRL to the OpenVPN directory
-            string copyCommand = $"cp {_openVpnSettings.CrlPkiPath} {_openVpnSettings.CrlOpenvpnPath}";
+            string copyCommand = $"cp {openVpnServerCertConfig.CrlPkiPath} {openVpnServerCertConfig.CrlOpenvpnPath}";
             var copyResult = _easyRsaExecCommandService.RunCommand(copyCommand);
 
             if (copyResult.ExitCode != 0)
@@ -236,7 +247,7 @@ public class EasyRsaService : IEasyRsaService
             }
 
             _logger.LogInformation($"copyResult - {copyResult}");
-            _logger.LogInformation($"CRL copied to {_openVpnSettings.CrlOpenvpnPath}");
+            _logger.LogInformation($"CRL copied to {openVpnServerCertConfig.CrlOpenvpnPath}");
         }
         catch (Exception ex)
         {
@@ -244,56 +255,5 @@ public class EasyRsaService : IEasyRsaService
         }
 
         return true;
-    }
-    
-    public List<CertificateCaInfo> GetAllCertificateInfoInIndexFile()
-    {
-        return _easyRsaParseDbService.ParseCertificateInfoInIndexFile(_pkiPath);
-    }
-    
-    public bool CheckHealthFileSystem()
-    {
-        InstallEasyRsa();
-        if (string.IsNullOrEmpty(_openVpnSettings.ServerIp))
-            throw new ArgumentNullException(nameof(_openVpnSettings.ServerIp));
-        
-        Directory.CreateDirectory(_openVpnSettings.OutputDir);
-        Directory.CreateDirectory(_revokedDirPath);
-        
-        if (!Directory.Exists(_openVpnSettings.OutputDir))
-        {
-            throw new FileNotFoundException("The output directory could not be found.");
-        }
-        if (!Directory.Exists(_revokedDirPath))
-        {
-            throw new FileNotFoundException("Revoked folder not found");
-        }
-        
-        string indexFilePath = Path.Combine(_pkiPath, "index.txt");
-        if (!File.Exists(indexFilePath))
-        {
-            throw new FileNotFoundException($"Index file not found at path: {indexFilePath}");
-        }
-
-        if (string.IsNullOrEmpty(_caCertPath))
-            throw new ArgumentNullException(nameof(_caCertPath));
-        if (string.IsNullOrEmpty(_openVpnSettings.TlsAuthKey))
-            throw new ArgumentNullException(nameof(_openVpnSettings.TlsAuthKey));
-
-        return true;
-    }
-    
-    private void InstallEasyRsa()
-    {
-        if (!Directory.Exists(_pkiPath))
-        {
-            _logger.LogInformation("PKI directory does not exist. Initializing PKI...");
-            _easyRsaExecCommandService.RunCommand($"cd {_openVpnSettings.EasyRsaPath} && ./easyrsa init-pki");
-            throw new Exception("PKI directory does not exist.");
-        }
-        else
-        {
-            _logger.LogInformation("PKI directory exists. Skipping initialization...");
-        }
     }
 }

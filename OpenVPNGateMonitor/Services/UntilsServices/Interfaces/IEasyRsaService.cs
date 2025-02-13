@@ -1,12 +1,14 @@
-﻿using OpenVPNGateMonitor.Models.Helpers;
+﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers;
 
 namespace OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
 public interface IEasyRsaService
 {
-    CertificateBuildResult BuildCertificate(string certName = "client1");
+    CertificateBuildResult BuildCertificate(OpenVpnServerCertConfig openVpnServerCertConfig,
+        string baseFileName = "client1");
     string ReadPemContent(string filePath);
-    CertificateRevokeResult RevokeCertificate(string clientName);
-    List<CertificateCaInfo> GetAllCertificateInfoInIndexFile();
-    bool CheckHealthFileSystem();
+    CertificateRevokeResult RevokeCertificate(OpenVpnServerCertConfig openVpnServerCertConfig, string cnName);
+    List<CertificateCaInfo> GetAllCertificateInfoInIndexFile(string pkiPath);
+    bool CheckHealthFileSystem(OpenVpnServerCertConfig openVpnServerCertConfig, int vpnServerId);
 }

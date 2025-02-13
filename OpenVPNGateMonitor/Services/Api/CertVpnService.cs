@@ -18,18 +18,18 @@ public class CertVpnService : ICertVpnService
         _easyRsaService = easyRsaService;
     }
 
-    public List<CertificateCaInfo> GetAllVpnCertificates()
+    public List<CertificateCaInfo> GetAllVpnCertificates(int vpnServerId)
     {
-        if(!_easyRsaService.CheckHealthFileSystem()){
+        if(!_easyRsaService.CheckHealthFileSystem(vpnServerId)){
             throw new Exception("Something went wrong, some RSA directory could not be found");
         }
         
         return _easyRsaService.GetAllCertificateInfoInIndexFile();
     }
     
-    public List<CertificateCaInfo> GetAllVpnCertificatesByStatus(CertificateStatus certificateStatus)
+    public List<CertificateCaInfo> GetAllVpnCertificatesByStatus(int vpnServerId, CertificateStatus certificateStatus)
     {
-        if(!_easyRsaService.CheckHealthFileSystem()){
+        if(!_easyRsaService.CheckHealthFileSystem(vpnServerId)){
             throw new Exception("Something went wrong, some RSA directory could not be found");
         }
         

@@ -26,7 +26,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             throw new InvalidOperationException("OpenVpn section is missing in the configuration.");
         }
 
-        _seconds = openVpnSection.Get<OpenVpnSettings>()!.UpdateSecond;
+        _seconds = 120;//todo: get from app settings or ...
         if (_seconds <= 0)
         {
             throw new InvalidOperationException("Failed to load OpenVpnSettings UpdateSecond from configuration.");
