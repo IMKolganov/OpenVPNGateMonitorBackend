@@ -19,7 +19,6 @@ public class ApplicationDbContext : DbContext
     public DbSet<OpenVpnServerClient> OpenVpnServerClients { get; set; } = null!;
     public DbSet<OpenVpnServer> OpenVpnServers { get; set; } = null!;
     public DbSet<OpenVpnServerCertConfig> OpenVpnServerCertConfigs { get; set; } = null!;
-
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
