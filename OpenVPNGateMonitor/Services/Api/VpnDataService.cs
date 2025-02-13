@@ -2,6 +2,7 @@
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api;
 
