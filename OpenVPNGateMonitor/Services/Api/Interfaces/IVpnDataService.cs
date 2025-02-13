@@ -1,7 +1,7 @@
 ﻿using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Api;
 
-namespace OpenVPNGateMonitor.Services.Api;
+namespace OpenVPNGateMonitor.Services.Api.Interfaces;
 
 public interface IVpnDataService
 {

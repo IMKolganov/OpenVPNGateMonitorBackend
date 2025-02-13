@@ -16,8 +16,8 @@ public class GeoIpService : IGeoIpService
     public GeoIpService(ILogger<IGeoIpService> logger, IConfiguration configuration)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        var openVpnSettings = configuration.GetSection("OpenVpn").Get<OpenVpnSettings>() 
-                              ?? throw new InvalidOperationException("OpenVpn configuration section is missing.");
+        var openVpnSettings = configuration.GetSection("GeoIp").Get<GeoIpSettings>() 
+                              ?? throw new InvalidOperationException("GeoIp configuration section is missing.");
 
         if (!string.IsNullOrEmpty(openVpnSettings.GeoIpDatabasePath) 
             && File.Exists(openVpnSettings.GeoIpDatabasePath))
@@ -48,7 +48,7 @@ public class GeoIpService : IGeoIpService
                     City = "RFC1918",
                     Latitude = 0,
                     Longitude = 0
-                };//85.172.77.167
+                };
             }
 
             if (ipAddress.IsIPv6LinkLocal || ipAddress.IsIPv6Multicast)
