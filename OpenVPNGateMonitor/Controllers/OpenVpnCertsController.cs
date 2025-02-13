@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Services.Api;
+using OpenVPNGateMonitor.Services.Api.Interfaces;
+
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]

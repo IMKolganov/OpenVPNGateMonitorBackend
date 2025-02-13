@@ -1,7 +1,7 @@
 ﻿using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers;
 
-namespace OpenVPNGateMonitor.Services.Api;
+namespace OpenVPNGateMonitor.Services.Api.Interfaces;
 
 public interface ICertVpnService
 {
