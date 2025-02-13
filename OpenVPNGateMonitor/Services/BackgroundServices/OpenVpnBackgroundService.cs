@@ -20,12 +20,6 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         _logger = logger;
         _serviceProvider = serviceProvider;
         _logger.LogInformation($"Starting background service{Guid.NewGuid()}");
-        var openVpnSection = configuration.GetSection("OpenVpn");
-        if (!openVpnSection.Exists())
-        {
-            throw new InvalidOperationException("OpenVpn section is missing in the configuration.");
-        }
-
         _seconds = 120;//todo: get from app settings or ...
         if (_seconds <= 0)
         {

@@ -16,12 +16,6 @@ public class EasyRsaService : IEasyRsaService
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _easyRsaParseDbService = easyRsaParseDbService;
         _easyRsaExecCommandService = easyRsaExecCommandService;
-
-        var openVpnSection = configuration.GetSection("OpenVpn");
-        if (!openVpnSection.Exists())
-        {
-            throw new InvalidOperationException("OpenVpn section is missing in the configuration.");
-        }
     }
 
     #region easyrsa build-client-full
