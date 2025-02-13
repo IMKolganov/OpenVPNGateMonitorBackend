@@ -7,12 +7,12 @@ namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class OpenVpnCertsController : ControllerBase
+public class OpenVpnServerCertsController : ControllerBase
 {
-    private readonly ILogger<OpenVpnCertsController> _logger;
+    private readonly ILogger<OpenVpnServerCertsController> _logger;
     private readonly ICertVpnService _certVpnService;
 
-    public OpenVpnCertsController(ILogger<OpenVpnCertsController> logger, ICertVpnService certVpnService)
+    public OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> logger, ICertVpnService certVpnService)
     {
         _logger = logger;
         _certVpnService = certVpnService;
