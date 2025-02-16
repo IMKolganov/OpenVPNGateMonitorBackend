@@ -31,6 +31,4 @@ public class ApplicationDbContext : DbContext
         modelBuilder.ApplyConfiguration(new OpenVpnServerCertConfigConfiguration());
         modelBuilder.ApplyConfiguration(new IssuedOvpnFileConfiguration());
     }
-    
-
 }
