@@ -59,9 +59,11 @@ public class OpenVpnServerCertsController : ControllerBase
     }
     
     [HttpGet("GetOpenVpnServerCertConf/{vpnServerId}")]
-    public async Task<IActionResult> GetOpenVpnServerCertConf(int serverId, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> GetOpenVpnServerCertConf(int vpnServerId, CancellationToken cancellationToken = default)
     {
-        return Ok(await _certVpnService.GetOpenVpnServerCertConf(serverId, cancellationToken));
+        if (vpnServerId == 0)
+            return BadRequest("vpnServerId is required.");
+        return Ok(await _certVpnService.GetOpenVpnServerCertConf(vpnServerId, cancellationToken));
     }
     
     [HttpPost("UpdateServerCertConfig")]
