@@ -11,6 +11,6 @@ public interface ICertVpnService
         CertificateStatus certificateStatus, CancellationToken cancellationToken);
     Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string cnName,
         CancellationToken cancellationToken);
-    public Task<CertificateRevokeResult> RemoveServerCertificate(int vpnServerId, string cnName,
+    public Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string cnName,
         CancellationToken cancellationToken);
 }

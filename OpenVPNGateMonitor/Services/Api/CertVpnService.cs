@@ -54,7 +54,7 @@ public class CertVpnService : ICertVpnService
         return _easyRsaService.BuildCertificate(openVpnServerCertConfig, cnName);
     }
     
-    public async Task<CertificateRevokeResult> RemoveServerCertificate(int vpnServerId, string cnName, 
+    public async Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string cnName, 
         CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
