@@ -1,5 +1,7 @@
-﻿using OpenVPNGateMonitor.Models.Enums;
+﻿using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers;
+using OpenVPNGateMonitor.Models.Helpers.Api;
 
 namespace OpenVPNGateMonitor.Services.Api.Interfaces;
 
@@ -11,6 +13,11 @@ public interface ICertVpnService
         CertificateStatus certificateStatus, CancellationToken cancellationToken);
     Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string cnName,
         CancellationToken cancellationToken);
-    public Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string cnName,
+    Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string cnName,
+        CancellationToken cancellationToken);
+    Task<OpenVpnServerCertConfig> GetOpenVpnServerCertConf(int vpnServerId,
+        CancellationToken cancellationToken);
+    Task<OpenVpnServerCertConfig> UpdateServerCertConfig(
+        OpenVpnServerCertConfigRequest openVpnServerCertConfigRequest,
         CancellationToken cancellationToken);
 }

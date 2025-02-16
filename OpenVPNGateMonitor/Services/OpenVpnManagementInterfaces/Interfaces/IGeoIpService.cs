@@ -5,4 +5,5 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 public interface IGeoIpService
 {
     OpenVpnGeoInfo? GetGeoInfo(string ip);
+    string GetDataBasePath();
 }

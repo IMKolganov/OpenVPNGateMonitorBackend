@@ -40,7 +40,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
         try
         {
-            await ExecuteTask(cancellationToken);
+            await RunOpenVpnTask(cancellationToken);
         }
         finally
         {
@@ -48,7 +48,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         }
     }
 
-    private async Task ExecuteTask(CancellationToken cancellationToken)
+    private async Task RunOpenVpnTask(CancellationToken cancellationToken)
     {
         if (_status == BackgroundServiceStatus.Running)
         {
@@ -139,7 +139,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
             while (!cancellationToken.IsCancellationRequested)
             {
-                await ExecuteTask(cancellationToken);
+                await RunOpenVpnTask(cancellationToken);
                 await Task.Delay(TimeSpan.FromSeconds(_seconds), cancellationToken);
             }
 
