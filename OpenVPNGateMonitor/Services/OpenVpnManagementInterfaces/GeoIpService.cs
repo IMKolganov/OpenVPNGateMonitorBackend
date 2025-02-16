@@ -19,14 +19,23 @@ public class GeoIpService : IGeoIpService
         var openVpnSettings = configuration.GetSection("GeoIp").Get<GeoIpSettings>() 
                               ?? throw new InvalidOperationException("GeoIp configuration section is missing.");
 
-        if (!string.IsNullOrEmpty(openVpnSettings.GeoIpDatabasePath) 
-            && File.Exists(openVpnSettings.GeoIpDatabasePath))
+        if (!string.IsNullOrEmpty(openVpnSettings.GeoIpDatabasePath))
         {
-            _geoIpReader = new DatabaseReader(openVpnSettings.GeoIpDatabasePath);
+            _logger.LogInformation($"Checking GeoIP database at: {Path.GetFullPath(openVpnSettings.GeoIpDatabasePath)}");
+
+            if (File.Exists(openVpnSettings.GeoIpDatabasePath))
+            {
+                _geoIpReader = new DatabaseReader(openVpnSettings.GeoIpDatabasePath);
+                _logger.LogInformation("GeoIP database successfully loaded.");
+            }
+            else
+            {
+                _logger.LogError($"GeoIp database file not found at: {Path.GetFullPath(openVpnSettings.GeoIpDatabasePath)}");
+            }
         }
         else
         {
-            _logger.LogError("GeoIp database configuration section is missing.");
+            _logger.LogError("GeoIp database configuration section is missing or empty.");
         }
     }
     
