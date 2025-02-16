@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers.Api;
-using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Controllers;
@@ -57,5 +56,21 @@ public class OpenVpnServerCertsController : ControllerBase
 
         var result = await _certVpnService.RevokeServerCertificate(request.VpnServerId, request.CnName, cancellationToken);
         return Ok(result);
+    }
+    
+    [HttpGet("GetOpenVpnServerCertConf/{vpnServerId:int}")]
+    public async Task<IActionResult> GetOpenVpnServerCertConf(int vpnServerId, CancellationToken cancellationToken = default)
+    {
+        if (vpnServerId == 0)
+            return BadRequest("vpnServerId is required.");
+
+        return Ok( await _certVpnService.GetOpenVpnServerCertConf(vpnServerId, cancellationToken));
+    }
+    
+    [HttpPost("UpdateServerCertConfig")]
+    public async Task<IActionResult> UpdateServerCertConfig(OpenVpnServerCertConfigRequest request, 
+        CancellationToken cancellationToken = default)
+    {
+        return Ok(await _certVpnService.UpdateServerCertConfig(request, cancellationToken));
     }
 }

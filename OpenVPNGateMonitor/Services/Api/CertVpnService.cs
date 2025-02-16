@@ -3,6 +3,7 @@ using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers;
+using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
@@ -61,7 +62,7 @@ public class CertVpnService : ICertVpnService
         return _easyRsaService.RevokeCertificate(openVpnServerCertConfig, cnName);
     }
 
-    private async Task<OpenVpnServerCertConfig> GetOpenVpnServerCertConf(int vpnServerId, 
+    public async Task<OpenVpnServerCertConfig> GetOpenVpnServerCertConf(int vpnServerId, 
         CancellationToken cancellationToken)
     {
         return await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
@@ -70,5 +71,57 @@ public class CertVpnService : ICertVpnService
             .FirstOrDefaultAsync(cancellationToken) ?? 
                throw new InvalidOperationException("OpenVpnServerCertConfig not found");
     }
-    
+
+    public async Task<OpenVpnServerCertConfig> UpdateServerCertConfig(
+        OpenVpnServerCertConfigRequest openVpnServerCertConfigRequest,
+        CancellationToken cancellationToken)
+    {
+        var repositoryOpenVpnServerCertConfig = _unitOfWork.GetRepository<OpenVpnServerCertConfig>();
+
+        var exstOpenVpnServerCertConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
+            .AsQueryable()
+            .Where(x => x.VpnServerId == openVpnServerCertConfigRequest.VpnServerId)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        OpenVpnServerCertConfig resultConfig;
+
+        if (exstOpenVpnServerCertConfig != null)
+        {
+            exstOpenVpnServerCertConfig.EasyRsaPath = openVpnServerCertConfigRequest.EasyRsaPath;
+            exstOpenVpnServerCertConfig.OvpnFileDir = openVpnServerCertConfigRequest.OvpnFileDir;
+            exstOpenVpnServerCertConfig.RevokedOvpnFilesDirPath =
+                openVpnServerCertConfigRequest.RevokedOvpnFilesDirPath;
+            exstOpenVpnServerCertConfig.PkiPath = openVpnServerCertConfigRequest.PkiPath;
+            exstOpenVpnServerCertConfig.CaCertPath = openVpnServerCertConfigRequest.CaCertPath;
+            exstOpenVpnServerCertConfig.TlsAuthKey = openVpnServerCertConfigRequest.TlsAuthKey;
+            exstOpenVpnServerCertConfig.ServerRemoteIp = openVpnServerCertConfigRequest.ServerRemoteIp;
+            exstOpenVpnServerCertConfig.CrlPkiPath = openVpnServerCertConfigRequest.CrlPkiPath;
+            exstOpenVpnServerCertConfig.CrlOpenvpnPath = openVpnServerCertConfigRequest.CrlOpenvpnPath;
+            exstOpenVpnServerCertConfig.StatusFilePath = openVpnServerCertConfigRequest.StatusFilePath;
+
+            repositoryOpenVpnServerCertConfig.Update(exstOpenVpnServerCertConfig);
+            resultConfig = exstOpenVpnServerCertConfig;
+        }
+        else
+        {
+            resultConfig = new OpenVpnServerCertConfig
+            {
+                VpnServerId = openVpnServerCertConfigRequest.VpnServerId,
+                EasyRsaPath = openVpnServerCertConfigRequest.EasyRsaPath,
+                OvpnFileDir = openVpnServerCertConfigRequest.OvpnFileDir,
+                RevokedOvpnFilesDirPath = openVpnServerCertConfigRequest.RevokedOvpnFilesDirPath,
+                PkiPath = openVpnServerCertConfigRequest.PkiPath,
+                CaCertPath = openVpnServerCertConfigRequest.CaCertPath,
+                TlsAuthKey = openVpnServerCertConfigRequest.TlsAuthKey,
+                ServerRemoteIp = openVpnServerCertConfigRequest.ServerRemoteIp,
+                CrlPkiPath = openVpnServerCertConfigRequest.CrlPkiPath,
+                CrlOpenvpnPath = openVpnServerCertConfigRequest.CrlOpenvpnPath,
+                StatusFilePath = openVpnServerCertConfigRequest.StatusFilePath
+            };
+            await repositoryOpenVpnServerCertConfig.AddAsync(resultConfig);
+        }
+
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        return resultConfig;
+    }
 }

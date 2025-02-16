@@ -30,15 +30,15 @@ public class UnitOfWork : IUnitOfWork, IDisposable
         return _queryFactory.GetQuery<T>();
     }
 
-    public async Task<int> SaveChangesAsync()
+    public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
         if (_context != null)
         {
-            return await _context.SaveChangesAsync();
+            return await _context.SaveChangesAsync(cancellationToken);
         }
 
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync();
-        return await dbContext.SaveChangesAsync();
+        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public void SaveChanges()
