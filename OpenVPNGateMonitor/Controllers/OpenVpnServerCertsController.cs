@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models.Enums;
+using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 
@@ -44,10 +45,16 @@ public class OpenVpnServerCertsController : ControllerBase
         return Ok(await _certVpnService.AddServerCertificate(vpnServerId, cnName, cancellationToken));
     }
     
-    [HttpGet("RevokeServerCertificate/{vpnServerId}")]
-    public async Task<IActionResult> RevokeServerCertificate(int vpnServerId, string cnName, 
+    [HttpPost("RevokeServerCertificate")]
+    public async Task<IActionResult> RevokeServerCertificate(
+        [FromBody] RevokeCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await _certVpnService.RevokeServerCertificate(vpnServerId, cnName, cancellationToken));
+        if (request.VpnServerId > 0 || string.IsNullOrWhiteSpace(request.CnName))
+        {
+            return BadRequest("Invalid request. 'VpnServerId' & 'CnName' is required.");//todo: maka validations
+        }
+
+        return Ok(await _certVpnService.RevokeServerCertificate(request.VpnServerId, request.CnName, cancellationToken));
     }
 }
