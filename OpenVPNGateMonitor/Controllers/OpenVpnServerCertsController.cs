@@ -44,10 +44,10 @@ public class OpenVpnServerCertsController : ControllerBase
         return Ok(await _certVpnService.AddServerCertificate(vpnServerId, cnName, cancellationToken));
     }
     
-    [HttpGet("RemoveServerCertificate/{vpnServerId}")]
-    public async Task<IActionResult> RemoveServerCertificate(int vpnServerId, string cnName, 
+    [HttpGet("RevokeServerCertificate/{vpnServerId}")]
+    public async Task<IActionResult> RevokeServerCertificate(int vpnServerId, string cnName, 
         CancellationToken cancellationToken = default)
     {
-        return Ok(await _certVpnService.RemoveServerCertificate(vpnServerId, cnName, cancellationToken));
+        return Ok(await _certVpnService.RevokeServerCertificate(vpnServerId, cnName, cancellationToken));
     }
 }
