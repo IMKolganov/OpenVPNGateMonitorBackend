@@ -9,7 +9,8 @@ public class IssuedOvpnFileConfiguration : IEntityTypeConfiguration<IssuedOvpnFi
     public void Configure(EntityTypeBuilder<IssuedOvpnFile> entity)
     {
         entity.HasKey(e => e.Id);
-
+        entity.Property(e => e.ServerId)
+            .IsRequired();
         entity.Property(e => e.ExternalId)
             .IsRequired()
             .HasMaxLength(255);
