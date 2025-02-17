@@ -14,7 +14,7 @@ public class IssuedOvpnFileConfiguration : IEntityTypeConfiguration<IssuedOvpnFi
         entity.Property(e => e.ExternalId)
             .IsRequired()
             .HasMaxLength(255);
-        entity.Property(e => e.CertName)
+        entity.Property(e => e.CommonName)
             .IsRequired()
             .HasMaxLength(255);
         entity.Property(e => e.CertId)

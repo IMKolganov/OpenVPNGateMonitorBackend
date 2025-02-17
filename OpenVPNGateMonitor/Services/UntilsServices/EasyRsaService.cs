@@ -67,6 +67,7 @@ public class EasyRsaService : IEasyRsaService
         _logger.LogInformation($"Certificate path: {pemSerialPath}");
         return new CertificateBuildResult
         {
+            VpnServerId = openVpnServerCertConfig.VpnServerId,
             CertificatePath = certPath,
             KeyPath = Path.Combine(openVpnServerCertConfig.PkiPath, "private", $"{baseFileName}.key"),//todo: maybe move private
             RequestPath = Path.Combine(openVpnServerCertConfig.PkiPath, "reqs", $"{baseFileName}.req"),//todo: maybe move reqs

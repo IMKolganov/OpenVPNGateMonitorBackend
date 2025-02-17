@@ -10,10 +10,12 @@ namespace OpenVPNGateMonitor.Controllers;
 public class OpenVpnFilesController : ControllerBase
 {
     private readonly ILogger<OpenVpnFilesController> _logger;
+    private readonly IOvpnFileService _ovpFileService;
 
-    public OpenVpnFilesController(ILogger<OpenVpnFilesController> logger)
+    public OpenVpnFilesController(ILogger<OpenVpnFilesController> logger, IOvpnFileService ovpFileService)
     {
         _logger = logger;
+        _ovpFileService = ovpFileService;
     }
     
     [HttpGet("GetAllOvpnFiles")]
@@ -22,18 +24,27 @@ public class OpenVpnFilesController : ControllerBase
         if (vpnServerId == 0)
             return BadRequest("vpnServerId is required.");
 
-        throw new NotImplementedException();
+        return Ok(await _ovpFileService.GetAllOvpnFiles(vpnServerId, cancellationToken));
     }
     
     [HttpPost("AddOvpnFile")]
-    public async Task<IActionResult> AddOvpnFile(IssuedOvpnFile issuedOvpnFile, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> AddOvpnFile(string externalId, string commonName, int vpnServerId, 
+        CancellationToken cancellationToken = default, string issuedTo = "openVpnClient")
     {
-        throw new NotImplementedException();
+        if (vpnServerId == 0)
+            return BadRequest("vpnServerId is required.");
+        if (string.IsNullOrEmpty(externalId))
+            return BadRequest("externalId is required.");
+        if (string.IsNullOrEmpty(commonName))
+            return BadRequest("commonName is required.");
+        
+        return Ok(await _ovpFileService.AddOvpnFile(externalId, commonName, vpnServerId, cancellationToken, issuedTo));
     }
     
     [HttpPost("RevokeOvpnFile")]
-    public async Task<IActionResult> RevokeOvpnFile(IssuedOvpnFile issuedOvpnFile, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> RevokeOvpnFile(IssuedOvpnFile issuedOvpnFile, 
+        CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException();
+        return Ok(await _ovpFileService.RevokeOvpnFile(issuedOvpnFile, cancellationToken));
     }
 }

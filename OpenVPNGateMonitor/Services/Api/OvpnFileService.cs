@@ -1,0 +1,191 @@
+﻿using Microsoft.EntityFrameworkCore;
+using OpenVPNGateMonitor.DataBase.UnitOfWork;
+using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers;
+using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Services.Api.Interfaces;
+using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
+
+namespace OpenVPNGateMonitor.Services.Api;
+
+public class OvpnFileService : IOvpnFileService
+{
+    private readonly ILogger<IOvpnFileService> _logger;
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly ICertVpnService _certVpnService;
+    private readonly IEasyRsaService _easyRsaService;
+
+    public OvpnFileService(ILogger<IOvpnFileService> logger, IUnitOfWork unitOfWork, 
+        ICertVpnService certVpnService, IEasyRsaService easyRsaService)
+    {
+        _logger = logger;
+        _unitOfWork = unitOfWork;
+        _certVpnService = certVpnService;
+        _easyRsaService = easyRsaService;
+    }
+
+    public async Task<List<IssuedOvpnFile>> GetAllOvpnFiles(int vpnServerId, 
+        CancellationToken cancellationToken)
+    {
+        return await _unitOfWork.GetQuery<IssuedOvpnFile>()
+            .AsQueryable().Where(x=> x.ServerId == vpnServerId)
+            .OrderBy(x=>x.Id)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<AddOvpnFileResponse> AddOvpnFile(string externalId, string commonName, int vpnServerId, 
+        CancellationToken cancellationToken, string issuedTo = "openVpnClient")
+    {
+       var openVpnServerCertConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
+                .AsQueryable()
+                .Where(x => x.VpnServerId == vpnServerId)
+                .FirstOrDefaultAsync(cancellationToken) ?? 
+            throw new InvalidOperationException("OpenVpnServerCertConfig not found");
+        
+        _logger.LogInformation("Step 1: Building client certificate...");
+        var certificateResult = await _certVpnService.AddServerCertificate(vpnServerId, 
+            commonName, cancellationToken);
+        
+        _logger.LogInformation("Step 2: Defining paths to certificates and keys...");
+        string caCertContent = _easyRsaService.ReadPemContent(openVpnServerCertConfig.CaCertPath);
+        
+        string clientCertContent = _easyRsaService.ReadPemContent(certificateResult.CertificatePath);
+        string clientKeyContent = await File.ReadAllTextAsync(certificateResult.KeyPath, cancellationToken);
+
+        _logger.LogInformation("Step 3: Generating .ovpn configuration file...");
+        //todo: ServerRemoteIp get from OpenVpnServerOvpnFileConfig and port
+        string ovpnContent = GenerateOvpnFile(openVpnServerCertConfig.ServerRemoteIp, 1291, caCertContent,
+            clientCertContent, clientKeyContent, openVpnServerCertConfig.TlsAuthKey);
+        
+        _logger.LogInformation("Step 4: Writing .ovpn file...");
+        
+        string ovpnFilePath = Path.Combine(openVpnServerCertConfig.OvpnFileDir, $"{commonName}.ovpn");
+        await File.WriteAllTextAsync(ovpnFilePath, ovpnContent, cancellationToken);
+
+        _logger.LogInformation($"Client configuration file created: {ovpnFilePath}");
+        var fileInfo = new FileInfo(ovpnFilePath);
+        
+        _logger.LogInformation("Step 5: Save in database...");
+
+        var issuedOvpnFile = new IssuedOvpnFile()
+        {
+            ExternalId = externalId,
+            CommonName = commonName,
+            CertId = certificateResult.CertId,
+            FileName = fileInfo.Name,
+            FilePath = fileInfo.FullName,
+            IssuedAt = DateTime.UtcNow,
+            IssuedTo = issuedTo,
+            CertFilePath = certificateResult.CertificatePath,
+            KeyFilePath = certificateResult.KeyPath,
+            ReqFilePath = certificateResult.RequestPath,
+            PemFilePath = certificateResult.PemPath,
+            IsRevoked = false
+        };
+        await SaveInfoInDataBase(issuedOvpnFile, cancellationToken);
+        return new AddOvpnFileResponse { OvpnFile = fileInfo, IssuedOvpnFile  = issuedOvpnFile };
+    }
+
+    public async Task<IssuedOvpnFile> RevokeOvpnFile(IssuedOvpnFile issuedOvpnFile, CancellationToken cancellationToken)
+    {
+        var openVpnServerCertConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
+            .AsQueryable()
+            .Where(x => x.VpnServerId == issuedOvpnFile.ServerId)
+            .FirstOrDefaultAsync(cancellationToken) 
+                                      ?? throw new InvalidOperationException("OpenVpnServerCertConfig not found");
+        
+        var certificateRevokeResult = _easyRsaService.RevokeCertificate(openVpnServerCertConfig, issuedOvpnFile.CommonName);
+        
+        _logger.LogInformation($"RevokeCertificate result: {certificateRevokeResult.Message} " +
+                               $"for CertName: {issuedOvpnFile.CommonName}");
+        string revokedFilePath = MoveRevokedOvpnFile(openVpnServerCertConfig, issuedOvpnFile);
+        _logger.LogInformation($"Successfully moved revoked .ovpn file to: {revokedFilePath}");
+
+        _logger.LogInformation($"Updated database for revoked certificate: {issuedOvpnFile.CommonName}, " +
+                               $"External ID: {issuedOvpnFile.ExternalId}");
+        var repositoryIssuedOvpnFile = _unitOfWork.GetRepository<IssuedOvpnFile>();
+        issuedOvpnFile.FilePath = revokedFilePath;
+        issuedOvpnFile.IsRevoked = true;
+        issuedOvpnFile.Message = certificateRevokeResult.Message;
+        repositoryIssuedOvpnFile.Update(issuedOvpnFile);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+        
+        return issuedOvpnFile;
+    }
+    
+    private string MoveRevokedOvpnFile(OpenVpnServerCertConfig openVpnServerCertConfig, IssuedOvpnFile issuedOvpnFile)
+    {
+        string ovpnFilePath = Path.Combine(openVpnServerCertConfig.OvpnFileDir, issuedOvpnFile.FileName);
+        
+        var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+        var uniqueFileName = 
+            $"{Path.GetFileNameWithoutExtension(issuedOvpnFile.FileName)}" +
+            $"_{issuedOvpnFile.Id}" +
+            $"_{timestamp}" +
+            $"{Path.GetExtension(issuedOvpnFile.FileName)}";
+
+        string revokedFilePath = Path.Combine(openVpnServerCertConfig.RevokedOvpnFilesDirPath, uniqueFileName);
+
+        if (File.Exists(ovpnFilePath))
+        {
+            File.Move(ovpnFilePath, revokedFilePath);
+            _logger.LogInformation($"Moved .ovpn file to revoked folder: {revokedFilePath}");
+        }
+        else
+        {
+            _logger.LogWarning($".ovpn file not found for moving: {ovpnFilePath}");
+        }
+
+        return revokedFilePath; 
+    }
+    
+    private async Task SaveInfoInDataBase(IssuedOvpnFile issuedOvpnFile, CancellationToken cancellationToken)
+    {
+        var repositoryIssuedOvpnFile = _unitOfWork.GetRepository<IssuedOvpnFile>();
+        await repositoryIssuedOvpnFile.AddAsync(issuedOvpnFile, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+    }
+
+    private static string GenerateOvpnFile(string serverIp, int serverPort, string caCert, string clientCert, 
+        string clientKey, string tlsAuthKey)
+    {
+        if (string.IsNullOrEmpty(serverIp))
+            throw new ArgumentNullException(nameof(serverIp));
+        if (string.IsNullOrEmpty(caCert))
+            throw new ArgumentNullException(nameof(caCert));
+        if (string.IsNullOrEmpty(clientCert))
+            throw new ArgumentNullException(nameof(clientCert));
+        if (string.IsNullOrEmpty(clientKey))
+            throw new ArgumentNullException(nameof(clientKey));
+        if (string.IsNullOrEmpty(tlsAuthKey))
+            throw new ArgumentNullException(nameof(tlsAuthKey));
+        
+        //todo: move it OpenVpnServerOvpnFileConfig
+        return $@"client
+dev tun
+proto udp
+remote {serverIp} {serverPort}
+resolv-retry infinite
+nobind
+remote-cert-tls server
+tls-version-min 1.2
+verify-x509-name raspberrypi_2e39d597-c642-4f69-a6c8-149e7c9ac064 name
+cipher AES-256-CBC
+auth SHA256
+auth-nocache
+verb 3
+<ca>
+{caCert}
+</ca>
+<cert>
+{clientCert}
+</cert>
+<key>
+{clientKey}
+</key>
+<tls-crypt>
+{File.ReadAllText(tlsAuthKey)}
+</tls-crypt>
+";
+    }
+}

@@ -9,7 +9,7 @@ public class IssuedOvpnFile
     public int ServerId { get; set; }
     public string ExternalId { get; set; } = string.Empty;
     [Required]
-    public string CertName { get; set; } = null!;
+    public string CommonName { get; set; } = null!;
     public string? CertId { get; set; } = string.Empty;
     public string FileName { get; set; } = null!;
     public string FilePath { get; set; } = null!;

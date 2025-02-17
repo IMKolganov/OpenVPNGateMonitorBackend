@@ -96,7 +96,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
                     openVpnServer.IsOnline = true;
                     innerOpenVpnServerRepository.Update(openVpnServer);
-                    await innerUnitOfWork.SaveChangesAsync();
+                    await innerUnitOfWork.SaveChangesAsync(cancellationToken);
 
                     _logger.LogInformation($"Finished processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                 }
@@ -108,7 +108,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
                     openVpnServer.IsOnline = false;
                     errorRepository.Update(openVpnServer);
-                    await errorUnitOfWork.SaveChangesAsync();
+                    await errorUnitOfWork.SaveChangesAsync(cancellationToken);
 
                     _logger.LogError(ex, $"Error processing OpenVPN server {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                 }
