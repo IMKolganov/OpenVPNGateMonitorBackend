@@ -52,19 +52,19 @@ public class OvpnFileService : IOvpnFileService
             commonName, cancellationToken);
         
         _logger.LogInformation("Step 2: Defining paths to certificates and keys...");
-        string caCertContent = _easyRsaService.ReadPemContent(openVpnServerCertConfig.CaCertPath);
+        var caCertContent = _easyRsaService.ReadPemContent(openVpnServerCertConfig.CaCertPath);
         
-        string clientCertContent = _easyRsaService.ReadPemContent(certificateResult.CertificatePath);
-        string clientKeyContent = await File.ReadAllTextAsync(certificateResult.KeyPath, cancellationToken);
+        var clientCertContent = _easyRsaService.ReadPemContent(certificateResult.CertificatePath);
+        var clientKeyContent = await File.ReadAllTextAsync(certificateResult.KeyPath, cancellationToken);
 
         _logger.LogInformation("Step 3: Generating .ovpn configuration file...");
-        string ovpnContent = GenerateOvpnFile(openVpnServerOvpnFileConfig.VpnServerIp,
+        var ovpnContent = GenerateOvpnFile(openVpnServerOvpnFileConfig.VpnServerIp,
             openVpnServerOvpnFileConfig.VpnServerPort, caCertContent, clientCertContent, clientKeyContent, 
             openVpnServerCertConfig.TlsAuthKey);
         
         _logger.LogInformation("Step 4: Writing .ovpn file...");
         
-        string ovpnFilePath = Path.Combine(openVpnServerCertConfig.OvpnFileDir, $"{commonName}.ovpn");
+        var ovpnFilePath = Path.Combine(openVpnServerCertConfig.OvpnFileDir, $"{commonName}.ovpn");
         await File.WriteAllTextAsync(ovpnFilePath, ovpnContent, cancellationToken);
 
         _logger.LogInformation($"Client configuration file created: {ovpnFilePath}");

@@ -169,7 +169,7 @@ public class EasyRsaService : IEasyRsaService
             throw new FileNotFoundException("Revoked folder not found");
         }
         
-        string indexFilePath = Path.Combine(openVpnServerCertConfig.PkiPath, "index.txt");
+        var indexFilePath = Path.Combine(openVpnServerCertConfig.PkiPath, "index.txt");
         if (!File.Exists(indexFilePath))
         {
             throw new FileNotFoundException($"Index file not found at path: {indexFilePath}");

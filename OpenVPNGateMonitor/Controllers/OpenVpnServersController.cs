@@ -125,7 +125,7 @@ public class OpenVpnServersController : ControllerBase
                 nextRunTime = _openVpnBackgroundService.GetNextRunTime()
             };
 
-            string json = JsonConvert.SerializeObject(statusUpdate);
+            var json = JsonConvert.SerializeObject(statusUpdate);
             await webSocket.SendAsync(
                 Encoding.UTF8.GetBytes(json),
                 WebSocketMessageType.Text,
