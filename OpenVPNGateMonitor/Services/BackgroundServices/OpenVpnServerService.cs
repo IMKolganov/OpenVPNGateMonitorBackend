@@ -97,12 +97,12 @@ public class OpenVpnServerService : IOpenVpnServerService
                     CreateDate = DateTime.UtcNow
                 };
 
-                await openVpnServerClientRepository.AddAsync(newClient);
+                await openVpnServerClientRepository.AddAsync(newClient, cancellationToken);
                 _logger.LogInformation("Added new client session {SessionId}.", sessionId);
             }
         }
 
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("SaveConnectedClientsAsync completed successfully.");
     }
 
@@ -190,11 +190,11 @@ public class OpenVpnServerService : IOpenVpnServerService
                 CreateDate = DateTime.UtcNow
             };
 
-            await openVpnServerStatusLogRepository.AddAsync(newStatusLog);
+            await openVpnServerStatusLogRepository.AddAsync(newStatusLog, cancellationToken);
             _logger.LogInformation("Created new status log {SessionId}.", sessionId);
         }
 
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("SaveOpenVpnServerStatusLogAsync completed successfully.");
     }
 
@@ -250,7 +250,7 @@ public class OpenVpnServerService : IOpenVpnServerService
         {
             client.IsConnected = false;
         }
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("Marked {Count} existing clients as disconnected.", existingAllOpenVpnServerClient.Count);
         return true;
     }

@@ -49,12 +49,12 @@ public class OpenVpnServerCertsController : ControllerBase
         [FromBody] RevokeCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (request.VpnServerId <= 0 || string.IsNullOrWhiteSpace(request.CnName))//todo: make validation
+        if (request.VpnServerId <= 0 || string.IsNullOrWhiteSpace(request.CommonName))//todo: make validation
         {
             return BadRequest("Invalid request. 'VpnServerId' & 'CnName' are required.");
         }
 
-        var result = await _certVpnService.RevokeServerCertificate(request.VpnServerId, request.CnName, cancellationToken);
+        var result = await _certVpnService.RevokeServerCertificate(request.VpnServerId, request.CommonName, cancellationToken);
         return Ok(result);
     }
     

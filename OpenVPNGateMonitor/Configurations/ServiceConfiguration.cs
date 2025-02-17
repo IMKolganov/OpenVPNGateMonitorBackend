@@ -44,6 +44,7 @@ public static class ServiceConfiguration
 
         services.AddScoped<IVpnDataService, VpnDataService>();
         services.AddScoped<ICertVpnService, CertVpnService>();
+        services.AddScoped<IOvpnFileService, OvpnFileService>();
 
         services.AddSingleton<OpenVpnBackgroundService>();
         services.AddSingleton<IOpenVpnBackgroundService>(sp => sp.GetRequiredService<OpenVpnBackgroundService>());

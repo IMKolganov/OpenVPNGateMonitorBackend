@@ -3,7 +3,6 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
@@ -126,7 +125,7 @@ public class OpenVpnServersController : ControllerBase
                 nextRunTime = _openVpnBackgroundService.GetNextRunTime()
             };
 
-            string json = JsonConvert.SerializeObject(statusUpdate);
+            var json = JsonConvert.SerializeObject(statusUpdate);
             await webSocket.SendAsync(
                 Encoding.UTF8.GetBytes(json),
                 WebSocketMessageType.Text,

@@ -118,7 +118,7 @@ public class CertVpnService : ICertVpnService
                 CrlOpenvpnPath = openVpnServerCertConfigRequest.CrlOpenvpnPath,
                 StatusFilePath = openVpnServerCertConfigRequest.StatusFilePath
             };
-            await repositoryOpenVpnServerCertConfig.AddAsync(resultConfig);
+            await repositoryOpenVpnServerCertConfig.AddAsync(resultConfig, cancellationToken);
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
