@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
@@ -28,17 +29,16 @@ public class OpenVpnFilesController : ControllerBase
     }
     
     [HttpPost("AddOvpnFile")]
-    public async Task<IActionResult> AddOvpnFile(string externalId, string commonName, int vpnServerId, 
-        CancellationToken cancellationToken = default, string issuedTo = "openVpnClient")
+    public async Task<IActionResult> AddOvpnFile([FromBody] AddOvpnFileRequest request, CancellationToken cancellationToken = default)
     {
-        if (vpnServerId == 0)
+        if (request.VpnServerId == 0)
             return BadRequest("vpnServerId is required.");
-        if (string.IsNullOrEmpty(externalId))
+        if (string.IsNullOrEmpty(request.ExternalId))
             return BadRequest("externalId is required.");
-        if (string.IsNullOrEmpty(commonName))
+        if (string.IsNullOrEmpty(request.CommonName))
             return BadRequest("commonName is required.");
-        
-        return Ok(await _ovpFileService.AddOvpnFile(externalId, commonName, vpnServerId, cancellationToken, issuedTo));
+
+        return Ok(await _ovpFileService.AddOvpnFile(request.ExternalId, request.CommonName, request.VpnServerId, cancellationToken, request.IssuedTo));
     }
     
     [HttpPost("RevokeOvpnFile")]
