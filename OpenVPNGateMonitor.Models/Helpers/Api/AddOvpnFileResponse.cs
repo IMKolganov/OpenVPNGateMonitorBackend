@@ -2,6 +2,6 @@
 
 public class AddOvpnFileResponse
 {
-    public FileInfo OvpnFile { get; set; }
-    public IssuedOvpnFile IssuedOvpnFile { get; set; }
+    public required FileInfo OvpnFile { get; set; }
+    public required IssuedOvpnFile IssuedOvpnFile { get; set; }
 }

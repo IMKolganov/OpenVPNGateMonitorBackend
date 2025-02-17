@@ -10,7 +10,7 @@ public class OpenVpnServerOvpnFileConfig
     [Required]
     public string VpnServerIp { get; set; } = string.Empty;
     public int VpnServerPort { get; set; }
-    
+    public string ConfigTemplate { get; set; } = string.Empty;
     public DateTime LastUpdate { get; set; } = DateTime.Now;
     public DateTime CreateDate { get; set; }= DateTime.Now;
 }
