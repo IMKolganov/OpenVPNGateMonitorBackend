@@ -41,6 +41,11 @@ public class OvpnFileService : IOvpnFileService
                 .Where(x => x.VpnServerId == vpnServerId)
                 .FirstOrDefaultAsync(cancellationToken) ?? 
             throw new InvalidOperationException("OpenVpnServerCertConfig not found");
+       var openVpnServerOvpnFileConfig = await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
+                                             .AsQueryable()
+                                             .Where(x => x.ServerId == vpnServerId)
+                                             .FirstOrDefaultAsync(cancellationToken) ?? 
+                                         throw new InvalidOperationException("OpenVpnServerOvpnFileConfig not found");
         
         _logger.LogInformation("Step 1: Building client certificate...");
         var certificateResult = await _certVpnService.AddServerCertificate(vpnServerId, 
@@ -53,9 +58,9 @@ public class OvpnFileService : IOvpnFileService
         string clientKeyContent = await File.ReadAllTextAsync(certificateResult.KeyPath, cancellationToken);
 
         _logger.LogInformation("Step 3: Generating .ovpn configuration file...");
-        //todo: ServerRemoteIp get from OpenVpnServerOvpnFileConfig and port
-        string ovpnContent = GenerateOvpnFile(openVpnServerCertConfig.ServerRemoteIp, 1291, caCertContent,
-            clientCertContent, clientKeyContent, openVpnServerCertConfig.TlsAuthKey);
+        string ovpnContent = GenerateOvpnFile(openVpnServerOvpnFileConfig.VpnServerIp,
+            openVpnServerOvpnFileConfig.VpnServerPort, caCertContent, clientCertContent, clientKeyContent, 
+            openVpnServerCertConfig.TlsAuthKey);
         
         _logger.LogInformation("Step 4: Writing .ovpn file...");
         
