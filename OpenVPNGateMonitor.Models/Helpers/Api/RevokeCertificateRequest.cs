@@ -3,5 +3,5 @@
 public class RevokeCertificateRequest
 {
     public int VpnServerId { get; set; }
-    public string CnName { get; set; }
+    public string CommonName { get; set; } = string.Empty;
 }

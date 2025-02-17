@@ -117,8 +117,8 @@ public class VpnDataService : IVpnDataService
     public async Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
         var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
-        await openVpnServerRepository.AddAsync(openVpnServer);
-        await _unitOfWork.SaveChangesAsync(); 
+        await openVpnServerRepository.AddAsync(openVpnServer, cancellationToken);
+        await _unitOfWork.SaveChangesAsync(cancellationToken); 
         return openVpnServer;
     }
     
@@ -126,7 +126,7 @@ public class VpnDataService : IVpnDataService
     {
         var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
         openVpnServerRepository.Update(openVpnServer);
-        await _unitOfWork.SaveChangesAsync();
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
         return openVpnServer;
     }
     
@@ -135,7 +135,7 @@ public class VpnDataService : IVpnDataService
         var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
         var openVpnServer = await openVpnServerRepository.GetByIdAsync(vpnServerId);
         openVpnServerRepository.Delete(openVpnServer ?? throw new InvalidOperationException("OpenVpnServer not found"));
-        await _unitOfWork.SaveChangesAsync(); 
+        await _unitOfWork.SaveChangesAsync(cancellationToken); 
         return openVpnServer;
     }
 }

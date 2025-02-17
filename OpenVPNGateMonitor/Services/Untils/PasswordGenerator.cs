@@ -17,14 +17,14 @@ public class PasswordGenerator
         if (length < 4) throw new ArgumentException("Password length must be at least 4 characters.");
 
         // make hash - key - time - guid
-        string hashSeed = GetSha256Hash(SecretKey + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + Guid.NewGuid());
+        var hashSeed = GetSha256Hash(SecretKey + DateTime.UtcNow.ToString("yyyyMMddHHmmss") + Guid.NewGuid());
         
-        string charPool = Uppercase + Lowercase + Digits + SpecialChars;
-        char[] password = new char[length];
+        var charPool = Uppercase + Lowercase + Digits + SpecialChars;
+        var password = new char[length];
 
-        for (int i = 0; i < length; i++)
+        for (var i = 0; i < length; i++)
         {
-            int index = hashSeed[i % hashSeed.Length] % charPool.Length;
+            var index = hashSeed[i % hashSeed.Length] % charPool.Length;
             password[i] = charPool[index];
         }
 

@@ -67,6 +67,7 @@ public class EasyRsaService : IEasyRsaService
         _logger.LogInformation($"Certificate path: {pemSerialPath}");
         return new CertificateBuildResult
         {
+            VpnServerId = openVpnServerCertConfig.VpnServerId,
             CertificatePath = certPath,
             KeyPath = Path.Combine(openVpnServerCertConfig.PkiPath, "private", $"{baseFileName}.key"),//todo: maybe move private
             RequestPath = Path.Combine(openVpnServerCertConfig.PkiPath, "reqs", $"{baseFileName}.req"),//todo: maybe move reqs
@@ -168,7 +169,7 @@ public class EasyRsaService : IEasyRsaService
             throw new FileNotFoundException("Revoked folder not found");
         }
         
-        string indexFilePath = Path.Combine(openVpnServerCertConfig.PkiPath, "index.txt");
+        var indexFilePath = Path.Combine(openVpnServerCertConfig.PkiPath, "index.txt");
         if (!File.Exists(indexFilePath))
         {
             throw new FileNotFoundException($"Index file not found at path: {indexFilePath}");

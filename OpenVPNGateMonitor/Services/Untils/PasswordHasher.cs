@@ -7,13 +7,13 @@ public static class PasswordHasher
 {
     public static string HashPassword(string password)
     {
-        byte[] salt = new byte[16];
+        var salt = new byte[16];
         using (var rng = RandomNumberGenerator.Create())
         {
             rng.GetBytes(salt);
         }
 
-        byte[] hash = KeyDerivation.Pbkdf2(
+        var hash = KeyDerivation.Pbkdf2(
             password: password,
             salt: salt,
             prf: KeyDerivationPrf.HMACSHA256,
@@ -28,10 +28,10 @@ public static class PasswordHasher
         var parts = storedHash.Split('.');
         if (parts.Length != 2) return false;
 
-        byte[] salt = Convert.FromBase64String(parts[0]);
-        byte[] expectedHash = Convert.FromBase64String(parts[1]);
+        var salt = Convert.FromBase64String(parts[0]);
+        var expectedHash = Convert.FromBase64String(parts[1]);
 
-        byte[] actualHash = KeyDerivation.Pbkdf2(
+        var actualHash = KeyDerivation.Pbkdf2(
             password: password,
             salt: salt,
             prf: KeyDerivationPrf.HMACSHA256,
