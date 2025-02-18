@@ -1,24 +1,25 @@
 ﻿using System.Text.RegularExpressions;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
 public class OpenVpnVersionService : IOpenVpnVersionService
 {
     private readonly ILogger<IOpenVpnVersionService> _logger;
-    private readonly IOpenVpnManagementService _openVpnManagementService;
+    private readonly OpenVpnManagerPool _openVpnManagerPool;
     
     public OpenVpnVersionService(ILogger<IOpenVpnVersionService> logger, 
-        IOpenVpnManagementService openVpnManagementService)
+        OpenVpnManagerPool openVpnManagerPool)
     {
         _logger = logger;
-        _openVpnManagementService = openVpnManagementService;
+        _openVpnManagerPool = openVpnManagerPool;
     }
     
     public async Task<string> GetVersionAsync(string managementIp, int managementPort, CancellationToken cancellationToken)
     {
-        string response = await _openVpnManagementService.SendCommandAsync(managementIp, managementPort, 
-            "version", cancellationToken);
+        var manager = _openVpnManagerPool.GetOrCreateManager(managementIp, managementPort);
+        var response = await manager.SendCommandAsync("version", cancellationToken);
         
         var (openVpnVersion, managementVersion) = ParseVersion(response);
         return openVpnVersion;

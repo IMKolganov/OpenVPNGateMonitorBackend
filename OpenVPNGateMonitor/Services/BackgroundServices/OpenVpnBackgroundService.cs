@@ -65,7 +65,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var openVpnServerRepository = unitOfWork.GetRepository<OpenVpnServer>();
             var openVpnServers = await openVpnServerRepository.GetAllAsync();
-            var vpnServers = openVpnServers.ToList();
+            var vpnServers = openVpnServers.Where(x=> x.Id == 8).ToList();
 
             _logger.LogInformation($"Found {vpnServers.Count} OpenVPN servers to process.");
 

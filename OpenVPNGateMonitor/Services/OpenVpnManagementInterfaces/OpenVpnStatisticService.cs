@@ -1,24 +1,25 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
 public class OpenVpnSummaryStatService : IOpenVpnSummaryStatService
 {
     private readonly ILogger<IOpenVpnSummaryStatService> _logger;
-    private readonly IOpenVpnManagementService _openVpnManagementService;
+    private readonly OpenVpnManagerPool _openVpnManagerPool;
     
-    public OpenVpnSummaryStatService(ILogger<IOpenVpnSummaryStatService> logger, IOpenVpnManagementService openVpnManagementService)
+    public OpenVpnSummaryStatService(ILogger<IOpenVpnSummaryStatService> logger, OpenVpnManagerPool openVpnManagerPool)
     {
         _logger = logger;
-        _openVpnManagementService = openVpnManagementService;
+        _openVpnManagerPool = openVpnManagerPool;
     }
     
     public async Task<OpenVpnSummaryStats> GetSummaryStatsAsync(string managementIp, int managementPort, 
         CancellationToken cancellationToken)
     {
-        var response = await _openVpnManagementService.SendCommandAsync(managementIp, managementPort, 
-            "load-stats", cancellationToken);
+        var manager = _openVpnManagerPool.GetOrCreateManager(managementIp, managementPort);
+        var response = await manager.SendCommandAsync("load-stats", cancellationToken);
         return ParseSummaryStats(response);
     }
     
