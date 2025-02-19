@@ -6,6 +6,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
@@ -16,18 +17,21 @@ public class OpenVpnServerService : IOpenVpnServerService
     private readonly IOpenVpnSummaryStatService _openVpnSummaryStatService;
     private readonly IOpenVpnVersionService _openVpnVersionService;
     private readonly IOpenVpnStateService _openVpnStateService;
+    private readonly ICommandQueueManager _commandQueueManager;
     private readonly IUnitOfWork _unitOfWork;
     private readonly List<string>? _externalIpServices;
     
     public OpenVpnServerService(ILogger<IOpenVpnServerService> logger, IConfiguration configuration,
         IOpenVpnClientService openVpnClientService, IOpenVpnSummaryStatService openVpnSummaryStatService, 
-        IOpenVpnVersionService openVpnVersionService, IOpenVpnStateService openVpnStateService, IUnitOfWork unitOfWork)
+        IOpenVpnVersionService openVpnVersionService, IOpenVpnStateService openVpnStateService, 
+        ICommandQueueManager commandQueueManager, IUnitOfWork unitOfWork)
     {
         _logger = logger;
         _openVpnClientService = openVpnClientService;
         _openVpnSummaryStatService = openVpnSummaryStatService;
         _openVpnVersionService = openVpnVersionService;
         _openVpnStateService = openVpnStateService;
+        _commandQueueManager = commandQueueManager;
         _unitOfWork = unitOfWork;
 
         _externalIpServices = configuration.GetSection("ExternalIpServices").Get<List<string>>();
@@ -35,12 +39,11 @@ public class OpenVpnServerService : IOpenVpnServerService
         _logger.LogInformation("OpenVpnServerService initialized.");
     }
 
-    public async Task SaveConnectedClientsAsync(int vpnServerId, string managementIp, int managementPort, 
+    public async Task SaveConnectedClientsAsync(int vpnServerId, ICommandQueue commandQueue,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting SaveConnectedClientsAsync...");
-
-        var openVpnClients = await _openVpnClientService.GetClientsAsync(managementIp, managementPort, 
+        var openVpnClients = await _openVpnClientService.GetClientsAsync(commandQueue,
             cancellationToken);
         _logger.LogInformation("Retrieved {Count} clients from OpenVPN.", openVpnClients.Count);
         
@@ -106,7 +109,7 @@ public class OpenVpnServerService : IOpenVpnServerService
         _logger.LogInformation("SaveConnectedClientsAsync completed successfully.");
     }
 
-    public async Task SaveOpenVpnServerStatusLogAsync(int vpnServerId, string managementIp, int managementPort, 
+    public async Task SaveOpenVpnServerStatusLogAsync(int vpnServerId, ICommandQueue commandQueue,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Starting SaveOpenVpnServerStatusLogAsync...");
@@ -114,21 +117,19 @@ public class OpenVpnServerService : IOpenVpnServerService
         var serverInfo = new ServerInfo();
         try
         {
-            serverInfo.OpenVpnState = await _openVpnStateService.GetStateAsync(managementIp, managementPort, 
-                cancellationToken);
+            serverInfo.OpenVpnState = await _openVpnStateService.GetStateAsync(commandQueue, cancellationToken);
             if (serverInfo.OpenVpnState.UpSince <= DateTime.MinValue)
             {
                 throw new Exception("UpSince is not set. Check your configuration or server.");
             }
             
-            serverInfo.OpenVpnSummaryStats = await _openVpnSummaryStatService.GetSummaryStatsAsync(managementIp, 
-                managementPort, cancellationToken);
+            serverInfo.OpenVpnSummaryStats = await _openVpnSummaryStatService.GetSummaryStatsAsync(commandQueue, 
+                cancellationToken);
             serverInfo.OpenVpnState.ServerRemoteIp = await GetRemoteIpAddress();
 
             if (serverInfo.OpenVpnState != null)
             {
-                serverInfo.Version = await _openVpnVersionService.GetVersionAsync(managementIp, managementPort, 
-                    cancellationToken);
+                serverInfo.Version = await _openVpnVersionService.GetVersionAsync(commandQueue, cancellationToken);
             }
         }
         catch (Exception ex)
