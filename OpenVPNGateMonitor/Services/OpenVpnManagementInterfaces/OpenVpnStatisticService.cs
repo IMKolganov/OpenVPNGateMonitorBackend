@@ -7,19 +7,16 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 public class OpenVpnSummaryStatService : IOpenVpnSummaryStatService
 {
     private readonly ILogger<IOpenVpnSummaryStatService> _logger;
-    private readonly ICommandQueueManager _commandQueueManager;
     
-    public OpenVpnSummaryStatService(ILogger<IOpenVpnSummaryStatService> logger, ICommandQueueManager commandQueueManager)
+    public OpenVpnSummaryStatService(ILogger<IOpenVpnSummaryStatService> logger)
     {
         _logger = logger;
-        _commandQueueManager = commandQueueManager;
     }
     
-    public async Task<OpenVpnSummaryStats> GetSummaryStatsAsync(string managementIp, int managementPort, 
+    public async Task<OpenVpnSummaryStats> GetSummaryStatsAsync(ICommandQueue commandQueue, 
         CancellationToken cancellationToken)
     {
-        var manager = await _commandQueueManager.GetOrCreateQueueAsync(managementIp, managementPort);
-        var response = await manager.SendCommandAsync("load-stats");
+        var response = await commandQueue.SendCommandAsync("load-stats");
         return ParseSummaryStats(response);
     }
     

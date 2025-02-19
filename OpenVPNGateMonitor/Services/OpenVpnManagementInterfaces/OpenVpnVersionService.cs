@@ -7,19 +7,15 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 public class OpenVpnVersionService : IOpenVpnVersionService
 {
     private readonly ILogger<IOpenVpnVersionService> _logger;
-    private readonly ICommandQueueManager _commandQueueManager;
     
-    public OpenVpnVersionService(ILogger<IOpenVpnVersionService> logger, 
-        ICommandQueueManager commandQueueManager)
+    public OpenVpnVersionService(ILogger<IOpenVpnVersionService> logger)
     {
         _logger = logger;
-        _commandQueueManager = commandQueueManager;
     }
     
-    public async Task<string> GetVersionAsync(string managementIp, int managementPort, CancellationToken cancellationToken)
+    public async Task<string> GetVersionAsync(ICommandQueue commandQueue, CancellationToken cancellationToken)
     {
-        var manager = await _commandQueueManager.GetOrCreateQueueAsync(managementIp, managementPort);
-        var response = await manager.SendCommandAsync("version");
+        var response = await commandQueue.SendCommandAsync("version");
         
         var (openVpnVersion, managementVersion) = ParseVersion(response);
         return openVpnVersion;

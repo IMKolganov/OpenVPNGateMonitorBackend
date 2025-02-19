@@ -11,21 +11,18 @@ public class OpenVpnClientService : IOpenVpnClientService
 {
     private readonly ILogger<IOpenVpnClientService> _logger;
     private readonly IGeoIpService _geoIpService;
-    private readonly ICommandQueueManager _commandQueueManager;
     
     public OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoIpService geoIpService, 
         ICommandQueueManager commandQueueManager)
     {
         _logger = logger;
         _geoIpService = geoIpService; 
-        _commandQueueManager = commandQueueManager;
     }
     
-    public async Task<List<OpenVpnClient>> GetClientsAsync(string managementIp, int managementPort, 
+    public async Task<List<OpenVpnClient>> GetClientsAsync(ICommandQueue commandQueue, 
         CancellationToken cancellationToken)
     {
-        var manager = await _commandQueueManager.GetOrCreateQueueAsync(managementIp, managementPort);
-        var response = await manager.SendCommandAsync("status 3");
+        var response = await commandQueue.SendCommandAsync("status 3");
         return ParseStatus(response);
     }
 

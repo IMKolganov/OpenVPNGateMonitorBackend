@@ -2,6 +2,7 @@
 using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet.Subscribers;
 
 namespace OpenVPNGateMonitor.Controllers;
 

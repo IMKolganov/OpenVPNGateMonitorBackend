@@ -2,5 +2,5 @@
 
 public interface IMessageSubscriber
 {
-    void OnMessageReceived(string message);
+    Task OnMessageReceived(string message, CancellationToken cancellationToken);
 }

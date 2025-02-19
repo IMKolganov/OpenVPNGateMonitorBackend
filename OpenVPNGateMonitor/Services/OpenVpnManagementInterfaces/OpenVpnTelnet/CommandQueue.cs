@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
-public class CommandQueue
+public class CommandQueue : ICommandQueue
 {
     private readonly ConcurrentQueue<string> _messageQueue = new();
     private readonly ConcurrentDictionary<Guid, TaskCompletionSource<string>> _pendingCommands = new();
@@ -64,11 +64,11 @@ public class CommandQueue
         }
     }
 
-    private void NotifySubscribers(string message)
+    private void NotifySubscribers(string message, CancellationToken cancellationToken = default)
     {
         foreach (var subscriber in _subscribers)
         {
-            subscriber.OnMessageReceived(message);
+            subscriber.OnMessageReceived(message, cancellationToken);
         }
     }
 
@@ -103,6 +103,7 @@ public class CommandQueue
     
     public async Task DisconnectAsync()
     {
-        await _telnetClient.DisconnectAsync();
+        if (!HasSubscribers)
+            await _telnetClient.DisconnectAsync();
     }
 }

@@ -8,12 +8,13 @@ public class TelnetClient : IDisposable
     private readonly string _host;
     private readonly int _port;
     private TcpClient? _client;
-    private NetworkStream _stream;
-    private StreamReader _reader;
-    private StreamWriter _writer;
-    private CancellationTokenSource _cancellationTokenSource;
+    private NetworkStream _stream = null!;
+    private StreamReader _reader = null!;
+    private StreamWriter _writer = null!;
+    private CancellationTokenSource _cancellationTokenSource = new();
+    public event Action<string> OnDataReceived = delegate { };
 
-    public event Action<string> OnDataReceived;
+    // public event Action<string> OnDataReceived;
 
     public TelnetClient(string host, int port)
     {
