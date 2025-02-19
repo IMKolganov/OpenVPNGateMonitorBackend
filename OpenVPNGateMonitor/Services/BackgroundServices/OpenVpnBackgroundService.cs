@@ -2,12 +2,15 @@
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet.Subscribers;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
 public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundService
 {
     private readonly ILogger<IOpenVpnBackgroundService> _logger;
+    private readonly ICommandQueueManager _commandQueueManager;
     private readonly IServiceProvider _serviceProvider;
     private readonly int _seconds;
     private DateTime _nextRunTime;
@@ -15,10 +18,11 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     private BackgroundServiceStatus _status = BackgroundServiceStatus.Idle;
 
     public OpenVpnBackgroundService(ILogger<IOpenVpnBackgroundService> logger, 
-        IServiceProvider serviceProvider, IConfiguration configuration)
+        IServiceProvider serviceProvider, ICommandQueueManager commandQueueManager, IConfiguration configuration)
     {
         _logger = logger;
         _serviceProvider = serviceProvider;
+        _commandQueueManager = commandQueueManager;
         _logger.LogInformation($"Starting background service {Guid.NewGuid()}");
 
         _seconds = 120; // TODO: get from app settings or configuration
@@ -65,7 +69,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
             var openVpnServerRepository = unitOfWork.GetRepository<OpenVpnServer>();
             var openVpnServers = await openVpnServerRepository.GetAllAsync();
-            var vpnServers = openVpnServers.ToList();
+            var vpnServers = openVpnServers.Where(x=> x.Id == 8).ToList();
 
             _logger.LogInformation($"Found {vpnServers.Count} OpenVPN servers to process.");
 
@@ -74,31 +78,39 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
             var tasks = vpnServers.Select(async openVpnServer =>
             {
+                var commandQueue = await _commandQueueManager.GetOrCreateQueueAsync(
+                    openVpnServer.ManagementIp, openVpnServer.ManagementPort);
                 await semaphore.WaitAsync(cancellationToken);
+                
                 try
                 {
-                    _logger.LogInformation($"Processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+                    _logger.LogInformation($"Processing OpenVPN server: " +
+                                           $"{openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
 
                     using var innerScope = _serviceProvider.CreateScope();
                     var innerUnitOfWork = innerScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                    var openVpnServerService = innerScope.ServiceProvider.GetRequiredService<IOpenVpnServerService>();
+                    var openVpnServerService =
+                        innerScope.ServiceProvider.GetRequiredService<IOpenVpnServerService>();
                     var innerOpenVpnServerRepository = innerUnitOfWork.GetRepository<OpenVpnServer>();
 
-                    _logger.LogInformation($"Saving OpenVPN server status for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+                    _logger.LogInformation(
+                        $"Saving OpenVPN server status for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                     await openVpnServerService.SaveOpenVpnServerStatusLogAsync(
-                        openVpnServer.Id, openVpnServer.ManagementIp, openVpnServer.ManagementPort, cancellationToken
+                        openVpnServer.Id, commandQueue, cancellationToken
                     );
 
-                    _logger.LogInformation($"Saving connected clients for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+                    _logger.LogInformation(
+                        $"Saving connected clients for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                     await openVpnServerService.SaveConnectedClientsAsync(
-                        openVpnServer.Id, openVpnServer.ManagementIp, openVpnServer.ManagementPort, cancellationToken
+                        openVpnServer.Id, commandQueue, cancellationToken
                     );
 
                     openVpnServer.IsOnline = true;
                     innerOpenVpnServerRepository.Update(openVpnServer);
                     await innerUnitOfWork.SaveChangesAsync(cancellationToken);
 
-                    _logger.LogInformation($"Finished processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+                    _logger.LogInformation(
+                        $"Finished processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                 }
                 catch (Exception ex)
                 {
@@ -110,10 +122,13 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                     errorRepository.Update(openVpnServer);
                     await errorUnitOfWork.SaveChangesAsync(cancellationToken);
 
-                    _logger.LogError(ex, $"Error processing OpenVPN server {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+                    _logger.LogError(ex,
+                        $"Error processing OpenVPN server {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
                 }
                 finally
                 {
+                    await _commandQueueManager.RemoveQueueIfNoSubscribers(openVpnServer.ManagementIp, 
+                        openVpnServer.ManagementPort);
                     semaphore.Release();
                 }
             });

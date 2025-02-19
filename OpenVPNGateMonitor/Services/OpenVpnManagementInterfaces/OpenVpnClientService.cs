@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text;
 using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
+using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 
@@ -10,24 +11,20 @@ public class OpenVpnClientService : IOpenVpnClientService
 {
     private readonly ILogger<IOpenVpnClientService> _logger;
     private readonly IGeoIpService _geoIpService;
-    private readonly IOpenVpnManagementService _openVpnManagementService;
     
     public OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoIpService geoIpService, 
-        IOpenVpnManagementService openVpnManagementService)
+        ICommandQueueManager commandQueueManager)
     {
         _logger = logger;
-        _geoIpService = geoIpService;
-        _openVpnManagementService = openVpnManagementService;
+        _geoIpService = geoIpService; 
     }
     
-    public async Task<List<OpenVpnClient>> GetClientsAsync(string managementIp, int managementPort, 
+    public async Task<List<OpenVpnClient>> GetClientsAsync(ICommandQueue commandQueue, 
         CancellationToken cancellationToken)
     {
-        var response = await _openVpnManagementService.SendCommandAsync(managementIp, managementPort, 
-            "status 3", cancellationToken);
+        var response = await commandQueue.SendCommandAsync("status 3");
         return ParseStatus(response);
     }
-    
 
     private List<OpenVpnClient> ParseStatus(string data)
     {
