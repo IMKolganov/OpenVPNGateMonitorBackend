@@ -37,9 +37,9 @@ public static class ServiceConfiguration
         
         services.AddScoped<IOpenVpnServerService, OpenVpnServerService>();
 
-        services.AddSingleton<OpenVpnCommandQueue>();
-        services.AddSingleton<OpenVpnManagerPool>();
-        services.AddSingleton<OpenVpnWebSocketHandler>();
+        services.AddSingleton<ICommandQueueManager, CommandQueueManager>();
+        services.AddSingleton<IMessageSubscriber, ConsoleMessageSubscriber>();
+
 
         services.AddSingleton<IEasyRsaService, EasyRsaService>();
         services.AddSingleton<IEasyRsaParseDbService, EasyRsaParseDbService>();

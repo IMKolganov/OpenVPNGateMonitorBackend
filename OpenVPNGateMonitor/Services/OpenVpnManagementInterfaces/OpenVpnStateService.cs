@@ -7,19 +7,19 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 public class OpenVpnStateService : IOpenVpnStateService
 {
     private readonly ILogger<IOpenVpnStateService> _logger;
-    private readonly OpenVpnManagerPool _openVpnManagerPool;
+    private readonly ICommandQueueManager _commandQueueManager;
 
-    public OpenVpnStateService(ILogger<IOpenVpnStateService> logger, OpenVpnManagerPool openVpnManagerPool)
+    public OpenVpnStateService(ILogger<IOpenVpnStateService> logger, ICommandQueueManager commandQueueManager)
     {
         _logger = logger;
-        _openVpnManagerPool = openVpnManagerPool;
+        _commandQueueManager = commandQueueManager;
     }
     
     public async Task<OpenVpnState> GetStateAsync(string managementIp, int managementPort, 
         CancellationToken cancellationToken)
     {
-        var manager = _openVpnManagerPool.GetOrCreateManager(managementIp, managementPort);
-        var response = await manager.SendCommandAsync("state", cancellationToken);
+        var manager = await _commandQueueManager.GetOrCreateQueueAsync(managementIp, managementPort);
+        var response = await manager.SendCommandAsync("state");
         return ParseState(response);
     }
     
