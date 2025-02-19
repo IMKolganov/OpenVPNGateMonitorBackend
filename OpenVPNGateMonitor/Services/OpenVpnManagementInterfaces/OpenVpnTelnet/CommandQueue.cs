@@ -40,7 +40,10 @@ public class CommandQueue
 
         Console.WriteLine($"[CommandQueue] Received message: {message}");
 
-        if (message.Contains("END") || message.StartsWith("SUCCESS:", StringComparison.OrdinalIgnoreCase))
+        if (message.Contains("END") || message.Contains("SUCCESS:", StringComparison.OrdinalIgnoreCase) 
+                                    || message.Contains("ERROR:", StringComparison.OrdinalIgnoreCase) 
+                                    || message.Contains("NOTIFY:", StringComparison.OrdinalIgnoreCase)
+                                    || message.Contains("NOTICE:", StringComparison.OrdinalIgnoreCase))
         {
             if (_pendingCommands.TryRemove(_pendingCommands.Keys.FirstOrDefault(), out var tcs))
             {

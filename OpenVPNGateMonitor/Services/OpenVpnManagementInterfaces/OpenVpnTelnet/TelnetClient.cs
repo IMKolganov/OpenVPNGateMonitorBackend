@@ -52,7 +52,10 @@ public class TelnetClient : IDisposable
                 response.Append(buffer, 0, bytesRead);
                 string message = response.ToString();
                 
-                if (message.Contains("END") || message.StartsWith("SUCCESS:", StringComparison.OrdinalIgnoreCase))
+                if (message.Contains("END") || message.Contains("SUCCESS:", StringComparison.OrdinalIgnoreCase) 
+                                            || message.Contains("ERROR:", StringComparison.OrdinalIgnoreCase) 
+                                            || message.Contains("NOTIFY:", StringComparison.OrdinalIgnoreCase)
+                                            || message.Contains("NOTICE:", StringComparison.OrdinalIgnoreCase))
                 {
                     OnDataReceived?.Invoke(message.Trim());
                     response.Clear();
