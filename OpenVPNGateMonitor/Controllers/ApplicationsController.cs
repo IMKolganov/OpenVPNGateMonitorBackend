@@ -16,24 +16,24 @@ public class ApplicationsController : ControllerBase
         _appService = appService;
     }
 
-    [HttpPost("register")]
-    [Authorize]
+    [HttpPost("RegisterApplication")]
+    // [Authorize]
     public async Task<IActionResult> RegisterApplication([FromBody] RegisterAppRequest request)
     {
         var newApp = await _appService.RegisterApplicationAsync(request.Name);
         return Ok(new { clientId = newApp.ClientId, clientSecret = newApp.ClientSecret });
     }
 
-    [HttpGet]
-    [Authorize]
+    [HttpGet("GetAllApplications")]
+    // [Authorize]
     public async Task<IActionResult> GetAllApplications()
     {
         var apps = await _appService.GetAllApplicationsAsync();
         return Ok(apps);
     }
 
-    [HttpPost("revoke/{clientId}")]
-    [Authorize]
+    [HttpPost("RevokeApplication/{clientId}")]
+    // [Authorize]
     public async Task<IActionResult> RevokeApplication(string clientId)
     {
         var result = await _appService.RevokeApplicationAsync(clientId);
