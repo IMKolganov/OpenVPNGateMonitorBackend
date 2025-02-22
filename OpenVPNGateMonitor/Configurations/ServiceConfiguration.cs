@@ -54,6 +54,7 @@ public static class ServiceConfiguration
         services.AddSingleton<IOpenVpnBackgroundService>(sp => sp.GetRequiredService<OpenVpnBackgroundService>());
         services.AddHostedService(sp => sp.GetRequiredService<OpenVpnBackgroundService>());
 
+        services.AddAuthorization();
         services.AddControllers();
 
         services.AddEndpointsApiExplorer();
