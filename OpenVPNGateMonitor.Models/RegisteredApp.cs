@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace OpenVPNGateMonitor.Models.Helpers;
+namespace OpenVPNGateMonitor.Models;
 
 public class RegisteredApp
 {
@@ -9,8 +9,8 @@ public class RegisteredApp
 
     [Required]
     public string Name { get; set; }
-
     public string ClientSecret { get; set; } = Guid.NewGuid().ToString("N");
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public bool IsRevoked { get; set; } = false;
+    public DateTime LastUpdate { get; set; }
+    public DateTime CreateDate { get; set; } = DateTime.UtcNow;
 }

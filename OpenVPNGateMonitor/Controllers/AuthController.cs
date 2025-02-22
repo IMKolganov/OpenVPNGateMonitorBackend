@@ -4,6 +4,7 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
 using System.Threading.Tasks;
+using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.Api.Auth;
 
 namespace OpenVPNGateMonitor.Controllers;
@@ -46,10 +47,4 @@ public class AuthController : ControllerBase
 
         return Ok(new { token = tokenHandler.WriteToken(token) });
     }
-}
-
-public class TokenRequest
-{
-    public string ClientId { get; set; }
-    public string ClientSecret { get; set; }
 }

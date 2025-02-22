@@ -1,3 +1,4 @@
+using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers;
 
 namespace OpenVPNGateMonitor.Services.Api.Auth;
