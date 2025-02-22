@@ -32,7 +32,8 @@ public class AuthController : ControllerBase
         }
 
         var tokenHandler = new JwtSecurityTokenHandler();
-        var key = Encoding.ASCII.GetBytes(_config["Jwt:Secret"]);
+        var key = Encoding.ASCII.GetBytes(_config["Jwt:Secret"] 
+                                          ?? throw new InvalidOperationException("Jwt:Secret"));
         var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(new Claim[]
