@@ -87,10 +87,13 @@ public class OpenVpnServersController : ControllerBase
     [HttpGet("status")]
     public IActionResult GetStatus()
     {
+        var statusResponse = _openVpnBackgroundService.GetStatus();
+        
         return Ok(new
         {
             nextRunTime = _openVpnBackgroundService.GetNextRunTime(),
-            status = _openVpnBackgroundService.GetStatus().ToString()
+            status = statusResponse.ServiceStatus.ToString(),
+            errorMessage = statusResponse.ErrorMessage
         });
     }
 
@@ -119,9 +122,11 @@ public class OpenVpnServersController : ControllerBase
     {
         while (webSocket.State == WebSocketState.Open)
         {
+            var statusResponse = _openVpnBackgroundService.GetStatus();
             var statusUpdate = new
             {
-                status = _openVpnBackgroundService.GetStatus().ToString(),
+                status = statusResponse.ServiceStatus.ToString(),
+                errorMessage = statusResponse.ErrorMessage,
                 nextRunTime = _openVpnBackgroundService.GetNextRunTime()
             };
 

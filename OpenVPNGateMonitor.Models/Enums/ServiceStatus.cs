@@ -1,6 +1,6 @@
 ﻿namespace OpenVPNGateMonitor.Models.Enums;
 
-public enum BackgroundServiceStatus
+public enum ServiceStatus
 {
     Idle,
     Running,
