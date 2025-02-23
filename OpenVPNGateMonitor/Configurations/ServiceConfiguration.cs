@@ -1,5 +1,6 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api;
+using OpenVPNGateMonitor.Services.Api.Auth;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -52,8 +53,11 @@ public static class ServiceConfiguration
 
         services.AddSingleton<OpenVpnBackgroundService>();
         services.AddSingleton<IOpenVpnBackgroundService>(sp => sp.GetRequiredService<OpenVpnBackgroundService>());
+
+        services.AddScoped<IApplicationService, ApplicationService>();
         services.AddHostedService(sp => sp.GetRequiredService<OpenVpnBackgroundService>());
 
+        services.AddAuthorization();
         services.AddControllers();
 
         services.AddEndpointsApiExplorer();

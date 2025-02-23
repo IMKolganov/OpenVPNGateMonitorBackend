@@ -1,4 +1,4 @@
-﻿using OpenVPNGateMonitor.Models.Enums;
+﻿using OpenVPNGateMonitor.Models.Helpers.Api;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
