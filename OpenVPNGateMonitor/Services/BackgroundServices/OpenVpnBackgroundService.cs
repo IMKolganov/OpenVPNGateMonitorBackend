@@ -12,7 +12,6 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     private readonly OpenVpnServerProcessorFactory _processorFactory;
     private readonly OpenVpnServerStatusManager _statusManager;
     private readonly IServiceProvider _serviceProvider;
-    private readonly int _seconds; 
     private CancellationTokenSource _delayTokenSource = new();
 
     public OpenVpnBackgroundService(
@@ -25,8 +24,6 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         _processorFactory = processorFactory;
         _statusManager = statusManager;
         _serviceProvider = serviceProvider;
-
-        _seconds = 120;
     }
 
     public Dictionary<int, BackgroundServerStatus> GetStatus() => _statusManager.GetAllStatuses();
