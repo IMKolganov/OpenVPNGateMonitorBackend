@@ -8,7 +8,7 @@ public static class JwtConfiguration
 {
     public static void ConfigureJwt(this IServiceCollection services)
     {
-        var key = Encoding.ASCII.GetBytes("SuperSecretKeyForSigningJwtTokens123!");
+        var key = Encoding.ASCII.GetBytes("SuperSecretKeyForSigningJwtTokens123!");//todo: move to config
 
         services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>

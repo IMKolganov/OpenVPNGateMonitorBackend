@@ -28,21 +28,30 @@ public class OpenVpnServersController : ControllerBase
 
     [HttpGet("GetAllConnectedClients/{vpnServerId}")]
     public async Task<IActionResult> GetAllConnectedClients(
-        int vpnServerId, CancellationToken cancellationToken = default)
+        int vpnServerId, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
         if (vpnServerId == 0)
             return BadRequest("vpnServerId is required.");
-        return Ok(await _vpnDataService.GetAllConnectedOpenVpnServerClients(vpnServerId, cancellationToken));
+        if (page < 1 || pageSize < 1)
+            return BadRequest("Invalid pagination parameters.");
+
+        var result = await _vpnDataService.GetAllConnectedOpenVpnServerClients(vpnServerId, page, 
+            pageSize, cancellationToken);
+        return Ok(result);
     }
-    
-    
+
     [HttpGet("GetAllHistoryClients/{vpnServerId}")]
     public async Task<IActionResult> GetAllHistoryClients(
-        int vpnServerId, CancellationToken cancellationToken = default)
+        int vpnServerId, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
         if (vpnServerId == 0)
             return BadRequest("vpnServerId is required.");
-        return Ok(await _vpnDataService.GetAllHistoryOpenVpnServerClients(vpnServerId, cancellationToken));
+        if (page < 1 || pageSize < 1)
+            return BadRequest("Invalid pagination parameters.");
+
+        var result = await _vpnDataService.GetAllHistoryOpenVpnServerClients(vpnServerId, page,
+            pageSize, cancellationToken);
+        return Ok(result);
     }
     
     [HttpGet("GetAllServers")]
