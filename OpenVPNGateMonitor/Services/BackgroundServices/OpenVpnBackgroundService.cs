@@ -48,8 +48,8 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         {
             try
             {
-                var processor = _processorFactory.GetOrCreateProcessor(server);
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Running);
+                var processor = _processorFactory.GetOrCreateProcessor(server);
 
                 await processor.ProcessServerAsync(server, cancellationToken);
 

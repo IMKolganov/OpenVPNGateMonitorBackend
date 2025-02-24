@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
@@ -95,7 +96,11 @@ public class OpenVpnServersController : ControllerBase
     [HttpPost("run-now")]
     public async Task<IActionResult> RunNow(CancellationToken cancellationToken)
     {
-        await _openVpnBackgroundService.RunNow(cancellationToken);
+        var serverStatuses = _openVpnBackgroundService.GetStatus();
+        if (serverStatuses.Values.All(x => x.Status != ServiceStatus.Running))
+        {
+            await _openVpnBackgroundService.RunNow(cancellationToken);
+        }
         return Ok(new { message = "OpenVPN background task executed immediately." });
     }
     
