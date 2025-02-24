@@ -53,7 +53,11 @@ public class OpenVpnFilesController : ControllerBase
             return BadRequest("ovpnFileId & vpnServerId is required.");
 
         var issuedOvpnFileResult = await _ovpFileService.GetOvpnFile(issuedOvpnFileId, vpnServerId, cancellationToken);
-
+        
+        string safeFileName = Uri.EscapeDataString(issuedOvpnFileResult.FileName);
+        Response.Headers["Content-Disposition"] = $"attachment; filename=\"{safeFileName}\"";
+        Response.Headers["Access-Control-Expose-Headers"] = "Content-Disposition";
+        
         return File(issuedOvpnFileResult.FileStream ?? 
                     throw new InvalidOperationException($"File not found. FileName: {issuedOvpnFileResult.FileName}"), 
             "application/x-openvpn-profile", issuedOvpnFileResult.FileName);
