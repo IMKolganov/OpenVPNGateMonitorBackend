@@ -16,7 +16,7 @@ public class OpenVpnSummaryStatService : IOpenVpnSummaryStatService
     public async Task<OpenVpnSummaryStats> GetSummaryStatsAsync(ICommandQueue commandQueue, 
         CancellationToken cancellationToken)
     {
-        var response = await commandQueue.SendCommandAsync("load-stats");
+        var response = await commandQueue.SendCommandAsync("load-stats", cancellationToken);
         return ParseSummaryStats(response);
     }
     

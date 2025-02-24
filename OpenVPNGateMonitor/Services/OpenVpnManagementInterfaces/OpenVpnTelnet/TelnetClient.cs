@@ -24,9 +24,8 @@ public class TelnetClient : IDisposable
 
     public async Task ConnectAsync(CancellationToken cancellationToken, int timeoutSec = 5)
     {
-        _client = new TcpClient();
-
-            await _client.ConnectAsync(_host, _port, cancellationToken);
+        _client = new TcpClient(); 
+        await _client.ConnectAsync(_host, _port, cancellationToken);
 
         _stream = _client.GetStream();
         _reader = new StreamReader(_stream, Encoding.ASCII);
@@ -67,13 +66,14 @@ public class TelnetClient : IDisposable
         }
     }
 
-    public async Task SendAsync(string command)
+    public async Task SendAsync(string command, CancellationToken cancellationToken)
     {
         if (_client == null || !_client.Connected)
         {
-            throw new InvalidOperationException("Client is not connected");
+            await _client!.ConnectAsync(_host, _port, cancellationToken);
+            // throw new InvalidOperationException("Client is not connected");
         }
-        
+
         await _writer.WriteLineAsync(command);
     }
 

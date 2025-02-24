@@ -40,7 +40,7 @@ public class OpenVpnTelnetService : IOpenVpnTelnetService
         var webSocketSubscriber = new WebSocketMessageSubscriber(webSocket);
         commandQueue.Subscribe(webSocketSubscriber);
 
-        await HandleWebSocketCommunication(webSocket, commandQueue, ip, port);
+        await HandleWebSocketCommunication(webSocket, commandQueue, ip, port, cancellationToken);
     }
 
     public async Task HandleWebSocketByServerIdAsync(HttpContext context, int openVpnServerId, 
@@ -68,11 +68,12 @@ public class OpenVpnTelnetService : IOpenVpnTelnetService
         commandQueue.Subscribe(webSocketSubscriber);
         
         await HandleWebSocketCommunication(webSocket, commandQueue, openVpnServer.ManagementIp, 
-            openVpnServer.ManagementPort);
+            openVpnServer.ManagementPort, cancellationToken);
     }
 
 
-    private async Task HandleWebSocketCommunication(WebSocket webSocket, CommandQueue commandQueue, string ip, int port)
+    private async Task HandleWebSocketCommunication(WebSocket webSocket, CommandQueue commandQueue, 
+        string ip, int port, CancellationToken cancellationToken)
     {
         var buffer = new byte[1024 * 4];
         var webSocketSubscriber = new WebSocketMessageSubscriber(webSocket);
@@ -90,7 +91,7 @@ public class OpenVpnTelnetService : IOpenVpnTelnetService
 
                     try
                     {
-                        var response = await commandQueue.SendCommandAsync(command);
+                        var response = await commandQueue.SendCommandAsync(command, cancellationToken);
                         Console.WriteLine($"Response: {response}");
 
                         var responseBytes = Encoding.UTF8.GetBytes(response);

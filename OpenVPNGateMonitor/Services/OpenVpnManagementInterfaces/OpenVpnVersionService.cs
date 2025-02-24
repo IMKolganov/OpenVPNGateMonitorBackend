@@ -15,7 +15,7 @@ public class OpenVpnVersionService : IOpenVpnVersionService
     
     public async Task<string> GetVersionAsync(ICommandQueue commandQueue, CancellationToken cancellationToken)
     {
-        var response = await commandQueue.SendCommandAsync("version");
+        var response = await commandQueue.SendCommandAsync("version", cancellationToken);
         
         var (openVpnVersion, managementVersion) = ParseVersion(response);
         return openVpnVersion;
