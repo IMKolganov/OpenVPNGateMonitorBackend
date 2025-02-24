@@ -22,20 +22,18 @@ public class TelnetClient : IDisposable
         _port = port;
     }
 
-    public async Task ConnectAsync()
+    public async Task ConnectAsync(CancellationToken cancellationToken, int timeoutSec = 5)
     {
         _client = new TcpClient();
-        await _client.ConnectAsync(_host, _port);
+
+            await _client.ConnectAsync(_host, _port, cancellationToken);
+
         _stream = _client.GetStream();
         _reader = new StreamReader(_stream, Encoding.ASCII);
         _writer = new StreamWriter(_stream, Encoding.ASCII) { AutoFlush = true };
-
-        Console.WriteLine("[TelnetClient] Connected to server.");
-
+        
         _cancellationTokenSource = new CancellationTokenSource();
-        //OnDataReceived += msg => Console.WriteLine($"[TelnetClient] Message received: {msg}");
-
-        _ = Task.Run(() => ListenAsync(_cancellationTokenSource.Token));
+        _ = Task.Run(() => ListenAsync(_cancellationTokenSource.Token), cancellationToken);
     }
 
     private async Task ListenAsync(CancellationToken cancellationToken)

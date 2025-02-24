@@ -24,7 +24,8 @@ public class OpenVpnTelnetService : IOpenVpnTelnetService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task HandleWebSocketAsync(HttpContext context, string ip, int port)
+    public async Task HandleWebSocketAsync(HttpContext context, string ip, int port, 
+        CancellationToken cancellationToken)
     {
         if (!context.WebSockets.IsWebSocketRequest)
         {
@@ -35,19 +36,20 @@ public class OpenVpnTelnetService : IOpenVpnTelnetService
         using var webSocket = await context.WebSockets.AcceptWebSocketAsync();
         _logger.LogInformation($"WebSocket connection established for {ip}:{port}");
 
-        var commandQueue = await _commandQueueManager.GetOrCreateQueueAsync(ip, port);
+        var commandQueue = await _commandQueueManager.GetOrCreateQueueAsync(ip, port, cancellationToken);
         var webSocketSubscriber = new WebSocketMessageSubscriber(webSocket);
         commandQueue.Subscribe(webSocketSubscriber);
 
         await HandleWebSocketCommunication(webSocket, commandQueue, ip, port);
     }
 
-    public async Task HandleWebSocketByServerIdAsync(HttpContext context, int openVpnServerId)
+    public async Task HandleWebSocketByServerIdAsync(HttpContext context, int openVpnServerId, 
+        CancellationToken cancellationToken)
     {
         var openVpnServer = await _unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
             .Where(x => x.Id == openVpnServerId)
-            .FirstOrDefaultAsync()??
+            .FirstOrDefaultAsync(cancellationToken: cancellationToken)??
             throw new InvalidOperationException("OpenVpnServerCertConfig not found");
 
         if (!context.WebSockets.IsWebSocketRequest)
@@ -61,7 +63,7 @@ public class OpenVpnTelnetService : IOpenVpnTelnetService
                                $"{openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
         
         var commandQueue = await _commandQueueManager.GetOrCreateQueueAsync(openVpnServer.ManagementIp, 
-            openVpnServer.ManagementPort);
+            openVpnServer.ManagementPort, cancellationToken: cancellationToken);
         var webSocketSubscriber = new WebSocketMessageSubscriber(webSocket);
         commandQueue.Subscribe(webSocketSubscriber);
         
