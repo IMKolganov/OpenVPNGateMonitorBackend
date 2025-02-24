@@ -3,6 +3,7 @@ using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
@@ -116,6 +117,19 @@ public class OvpnFileService : IOvpnFileService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         
         return issuedOvpnFile;
+    }
+
+    public async Task<OvpnFileResult> GetOvpnFile(int issuedOvpnFileId, int vpnServerId,
+        CancellationToken cancellationToken)
+    {
+        var issuedOvpnFile = await _unitOfWork.GetQuery<IssuedOvpnFile>()
+                                 .AsQueryable()
+                                 .Where(x =>
+                                     x.Id == issuedOvpnFileId && x.ServerId == vpnServerId)
+                                 .FirstOrDefaultAsync(cancellationToken)
+                             ?? throw new InvalidOperationException("OpenVpnServerCertConfig not found");
+        var issuedOvpnFileStream = new FileStream(issuedOvpnFile.FilePath, FileMode.Open, FileAccess.Read);
+        return new OvpnFileResult(){ FileName = issuedOvpnFile.FileName, FileStream = issuedOvpnFileStream };
     }
     
     private string MoveRevokedOvpnFile(OpenVpnServerCertConfig openVpnServerCertConfig, IssuedOvpnFile issuedOvpnFile)
