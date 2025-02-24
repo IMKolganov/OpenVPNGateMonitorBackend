@@ -1,213 +1,108 @@
 ﻿using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Enums;
-using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
-using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
 public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundService
 {
-    private readonly ILogger<IOpenVpnBackgroundService> _logger;
-    private readonly ICommandQueueManager _commandQueueManager;
+    private readonly ILogger<OpenVpnBackgroundService> _logger;
+    private readonly OpenVpnServerProcessorFactory _processorFactory;
+    private readonly OpenVpnServerStatusManager _statusManager;
     private readonly IServiceProvider _serviceProvider;
-    private readonly int _seconds;
-    private DateTime _nextRunTime;
-    private readonly SemaphoreSlim _executionLock = new(1, 1);
-    private BackgroundServiceStatus _status = new();
+    private readonly int _seconds; 
     private CancellationTokenSource _delayTokenSource = new();
 
-
-    public OpenVpnBackgroundService(ILogger<IOpenVpnBackgroundService> logger, 
-        IServiceProvider serviceProvider, ICommandQueueManager commandQueueManager, IConfiguration configuration)
+    public OpenVpnBackgroundService(
+        ILogger<OpenVpnBackgroundService> logger,
+        IServiceProvider serviceProvider,
+        OpenVpnServerProcessorFactory processorFactory,
+        OpenVpnServerStatusManager statusManager)
     {
         _logger = logger;
+        _processorFactory = processorFactory;
+        _statusManager = statusManager;
         _serviceProvider = serviceProvider;
-        _commandQueueManager = commandQueueManager;
-        _logger.LogInformation($"Starting background service {Guid.NewGuid()}");
 
-        _seconds = 120; // TODO: get from app settings or configuration
-        if (_seconds <= 0)
-        {
-            throw new InvalidOperationException("Failed to load OpenVpnSettings UpdateSecond from configuration.");
-        }
-
-        _nextRunTime = DateTime.UtcNow.AddSeconds(_seconds);
+        _seconds = 120;
     }
 
-    public DateTime GetNextRunTime() => _nextRunTime;
-
-    public BackgroundServiceStatus GetStatus()
-    {
-        return _status;
-    }
+    public Dictionary<int, BackgroundServerStatus> GetStatus() => _statusManager.GetAllStatuses();
 
     public async Task RunNow(CancellationToken cancellationToken)
     {
-        if (!await _executionLock.WaitAsync(0, cancellationToken))
-        {
-            _logger.LogWarning("⚠ OpenVPN task is already running. Skipping manual execution.");
-            return;
-        }
-
-        try
-        {
-            _logger.LogInformation("🚀 Manual trigger received. Cancelling wait...");
-            await _delayTokenSource.CancelAsync(); 
-            
-            _logger.LogInformation("🔄 Manually triggering OpenVPN task...");
-            await RunOpenVpnTask(cancellationToken);
-        }
-        finally
-        {
-            _executionLock.Release();
-        }
+        _logger.LogInformation("Manual trigger received. Cancelling wait...");
+        await _delayTokenSource.CancelAsync();
+        await RunOpenVpnTask(cancellationToken);
     }
 
     private async Task RunOpenVpnTask(CancellationToken cancellationToken)
     {
-        if (_status.ServiceStatus == ServiceStatus.Running)
+        using var scope = _serviceProvider.CreateScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();//.Where(x=> x.Id == 8)
+
+        await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
         {
-            _logger.LogWarning("⚠ OpenVPN background task is already running. Skipping execution.");
-            return;
-        }
-
-        _status.ServiceStatus = ServiceStatus.Running;
-        _logger.LogInformation("🚀 Starting OpenVPN background task...");
-
-        try
-        {
-            using var scope = _serviceProvider.CreateScope();
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();
-
-            _logger.LogInformation($"🔎 Found {openVpnServers.Count} OpenVPN servers to process.");
-
-            var maxDegreeOfParallelism = Math.Max(Environment.ProcessorCount - 1, 1);
-            using var semaphore = new SemaphoreSlim(maxDegreeOfParallelism);
-
-            var tasks = openVpnServers.Select(openVpnServer => Task.Run(async () =>
-            {
-                var commandQueue = await _commandQueueManager.GetOrCreateQueueAsync(
-                    openVpnServer.ManagementIp, openVpnServer.ManagementPort);
-                await semaphore.WaitAsync(cancellationToken);
-
-                try
-                {
-                    _logger.LogInformation(
-                        $"⏳ Processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
-
-                    using var innerScope = _serviceProvider.CreateScope();
-                    var innerUnitOfWork = innerScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                    var openVpnServerService =
-                        innerScope.ServiceProvider.GetRequiredService<IOpenVpnServerService>();
-                    var innerOpenVpnServerRepository = innerUnitOfWork.GetRepository<OpenVpnServer>();
-
-                    _logger.LogInformation(
-                        $"📌 Saving OpenVPN server status for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
-                    await openVpnServerService.SaveOpenVpnServerStatusLogAsync(
-                        openVpnServer.Id, commandQueue, cancellationToken
-                    );
-
-                    _logger.LogInformation(
-                        $"📡 Saving connected clients for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
-                    await openVpnServerService.SaveConnectedClientsAsync(
-                        openVpnServer.Id, commandQueue, cancellationToken
-                    );
-
-                    openVpnServer.IsOnline = true;
-                    innerOpenVpnServerRepository.Update(openVpnServer);
-                    await innerUnitOfWork.SaveChangesAsync(cancellationToken);
-
-                    _logger.LogInformation(
-                        $"✅ Finished processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
-                }
-                catch (Exception ex)
-                {
-                    using var errorScope = _serviceProvider.CreateScope();
-                    var errorUnitOfWork = errorScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-                    var errorRepository = errorUnitOfWork.GetRepository<OpenVpnServer>();
-
-                    openVpnServer.IsOnline = false;
-                    errorRepository.Update(openVpnServer);
-                    await errorUnitOfWork.SaveChangesAsync(cancellationToken);
-
-                    _logger.LogError(ex,
-                        $"❌ Error processing OpenVPN server {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
-                }
-                finally
-                {
-                    _nextRunTime = DateTime.UtcNow.AddSeconds(_seconds);
-                    await _commandQueueManager.RemoveQueueIfNoSubscribers(openVpnServer.ManagementIp,
-                        openVpnServer.ManagementPort);
-                    semaphore.Release();
-                }
-            }));
-
             try
             {
-                await Task.WhenAll(tasks);
+                _statusManager.UpdateStatus(server.Id, ServiceStatus.Running);
+                var processor = _processorFactory.GetOrCreateProcessor(server);
+
+                await processor.ProcessServerAsync(server, cancellationToken);
+
+                _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle);
+            }
+            catch (TimeoutException ex)
+            {
+                _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, "Timeout");
+                _logger.LogError(ex, $"Timeout while processing OpenVPN server " +
+                                     $"{server.ManagementIp}:{server.ManagementPort}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "🔥 One or more OpenVPN server processing tasks failed.");
+                _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, ex.Message);
+                _logger.LogError(ex, $"OpenVpnBackgroundService: Error processing OpenVPN server " +
+                                     $"{server.ManagementIp}:{server.ManagementPort}");
             }
-            finally
-            {
-                _nextRunTime = DateTime.UtcNow.AddSeconds(_seconds);
-                _status.ServiceStatus = ServiceStatus.Idle;
-                _logger.LogInformation($"✅ OpenVPN background task completed. Next run at {_nextRunTime}");
-            }
-        }
-        catch (Exception ex)
-        {
-            var errorMessage = $"❌ An error occurred while executing OpenVPN background task. " +
-                               $"Message: {ex.Message}";
-            _status.ServiceStatus = ServiceStatus.Error;
-            _status.ErrorMessage = errorMessage;
-            _logger.LogError(ex, errorMessage);
-        }
+        });
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        try
+        _logger.LogInformation("OpenVPN Background Service started. Running initial execution...");
+        await RunOpenVpnTask(cancellationToken);
+
+        while (!cancellationToken.IsCancellationRequested)
         {
-            _logger.LogInformation("🔄 OpenVPN Background Service is starting.");
-        
-            while (!cancellationToken.IsCancellationRequested)
+            var now = DateTime.UtcNow;
+
+            var nextRunTime = _statusManager.GetAllStatuses()
+                .Values
+                .Select(status => status.NextRunTime)
+                .DefaultIfEmpty(DateTime.UtcNow.AddSeconds(120))
+                .Min();
+
+            if (now < nextRunTime)
             {
-                var now = DateTime.UtcNow;
+                var waitTime = (nextRunTime - now).TotalMilliseconds;
+                _logger.LogInformation($"Waiting {waitTime / 1000:F0} seconds until next run at {nextRunTime}");
 
-                if (now < _nextRunTime)
+                _delayTokenSource = new CancellationTokenSource();
+                try
                 {
-                    var waitTime = (_nextRunTime - now).TotalMilliseconds;
-                    _logger.LogInformation($"⏳ Waiting {waitTime / 1000:F0} seconds until next run at {_nextRunTime}");
-
-                    _delayTokenSource = new CancellationTokenSource();
-                    try
-                    {
-                        await Task.Delay(TimeSpan.FromMilliseconds(waitTime), _delayTokenSource.Token);
-                    }
-                    catch (TaskCanceledException)
-                    {
-                        _logger.LogInformation("🚀 Manual trigger received. Skipping wait.");
-                    }
+                    await Task.Delay(TimeSpan.FromMilliseconds(waitTime), _delayTokenSource.Token);
                 }
-
-                _nextRunTime = DateTime.UtcNow.AddSeconds(_seconds);
-                await RunOpenVpnTask(cancellationToken);
+                catch (TaskCanceledException)
+                {
+                    _logger.LogInformation("Manual trigger received. Skipping wait.");
+                }
             }
 
-            _logger.LogInformation("🛑 OpenVPN Background Service is stopping.");
-        }
-        catch (Exception ex)
-        {
-            var errorMessage = $"❌ An error occurred while running the background service. Message: {ex.Message}";
-            _status.ServiceStatus = ServiceStatus.Error;
-            _status.ErrorMessage = errorMessage;
-            _logger.LogError(ex, errorMessage);
+            await RunOpenVpnTask(cancellationToken);
         }
     }
+
 }

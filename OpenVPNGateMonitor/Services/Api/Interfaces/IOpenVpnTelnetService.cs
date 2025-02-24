@@ -2,7 +2,7 @@
 
 public interface IOpenVpnTelnetService
 {
-    Task HandleWebSocketAsync(HttpContext context, string ip, int port);
-    Task HandleWebSocketByServerIdAsync(HttpContext context, int openVpnServerId);
+    Task HandleWebSocketAsync(HttpContext context, string ip, int port, CancellationToken cancellationToken);
+    Task HandleWebSocketByServerIdAsync(HttpContext context, int openVpnServerId, CancellationToken cancellationToken);
 
 }

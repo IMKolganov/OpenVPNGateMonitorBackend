@@ -22,7 +22,7 @@ public class OpenVpnClientService : IOpenVpnClientService
     public async Task<List<OpenVpnClient>> GetClientsAsync(ICommandQueue commandQueue, 
         CancellationToken cancellationToken)
     {
-        var response = await commandQueue.SendCommandAsync("status 3");
+        var response = await commandQueue.SendCommandAsync("status 3", cancellationToken);
         return ParseStatus(response);
     }
 

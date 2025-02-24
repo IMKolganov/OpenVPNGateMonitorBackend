@@ -15,7 +15,7 @@ public class OpenVpnStateService : IOpenVpnStateService
     
     public async Task<OpenVpnState> GetStateAsync(ICommandQueue commandQueue, CancellationToken cancellationToken)
     {
-        var response = await commandQueue.SendCommandAsync("state");
+        var response = await commandQueue.SendCommandAsync("state", cancellationToken);
         return ParseState(response);
     }
     

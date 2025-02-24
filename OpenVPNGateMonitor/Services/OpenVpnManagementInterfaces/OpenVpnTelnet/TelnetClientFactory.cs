@@ -6,7 +6,8 @@ public class CommandQueueManager : ICommandQueueManager
 {
     private readonly ConcurrentDictionary<string, CommandQueue> _queues = new();
 
-    public async Task<CommandQueue> GetOrCreateQueueAsync(string ip, int port)
+    public async Task<CommandQueue> GetOrCreateQueueAsync(string ip, int port,
+        CancellationToken cancellationToken, int timeoutSeconds = 5)
     {
         string key = $"{ip}:{port}";
 
@@ -16,7 +17,7 @@ public class CommandQueueManager : ICommandQueueManager
         }
 
         var newClient = new TelnetClient(ip, port);
-        await newClient.ConnectAsync();
+        await newClient.ConnectAsync(cancellationToken, timeoutSeconds);
 
         var newQueue = new CommandQueue(newClient);
         _queues[key] = newQueue;

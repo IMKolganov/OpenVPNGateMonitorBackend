@@ -72,13 +72,13 @@ public class CommandQueue : ICommandQueue
         }
     }
 
-    public async Task<string> SendCommandAsync(string command, int timeoutMs = 5000)
+    public async Task<string> SendCommandAsync(string command, CancellationToken cancellationToken, int timeoutMs = 5000)
     {
         var cmdId = Guid.NewGuid();
         var tcs = new TaskCompletionSource<string>();
         _pendingCommands[cmdId] = tcs;
 
-        await _telnetClient.SendAsync(command);
+        await _telnetClient.SendAsync(command, cancellationToken);
 
         var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(timeoutMs));
 

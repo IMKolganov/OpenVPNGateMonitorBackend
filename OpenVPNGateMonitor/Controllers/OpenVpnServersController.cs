@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
@@ -87,20 +88,19 @@ public class OpenVpnServersController : ControllerBase
     [HttpGet("status")]
     public IActionResult GetStatus()
     {
-        var statusResponse = _openVpnBackgroundService.GetStatus();
-        
-        return Ok(new
-        {
-            nextRunTime = _openVpnBackgroundService.GetNextRunTime(),
-            status = statusResponse.ServiceStatus.ToString(),
-            errorMessage = statusResponse.ErrorMessage
-        });
+        var serverStatuses = _openVpnBackgroundService.GetStatus();
+
+        return Ok(serverStatuses);
     }
 
     [HttpPost("run-now")]
     public async Task<IActionResult> RunNow(CancellationToken cancellationToken)
     {
-        await _openVpnBackgroundService.RunNow(cancellationToken);
+        var serverStatuses = _openVpnBackgroundService.GetStatus();
+        if (serverStatuses.Values.All(x => x.Status != ServiceStatus.Running))
+        {
+            await _openVpnBackgroundService.RunNow(cancellationToken);
+        }
         return Ok(new { message = "OpenVPN background task executed immediately." });
     }
     
@@ -122,15 +122,9 @@ public class OpenVpnServersController : ControllerBase
     {
         while (webSocket.State == WebSocketState.Open)
         {
-            var statusResponse = _openVpnBackgroundService.GetStatus();
-            var statusUpdate = new
-            {
-                status = statusResponse.ServiceStatus.ToString(),
-                errorMessage = statusResponse.ErrorMessage,
-                nextRunTime = _openVpnBackgroundService.GetNextRunTime()
-            };
+            var serverStatuses = _openVpnBackgroundService.GetStatus();
 
-            var json = JsonConvert.SerializeObject(statusUpdate);
+            var json = JsonConvert.SerializeObject(serverStatuses);
             await webSocket.SendAsync(
                 Encoding.UTF8.GetBytes(json),
                 WebSocketMessageType.Text,

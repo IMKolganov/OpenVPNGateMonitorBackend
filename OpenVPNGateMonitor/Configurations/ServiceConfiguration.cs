@@ -51,11 +51,12 @@ public static class ServiceConfiguration
         services.AddScoped<ICertVpnService, CertVpnService>();
         services.AddScoped<IOvpnFileService, OvpnFileService>();
 
-        services.AddSingleton<OpenVpnBackgroundService>();
-        services.AddSingleton<IOpenVpnBackgroundService>(sp => sp.GetRequiredService<OpenVpnBackgroundService>());
+        services.AddSingleton<OpenVpnServerStatusManager>();
+        services.AddSingleton<OpenVpnServerProcessorFactory>();
 
+        services.AddHostedService<OpenVpnBackgroundService>();
+        services.AddSingleton<IOpenVpnBackgroundService, OpenVpnBackgroundService>();
         services.AddScoped<IApplicationService, ApplicationService>();
-        services.AddHostedService(sp => sp.GetRequiredService<OpenVpnBackgroundService>());
 
         services.AddAuthorization();
         services.AddControllers();
