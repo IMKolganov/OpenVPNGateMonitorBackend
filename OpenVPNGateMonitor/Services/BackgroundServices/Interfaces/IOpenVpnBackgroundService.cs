@@ -1,11 +1,11 @@
-﻿using OpenVPNGateMonitor.Models.Enums;
+﻿using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Models.Helpers.Background;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
 public interface IOpenVpnBackgroundService
 {
-    DateTime GetNextRunTime();
-    BackgroundServiceStatus GetStatus();
+    public Dictionary<int, BackgroundServerStatus> GetStatus();
     Task RunNow(CancellationToken cancellationToken);
     Task StartAsync(CancellationToken cancellationToken);
     Task StopAsync(CancellationToken cancellationToken);

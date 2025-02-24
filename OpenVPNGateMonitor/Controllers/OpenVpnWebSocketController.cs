@@ -19,16 +19,16 @@ public class OpenVpnWebSocketController : ControllerBase
     }
     
     [HttpGet("ws/{openVpnServerId}")]
-    public async Task GetWebSocket(int openVpnServerId)
+    public async Task GetWebSocket(int openVpnServerId, CancellationToken cancellationToken = default)
     {
-        await _openVpnTelnetService.HandleWebSocketByServerIdAsync(HttpContext, openVpnServerId);
+        await _openVpnTelnetService.HandleWebSocketByServerIdAsync(HttpContext, openVpnServerId, cancellationToken);
     }
 
 
     [HttpGet("ws/{ip}/{port}")]
-    public async Task GetWebSocket(string ip, int port)
+    public async Task GetWebSocket(string ip, int port, CancellationToken cancellationToken = default)
     {
-        await _openVpnTelnetService.HandleWebSocketAsync(HttpContext, ip, port);
+        await _openVpnTelnetService.HandleWebSocketAsync(HttpContext, ip, port, cancellationToken);
     }
 
 }

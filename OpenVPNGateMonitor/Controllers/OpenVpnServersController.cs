@@ -3,6 +3,7 @@ using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 
@@ -27,21 +28,30 @@ public class OpenVpnServersController : ControllerBase
 
     [HttpGet("GetAllConnectedClients/{vpnServerId}")]
     public async Task<IActionResult> GetAllConnectedClients(
-        int vpnServerId, CancellationToken cancellationToken = default)
+        int vpnServerId, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
         if (vpnServerId == 0)
             return BadRequest("vpnServerId is required.");
-        return Ok(await _vpnDataService.GetAllConnectedOpenVpnServerClients(vpnServerId, cancellationToken));
+        if (page < 1 || pageSize < 1)
+            return BadRequest("Invalid pagination parameters.");
+
+        var result = await _vpnDataService.GetAllConnectedOpenVpnServerClients(vpnServerId, page, 
+            pageSize, cancellationToken);
+        return Ok(result);
     }
-    
-    
+
     [HttpGet("GetAllHistoryClients/{vpnServerId}")]
     public async Task<IActionResult> GetAllHistoryClients(
-        int vpnServerId, CancellationToken cancellationToken = default)
+        int vpnServerId, int page = 1, int pageSize = 10, CancellationToken cancellationToken = default)
     {
         if (vpnServerId == 0)
             return BadRequest("vpnServerId is required.");
-        return Ok(await _vpnDataService.GetAllHistoryOpenVpnServerClients(vpnServerId, cancellationToken));
+        if (page < 1 || pageSize < 1)
+            return BadRequest("Invalid pagination parameters.");
+
+        var result = await _vpnDataService.GetAllHistoryOpenVpnServerClients(vpnServerId, page,
+            pageSize, cancellationToken);
+        return Ok(result);
     }
     
     [HttpGet("GetAllServers")]
@@ -87,17 +97,19 @@ public class OpenVpnServersController : ControllerBase
     [HttpGet("status")]
     public IActionResult GetStatus()
     {
-        return Ok(new
-        {
-            nextRunTime = _openVpnBackgroundService.GetNextRunTime(),
-            status = _openVpnBackgroundService.GetStatus().ToString()
-        });
+        var serverStatuses = _openVpnBackgroundService.GetStatus();
+
+        return Ok(serverStatuses);
     }
 
     [HttpPost("run-now")]
     public async Task<IActionResult> RunNow(CancellationToken cancellationToken)
     {
-        await _openVpnBackgroundService.RunNow(cancellationToken);
+        var serverStatuses = _openVpnBackgroundService.GetStatus();
+        if (serverStatuses.Values.All(x => x.Status != ServiceStatus.Running))
+        {
+            await _openVpnBackgroundService.RunNow(cancellationToken);
+        }
         return Ok(new { message = "OpenVPN background task executed immediately." });
     }
     
@@ -119,13 +131,9 @@ public class OpenVpnServersController : ControllerBase
     {
         while (webSocket.State == WebSocketState.Open)
         {
-            var statusUpdate = new
-            {
-                status = _openVpnBackgroundService.GetStatus().ToString(),
-                nextRunTime = _openVpnBackgroundService.GetNextRunTime()
-            };
+            var serverStatuses = _openVpnBackgroundService.GetStatus();
 
-            var json = JsonConvert.SerializeObject(statusUpdate);
+            var json = JsonConvert.SerializeObject(serverStatuses);
             await webSocket.SendAsync(
                 Encoding.UTF8.GetBytes(json),
                 WebSocketMessageType.Text,

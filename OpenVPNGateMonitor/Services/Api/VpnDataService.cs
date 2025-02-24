@@ -16,24 +16,40 @@ public class VpnDataService : IVpnDataService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<List<OpenVpnServerClient>> GetAllConnectedOpenVpnServerClients(int vpnServerId, 
-        CancellationToken cancellationToken)
+    public async Task<OpenVpnServerClientsResponse> GetAllConnectedOpenVpnServerClients(
+        int vpnServerId, int page, int pageSize, CancellationToken cancellationToken)
     {
-        var openVpnServerClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
-            .AsQueryable().Where(x=> x.IsConnected && x.VpnServerId == vpnServerId)
-            .OrderBy(x=>x.Id)
-            .ToListAsync(cancellationToken);
-        return openVpnServerClients;
-    }
-    public async Task<List<OpenVpnServerClient>> GetAllHistoryOpenVpnServerClients(int vpnServerId, 
-        CancellationToken cancellationToken)
-    {
-        var openVpnServerClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
+        var query = _unitOfWork.GetQuery<OpenVpnServerClient>()
             .AsQueryable()
-            .Where(x=> x.VpnServerId == vpnServerId)
-            .OrderBy(x=>x.Id)
+            .Where(x => x.IsConnected && x.VpnServerId == vpnServerId);
+
+        int totalCount = await query.CountAsync(cancellationToken);
+
+        var clients = await query
+            .OrderByDescending(x => x.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync(cancellationToken);
-        return openVpnServerClients;
+
+        return new OpenVpnServerClientsResponse(){ OpenVpnServerClients = clients, TotalCount = totalCount };
+    }
+
+    public async Task<OpenVpnServerClientsResponse> GetAllHistoryOpenVpnServerClients(
+        int vpnServerId, int page, int pageSize, CancellationToken cancellationToken)
+    {
+        var query = _unitOfWork.GetQuery<OpenVpnServerClient>()
+            .AsQueryable()
+            .Where(x => x.VpnServerId == vpnServerId);
+
+        int totalCount = await query.CountAsync(cancellationToken);
+
+        var clients = await query
+            .OrderByDescending(x => x.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return new OpenVpnServerClientsResponse(){ OpenVpnServerClients = clients, TotalCount = totalCount };
     }
 
     public async Task<List<OpenVpnServerInfoResponse>> GetAllOpenVpnServers(CancellationToken cancellationToken)
