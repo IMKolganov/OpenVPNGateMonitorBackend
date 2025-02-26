@@ -1,7 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
@@ -45,9 +44,12 @@ public class OvpnFileService : IOvpnFileService
        var openVpnServerOvpnFileConfig = await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
                                              .AsQueryable()
                                              .Where(x => x.ServerId == vpnServerId)
-                                             .FirstOrDefaultAsync(cancellationToken) ?? 
-                                         throw new InvalidOperationException("OpenVpnServerOvpnFileConfig not found");
-        
+                                             .FirstOrDefaultAsync(cancellationToken) 
+                                         ?? throw new InvalidOperationException($"OpenVPN server configuration " +
+                                             $"is missing for server ID {vpnServerId}. " +
+                                             $"Please configure OpenVpnServerOvpnFileConfig " +
+                                             $"before generating OVPN files.");
+
         _logger.LogInformation("Step 1: Building client certificate...");
         var certificateResult = await _certVpnService.AddServerCertificate(vpnServerId, 
             commonName, cancellationToken);

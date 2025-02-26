@@ -57,6 +57,8 @@ public static class ServiceConfiguration
         services.AddHostedService<OpenVpnBackgroundService>();
         services.AddSingleton<IOpenVpnBackgroundService, OpenVpnBackgroundService>();
         services.AddScoped<IApplicationService, ApplicationService>();
+        
+        services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
 
         services.AddAuthorization();
         services.AddControllers();
