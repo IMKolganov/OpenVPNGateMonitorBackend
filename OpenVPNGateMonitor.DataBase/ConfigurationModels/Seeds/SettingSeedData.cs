@@ -10,7 +10,7 @@ public static class SettingSeedData
         {
             Key = "OpenVPN_Polling_Interval",
             ValueType = "int",
-            IntValue = 30,
+            IntValue = 120,
             LastUpdate = DateTime.UtcNow,
             CreateDate = DateTime.UtcNow
         },
