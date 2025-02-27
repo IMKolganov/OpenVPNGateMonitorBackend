@@ -1,6 +1,7 @@
 ﻿using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
@@ -29,5 +30,7 @@ public class SettingConfiguration : IEntityTypeConfiguration<Setting>
         entity.Property(e => e.CreateDate)
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
+        
+        entity.HasData(SettingSeedData.Data);
     }
 }
