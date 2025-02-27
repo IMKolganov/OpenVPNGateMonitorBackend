@@ -38,8 +38,17 @@ public class SettingsController : ControllerBase
     }
 
     [HttpPost("Set")]
-    public async Task<IActionResult> Set([FromQuery] string key, [FromQuery] string value, [FromQuery] string type, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Set(
+        [FromQuery] string key, 
+        [FromQuery] string value, 
+        [FromQuery] string type, 
+        CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(type))
+        {
+            return BadRequest("Key, value, and type are required.");
+        }
+
         object? convertedValue = type.ToLower() switch
         {
             "int" => int.TryParse(value, out var intValue) ? intValue : null,
@@ -52,7 +61,7 @@ public class SettingsController : ControllerBase
 
         if (convertedValue is null)
         {
-            return BadRequest($"Invalid value or type '{type}'. Supported types: int, bool, double, datetime, string.");
+            return BadRequest($"Invalid value '{value}' for type '{type}'. Supported types: int, bool, double, datetime, string.");
         }
 
         await _settingsService.SetValueAsync(key, convertedValue, cancellationToken);
