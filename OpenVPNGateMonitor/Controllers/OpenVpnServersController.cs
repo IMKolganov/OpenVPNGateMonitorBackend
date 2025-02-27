@@ -130,21 +130,6 @@ public class OpenVpnServersController : ControllerBase
         }
     }
 
-    [HttpGet("GetBackgroundServiceInterval")]
-    public async Task<IActionResult> GetBackgroundServiceInterval(CancellationToken cancellationToken = default)
-    {
-        var interval = await _settingsService.GetValueAsync<int>("BackgroundServiceInterval", cancellationToken);
-        return Ok(new { interval = interval });
-    }
-
-    [HttpPost("SetBackgroundServiceInterval")]
-    public async Task<IActionResult> SetBackgroundServiceInterval(int interval, 
-        CancellationToken cancellationToken = default)
-    {
-        await _settingsService.SetValueAsync("BackgroundServiceInterval", interval, cancellationToken);
-        return Ok(new { interval = interval });
-    }
-
     private async Task SendStatusUpdates(WebSocket webSocket)
     {
         while (webSocket.State == WebSocketState.Open)
