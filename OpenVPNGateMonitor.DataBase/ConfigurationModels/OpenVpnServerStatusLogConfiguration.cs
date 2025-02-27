@@ -26,8 +26,10 @@ public class OpenVpnServerStatusLogConfiguration : IEntityTypeConfiguration<Open
         entity.Property(e => e.Version)
             .IsRequired();
         entity.Property(e => e.LastUpdate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
         entity.Property(e => e.CreateDate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
     }
 }

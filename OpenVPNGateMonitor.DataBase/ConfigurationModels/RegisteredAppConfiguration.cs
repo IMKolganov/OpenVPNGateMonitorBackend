@@ -18,8 +18,10 @@ public class RegisteredAppConfiguration : IEntityTypeConfiguration<RegisteredApp
         entity.Property(e => e.IsRevoked)
             .IsRequired();
         entity.Property(e => e.LastUpdate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
         entity.Property(e => e.CreateDate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
     }
 }

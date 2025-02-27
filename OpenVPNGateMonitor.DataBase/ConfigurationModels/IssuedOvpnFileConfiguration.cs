@@ -48,8 +48,10 @@ public class IssuedOvpnFileConfiguration : IEntityTypeConfiguration<IssuedOvpnFi
         entity.Property(e => e.Message)
             .HasMaxLength(500);
         entity.Property(e => e.LastUpdate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
         entity.Property(e => e.CreateDate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
     }
 }

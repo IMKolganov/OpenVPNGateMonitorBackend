@@ -41,8 +41,10 @@ public class OpenVpnServerClientConfiguration : IEntityTypeConfiguration<OpenVpn
         entity.Property(e => e.Longitude);
         entity.Property(e => e.IsConnected);
         entity.Property(e => e.LastUpdate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
         entity.Property(e => e.CreateDate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
     }
 }

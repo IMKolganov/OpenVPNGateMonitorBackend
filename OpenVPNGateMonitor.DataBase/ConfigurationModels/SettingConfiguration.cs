@@ -1,31 +1,31 @@
-using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class OpenVpnServerConfiguration : IEntityTypeConfiguration<OpenVpnServer>
+public class SettingConfiguration : IEntityTypeConfiguration<Setting>
 {
-    public void Configure(EntityTypeBuilder<OpenVpnServer> entity)
+    public void Configure(EntityTypeBuilder<Setting> entity)
     {
         entity.HasKey(e => e.Id);
-        entity.Property(e => e.ServerName)
-            .IsRequired();
-        entity.Property(e => e.ManagementIp)
+        entity.Property(e => e.Key)
             .IsRequired()
             .HasMaxLength(255);
-        entity.Property(e => e.ManagementPort)
-            .IsRequired();
-        entity.Property(e => e.Login)
+        entity.Property(e => e.ValueType)
             .IsRequired()
             .HasMaxLength(50);
-        entity.Property(e => e.Password)
-            .IsRequired()
-            .HasMaxLength(50);
-        entity.Property(e => e.IsOnline);
+        entity.Property(e => e.StringValue)
+            .HasMaxLength(255);
+        entity.Property(e => e.IntValue);
+        entity.Property(e => e.BoolValue);
+        entity.Property(e => e.DoubleValue);
+        entity.Property(e => e.DateTimeValue);
+
         entity.Property(e => e.LastUpdate)
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
         entity.Property(e => e.CreateDate)
             .IsRequired()
             .HasDefaultValueSql("CURRENT_TIMESTAMP");

@@ -20,8 +20,10 @@ public class OpenVpnServerOvpnFileConfigConfiguration : IEntityTypeConfiguration
             .IsRequired()
             .HasColumnType("TEXT");
         entity.Property(e => e.LastUpdate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
         entity.Property(e => e.CreateDate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
     }
 }

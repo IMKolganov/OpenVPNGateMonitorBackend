@@ -42,8 +42,10 @@ public class OpenVpnServerCertConfigConfiguration : IEntityTypeConfiguration<Ope
             .IsRequired()
             .HasMaxLength(255);
         entity.Property(e => e.LastUpdate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
         entity.Property(e => e.CreateDate)
-            .IsRequired();
+            .IsRequired()
+            .HasDefaultValueSql("CURRENT_TIMESTAMP");
     }
 }
