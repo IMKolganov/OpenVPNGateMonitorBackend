@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class OpenVpnServerOvpnFileConfigConfiguration : IEntityTypeConfiguration<OpenVpnServerOvpnFileConfig>
+public class OpenVpnServerOvpnFileConfigConfiguration : BaseEntityConfiguration<OpenVpnServerOvpnFileConfig>
 {
-    public void Configure(EntityTypeBuilder<OpenVpnServerOvpnFileConfig> entity)
+    public override void Configure(EntityTypeBuilder<OpenVpnServerOvpnFileConfig> entity)
     {
-        entity.HasKey(e => e.Id);
+        base.Configure(entity);
         entity.Property(e => e.ServerId)
             .IsRequired();
         entity.Property(e => e.VpnServerIp)
@@ -19,11 +19,5 @@ public class OpenVpnServerOvpnFileConfigConfiguration : IEntityTypeConfiguration
         entity.Property(e => e.ConfigTemplate)
             .IsRequired()
             .HasColumnType("TEXT");
-        entity.Property(e => e.LastUpdate)
-            .IsRequired()
-            .HasDefaultValueSql("CURRENT_TIMESTAMP");
-        entity.Property(e => e.CreateDate)
-            .IsRequired()
-            .HasDefaultValueSql("CURRENT_TIMESTAMP");
     }
 }

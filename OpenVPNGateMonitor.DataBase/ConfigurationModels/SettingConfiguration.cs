@@ -5,31 +5,27 @@ using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class SettingConfiguration : IEntityTypeConfiguration<Setting>
+public class SettingConfiguration : BaseEntityConfiguration<Setting>
 {
-    public void Configure(EntityTypeBuilder<Setting> entity)
+    public override void Configure(EntityTypeBuilder<Setting> entity)
     {
-        entity.HasKey(e => e.Id);
+        base.Configure(entity);
+
         entity.Property(e => e.Key)
             .IsRequired()
             .HasMaxLength(255);
+
         entity.Property(e => e.ValueType)
             .IsRequired()
             .HasMaxLength(50);
+
         entity.Property(e => e.StringValue)
             .HasMaxLength(255);
+
         entity.Property(e => e.IntValue);
         entity.Property(e => e.BoolValue);
         entity.Property(e => e.DoubleValue);
         entity.Property(e => e.DateTimeValue);
-
-        entity.Property(e => e.LastUpdate)
-            .IsRequired()
-            .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-        entity.Property(e => e.CreateDate)
-            .IsRequired()
-            .HasDefaultValueSql("CURRENT_TIMESTAMP");
         
         entity.HasData(SettingSeedData.Data);
     }

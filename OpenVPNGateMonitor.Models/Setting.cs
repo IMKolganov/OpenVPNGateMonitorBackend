@@ -2,10 +2,8 @@
 
 namespace OpenVPNGateMonitor.Models;
 
-public class Setting
+public class Setting : BaseEntity<int>
 {
-    public int Id { get; set; }
-
     [Key]
     [Required]
     public string Key { get; set; } = null!;
@@ -16,6 +14,4 @@ public class Setting
     public DateTime? DateTimeValue { get; set; }
     [Required]
     public string ValueType { get; set; } = null!; // "string", "int", "bool", "double", "datetime"
-    public DateTime LastUpdate { get; set; } = DateTime.UtcNow;
-    public DateTime CreateDate { get; set; } = DateTime.UtcNow;
 }

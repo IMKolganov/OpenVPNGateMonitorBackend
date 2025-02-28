@@ -3,9 +3,7 @@
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 public static class SettingSeedData
-{
-    private static readonly DateTime DefaultTimestamp = new DateTime(2025, 2, 28, 0, 0, 0, DateTimeKind.Utc);//todo: fix it
-
+{ 
     public static readonly Setting[] Data =
     {
         new Setting
@@ -13,7 +11,7 @@ public static class SettingSeedData
             Id = 1,
             Key = "OpenVPN_Polling_Interval",
             ValueType = "int",
-            IntValue = 30
+            IntValue = 120
         },
         new Setting
         {

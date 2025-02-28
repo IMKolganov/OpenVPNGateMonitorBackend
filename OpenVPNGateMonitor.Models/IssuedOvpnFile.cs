@@ -2,9 +2,8 @@
 
 namespace OpenVPNGateMonitor.Models;
 
-public class IssuedOvpnFile
+public class IssuedOvpnFile : BaseEntity<int>
 {
-    public int Id { get; set; }
     [Required]
     public int ServerId { get; set; }
     public string ExternalId { get; set; } = string.Empty;
@@ -26,6 +25,4 @@ public class IssuedOvpnFile
     [Required]
     public bool IsRevoked { get; set; } = false;
     public string Message { get; set; } = string.Empty;
-    public DateTime LastUpdate { get; set; } = DateTime.Now;
-    public DateTime CreateDate { get; set; }= DateTime.Now;
 }

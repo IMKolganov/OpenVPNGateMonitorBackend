@@ -1,8 +1,7 @@
 ﻿namespace OpenVPNGateMonitor.Models;
 
-public class OpenVpnServerClient
+public class OpenVpnServerClient : BaseEntity<int>
 {
-    public int Id { get; set; }
     public int VpnServerId { get; set; }
     public Guid SessionId { get; set; }
     public string CommonName { get; set; } = string.Empty;
@@ -18,6 +17,4 @@ public class OpenVpnServerClient
     public double? Latitude { get; set; }
     public double? Longitude { get; set; }
     public bool IsConnected { get; set; }
-    public DateTime LastUpdate { get; set; }
-    public DateTime CreateDate { get; set; }
 }
