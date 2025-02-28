@@ -10,6 +10,8 @@ public class SettingConfiguration : IEntityTypeConfiguration<Setting>
     public void Configure(EntityTypeBuilder<Setting> entity)
     {
         entity.HasKey(e => e.Id);
+        entity.Property(e => e.Id)
+            .ValueGeneratedOnAdd(); 
         entity.Property(e => e.Key)
             .IsRequired()
             .HasMaxLength(255);
