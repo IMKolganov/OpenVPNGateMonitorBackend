@@ -6,6 +6,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.Services.Others;
 
 namespace OpenVPNGateMonitor.Controllers;
 
@@ -15,15 +16,17 @@ public class OpenVpnServersController : ControllerBase
 {
     private readonly ILogger<OpenVpnServersController> _logger;
     private readonly IVpnDataService _vpnDataService;
+    private readonly ISettingsService _settingsService;
     
     private readonly IOpenVpnBackgroundService _openVpnBackgroundService;
 
     public OpenVpnServersController(ILogger<OpenVpnServersController> logger, IVpnDataService vpnDataService,
-        IOpenVpnBackgroundService openVpnBackgroundService)
+        IOpenVpnBackgroundService openVpnBackgroundService, ISettingsService settingsService)
     {
         _logger = logger;
         _vpnDataService = vpnDataService;
         _openVpnBackgroundService = openVpnBackgroundService;
+        _settingsService = settingsService;
     }
 
     [HttpGet("GetAllConnectedClients/{vpnServerId}")]
@@ -103,7 +106,7 @@ public class OpenVpnServersController : ControllerBase
     }
 
     [HttpPost("run-now")]
-    public async Task<IActionResult> RunNow(CancellationToken cancellationToken)
+    public async Task<IActionResult> RunNow(CancellationToken cancellationToken = default)
     {
         var serverStatuses = _openVpnBackgroundService.GetStatus();
         if (serverStatuses.Values.All(x => x.Status != ServiceStatus.Running))

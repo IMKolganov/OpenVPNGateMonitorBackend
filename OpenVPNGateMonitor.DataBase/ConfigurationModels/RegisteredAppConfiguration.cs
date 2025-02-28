@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class RegisteredAppConfiguration : IEntityTypeConfiguration<RegisteredApp>
+public class RegisteredAppConfiguration : BaseEntityConfiguration<RegisteredApp>
 {
-    public void Configure(EntityTypeBuilder<RegisteredApp> entity)
+    public override void Configure(EntityTypeBuilder<RegisteredApp> entity)
     {
-        entity.HasKey(e => e.Id);
+        base.Configure(entity);
         entity.Property(e => e.ClientId)
             .IsRequired();
         entity.Property(e => e.Name)
@@ -16,10 +16,6 @@ public class RegisteredAppConfiguration : IEntityTypeConfiguration<RegisteredApp
         entity.Property(e => e.ClientSecret)
             .IsRequired();
         entity.Property(e => e.IsRevoked)
-            .IsRequired();
-        entity.Property(e => e.LastUpdate)
-            .IsRequired();
-        entity.Property(e => e.CreateDate)
             .IsRequired();
     }
 }
