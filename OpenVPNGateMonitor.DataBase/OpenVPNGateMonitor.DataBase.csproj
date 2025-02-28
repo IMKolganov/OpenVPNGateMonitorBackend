@@ -16,7 +16,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="ConfigurationModels\Seeds\" />
       <Folder Include="Stores\" />
     </ItemGroup>
 

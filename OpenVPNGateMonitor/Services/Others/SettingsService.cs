@@ -44,31 +44,35 @@ public class SettingsService : ISettingsService
             .Where(x => x.Key == key)
             .FirstOrDefaultAsync(cancellationToken);
 
+        bool isNewSetting = false;
+
         if (setting == null)
         {
             setting = new Setting { Key = key };
-            await settingRepository.AddAsync(setting, cancellationToken);
+            isNewSetting = true;
         }
 
-        setting.ValueType = typeof(T) switch
+        setting.ValueType = value switch
         {
-            Type t when t == typeof(int) => "int",
-            Type t when t == typeof(bool) => "bool",
-            Type t when t == typeof(double) => "double",
-            Type t when t == typeof(DateTime) => "datetime",
-            Type t when t == typeof(string) => "string",
-            _ => throw new ArgumentException("Unsupported type")
+            int => "int",
+            bool => "bool",
+            double => "double",
+            DateTime => "datetime",
+            string => "string",
+            null => "null",
+            _ => throw new ArgumentException($"Unsupported type {typeof(T).Name}")
         };
 
         setting.LastUpdate = DateTime.UtcNow;
 
-        if (value == null)
+        setting.IntValue = null;
+        setting.BoolValue = null;
+        setting.DoubleValue = null;
+        setting.DateTimeValue = null;
+        setting.StringValue = null;
+
+        if (value is null)
         {
-            setting.StringValue = null;
-            setting.IntValue = null;
-            setting.BoolValue = null;
-            setting.DoubleValue = null;
-            setting.DateTimeValue = null;
             setting.ValueType = "null";
         }
         else
@@ -77,45 +81,31 @@ public class SettingsService : ISettingsService
             {
                 case int intValue:
                     setting.IntValue = intValue;
-                    setting.StringValue = null;
-                    setting.BoolValue = null;
-                    setting.DoubleValue = null;
-                    setting.DateTimeValue = null;
                     break;
                 case bool boolValue:
                     setting.BoolValue = boolValue;
-                    setting.StringValue = null;
-                    setting.IntValue = null;
-                    setting.DoubleValue = null;
-                    setting.DateTimeValue = null;
                     break;
                 case double doubleValue:
                     setting.DoubleValue = doubleValue;
-                    setting.StringValue = null;
-                    setting.IntValue = null;
-                    setting.BoolValue = null;
-                    setting.DateTimeValue = null;
                     break;
                 case DateTime dateTimeValue:
                     setting.DateTimeValue = dateTimeValue;
-                    setting.StringValue = null;
-                    setting.IntValue = null;
-                    setting.BoolValue = null;
-                    setting.DoubleValue = null;
                     break;
                 case string stringValue:
                     setting.StringValue = stringValue;
-                    setting.IntValue = null;
-                    setting.BoolValue = null;
-                    setting.DoubleValue = null;
-                    setting.DateTimeValue = null;
                     break;
-                default:
-                    throw new ArgumentException("Unsupported type");
             }
         }
 
-        settingRepository.Update(setting);
+        if (isNewSetting)
+        {
+            await settingRepository.AddAsync(setting, cancellationToken);
+        }
+        else
+        {
+            settingRepository.Update(setting);
+        }
+
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 }
