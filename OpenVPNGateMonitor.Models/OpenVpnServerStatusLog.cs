@@ -2,10 +2,8 @@
 
 namespace OpenVPNGateMonitor.Models;
 
-public class OpenVpnServerStatusLog
+public class OpenVpnServerStatusLog : BaseEntity<int>
 {
-    [Key]
-    public int Id { get; set; }
     [Required]
     public int VpnServerId { get; set; }
     [Required]
@@ -19,7 +17,4 @@ public class OpenVpnServerStatusLog
     public long BytesOut { get; set; }
     [MaxLength(255)]
     public string Version { get; set; } = string.Empty;
-    public DateTime LastUpdate { get; set; }
-    public DateTime CreateDate { get; set; }
-
 }

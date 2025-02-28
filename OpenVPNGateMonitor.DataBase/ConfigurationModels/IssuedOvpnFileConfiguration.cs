@@ -4,11 +4,11 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class IssuedOvpnFileConfiguration : IEntityTypeConfiguration<IssuedOvpnFile>
+public class IssuedOvpnFileConfiguration : BaseEntityConfiguration<IssuedOvpnFile>
 {
-    public void Configure(EntityTypeBuilder<IssuedOvpnFile> entity)
+    public override void Configure(EntityTypeBuilder<IssuedOvpnFile> entity)
     {
-        entity.HasKey(e => e.Id);
+        base.Configure(entity);
         entity.Property(e => e.ServerId)
             .IsRequired();
         entity.Property(e => e.ExternalId)
@@ -47,9 +47,5 @@ public class IssuedOvpnFileConfiguration : IEntityTypeConfiguration<IssuedOvpnFi
             .HasDefaultValue(false);
         entity.Property(e => e.Message)
             .HasMaxLength(500);
-        entity.Property(e => e.LastUpdate)
-            .IsRequired();
-        entity.Property(e => e.CreateDate)
-            .IsRequired();
     }
 }

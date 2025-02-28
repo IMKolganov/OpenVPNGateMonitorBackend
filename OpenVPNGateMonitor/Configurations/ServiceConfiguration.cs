@@ -7,6 +7,7 @@ using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
+using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.Services.UntilsServices;
 using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
@@ -59,6 +60,7 @@ public static class ServiceConfiguration
         services.AddScoped<IApplicationService, ApplicationService>();
         
         services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
+        services.AddScoped<ISettingsService, SettingsService>();
 
         services.AddAuthorization();
         services.AddControllers();
