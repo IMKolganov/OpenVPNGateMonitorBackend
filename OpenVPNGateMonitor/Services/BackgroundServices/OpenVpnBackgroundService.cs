@@ -3,6 +3,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.Services.Others;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
@@ -34,7 +35,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         await _delayTokenSource.CancelAsync();
     }
 
-    private async Task RunOpenVpnTask(CancellationToken cancellationToken)
+    private async Task RunOpenVpnTask(int nextRunSeconds, CancellationToken cancellationToken)
     {
         using var scope = _serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -44,30 +45,40 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         {
             try
             {
-                _statusManager.UpdateStatus(server.Id, ServiceStatus.Running);
+                _statusManager.UpdateStatus(server.Id, ServiceStatus.Running, nextRunSeconds);
                 var processor = _processorFactory.GetOrCreateProcessor(server);
 
                 await processor.ProcessServerAsync(server, ct);
 
-                _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle);
+                _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle, nextRunSeconds);
             }
             catch (TimeoutException ex)
             {
-                _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, "Timeout");
-                _logger.LogError(ex, $"Timeout while processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
+                _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, "Timeout");
+                _logger.LogError(ex, $"Timeout while processing OpenVPN server " +
+                                     $"{server.ManagementIp}:{server.ManagementPort}");
             }
             catch (Exception ex)
             {
-                _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, ex.Message);
-                _logger.LogError(ex, $"OpenVpnBackgroundService: Error processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
+                _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, ex.Message);
+                _logger.LogError(ex, $"OpenVpnBackgroundService: Error processing OpenVPN server" +
+                                     $" {server.ManagementIp}:{server.ManagementPort}");
             }
         });
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        var nextRunSeconds = 0;
+        using var scope = _serviceProvider.CreateScope();
+        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var settingsService = new SettingsService(unitOfWork);
+        
+        nextRunSeconds = await GetPollingIntervalSecondsAsync(settingsService, cancellationToken);
+        _logger.LogInformation($"Polling interval: {nextRunSeconds} seconds");
+        
         _logger.LogInformation("OpenVPN Background Service started. Running initial execution...");
-        await RunOpenVpnTask(cancellationToken);
+        await RunOpenVpnTask(nextRunSeconds, cancellationToken);
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -99,7 +110,23 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 }
             }
 
-            await RunOpenVpnTask(cancellationToken);
+            await RunOpenVpnTask(nextRunSeconds, cancellationToken);
         }
     }
+    
+    private async Task<int> GetPollingIntervalSecondsAsync(ISettingsService settingsService, CancellationToken cancellationToken)
+    {
+        var interval = await settingsService.GetValueAsync<int>("OpenVPN_Polling_Interval", cancellationToken);
+
+        var unit = await settingsService.GetValueAsync<string>("OpenVPN_Polling_Interval_Unit", cancellationToken);
+
+        unit ??= "seconds";
+        
+        return unit.ToLower() switch
+        {
+            "minutes" => interval * 60,  
+            _ => interval 
+        };
+    }
+
 }
