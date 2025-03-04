@@ -3,6 +3,8 @@ using OpenVPNGateMonitor.Configurations;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.ConfigureServices(builder.Configuration);
+builder.Services.ConfigureGeoLiteServices();
+builder.Services.ConfigureAuthServices();
 builder.Services.DataBaseServices(builder.Configuration);
 
 builder.Host.ConfigureSerilog(builder.Configuration);

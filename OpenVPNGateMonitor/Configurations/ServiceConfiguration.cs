@@ -1,6 +1,5 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.Api;
-using OpenVPNGateMonitor.Services.Api.Auth;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
@@ -37,8 +36,6 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnSummaryStatService, OpenVpnSummaryStatService>();
         services.AddScoped<IOpenVpnVersionService, OpenVpnVersionService>();
         
-        services.AddSingleton<IGeoIpService, GeoIpService>();
-        
         services.AddScoped<IOpenVpnServerService, OpenVpnServerService>();
 
         services.AddSingleton<ICommandQueueManager, CommandQueueManager>();
@@ -49,7 +46,6 @@ public static class ServiceConfiguration
         
         services.AddScoped<IOpenVpnTelnetService, OpenVpnTelnetService>();
         
-
         services.AddScoped<IVpnDataService, VpnDataService>();
         services.AddScoped<ICertVpnService, CertVpnService>();
         services.AddScoped<IOvpnFileService, OvpnFileService>();
@@ -59,16 +55,8 @@ public static class ServiceConfiguration
 
         services.AddHostedService<OpenVpnBackgroundService>();
         services.AddSingleton<IOpenVpnBackgroundService, OpenVpnBackgroundService>();
-        services.AddScoped<IApplicationService, ApplicationService>();
         
         services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();
-
-        services.AddAuthorization();
-        services.AddControllers();
-
-        services.AddEndpointsApiExplorer();
-        services.AddSwaggerGen();
-        
     }
 }
