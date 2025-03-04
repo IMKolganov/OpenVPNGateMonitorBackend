@@ -5,32 +5,32 @@ using MaxMind.GeoIP2.Responses;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
+using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.Services.Untils;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
 
 public class GeoIpIpService : IGeoIpService
 {
-    // private const string LicenseKey = "YOUR_LICENSE_KEY"; // Replace with your MaxMind License Key
-    // private const string DownloadUrl = $"https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key={LicenseKey}&suffix=tar.gz";
-    // private const string DbPath = "GeoLite2-City.mmdb"; // Path to store the GeoLite2 database
     private static readonly HttpClient Client = new HttpClient();
     private readonly ILogger<GeoIpIpService> _logger;
+    private readonly ISettingsService _settingsService;
 
-    public GeoIpIpService(ILogger<GeoIpIpService> logger)
+    public GeoIpIpService(ILogger<GeoIpIpService> logger, ISettingsService settingsService)
     {
         _logger = logger;
+        _settingsService = settingsService;
         Client.DefaultRequestHeaders.UserAgent.ParseAdd("GeoLite2Updater/1.0");
     }
     
-    public async Task<string> GetDatabaseVersionAsync(string downloadUrl)
+    public async Task<string> GetDatabaseVersionAsync(CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Checking the latest database version...");
             
-            var request = new HttpRequestMessage(HttpMethod.Head, downloadUrl);
-            HttpResponseMessage response = await Client.SendAsync(request);
+            var request = new HttpRequestMessage(HttpMethod.Head, await GetGeoIpDownloadUrl(cancellationToken));
+            HttpResponseMessage response = await Client.SendAsync(request, cancellationToken);
             if (response.IsSuccessStatusCode)
             {
                 if (response.Headers.TryGetValues("Last-Modified", out var values))
@@ -51,7 +51,7 @@ public class GeoIpIpService : IGeoIpService
         }
     }
     
-    public async Task DownloadAndUpdateDatabaseAsync(string downloadUrl, string dbPath)
+    public async Task DownloadAndUpdateDatabaseAsync(CancellationToken cancellationToken)
     {
         try
         {
@@ -60,12 +60,12 @@ public class GeoIpIpService : IGeoIpService
 
             _logger.LogInformation("Downloading GeoLite2 database...");
 
-            using (var response = await Client.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead))
+            using (var response = await Client.GetAsync(await GetGeoIpDownloadUrl(cancellationToken), HttpCompletionOption.ResponseHeadersRead, cancellationToken))
             {
                 response.EnsureSuccessStatusCode();
-                await using var stream = await response.Content.ReadAsStreamAsync();
+                await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 await using var fileStream = new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None);
-                await stream.CopyToAsync(fileStream);
+                await stream.CopyToAsync(fileStream, cancellationToken);
             }
             
             _logger.LogInformation("Download completed. Extracting database...");
@@ -83,7 +83,7 @@ public class GeoIpIpService : IGeoIpService
                 return;
             }
             
-            File.Copy(mmdbFile, dbPath, true);
+            File.Copy(mmdbFile, await GetGeoIpDbPath(cancellationToken), true);
             _logger.LogInformation("Database successfully updated!");
 
             File.Delete(tempFile);
@@ -95,9 +95,9 @@ public class GeoIpIpService : IGeoIpService
         }
     }
     
-    public string GetDataBasePath()
+    public async Task<string> GetDataBasePath(CancellationToken cancellationToken)
     {
-        return Path.GetFullPath(GetGeoIpDbPath());
+        return Path.GetFullPath(await GetGeoIpDbPath(cancellationToken));
     }
     
     public OpenVpnGeoInfo? GetGeoInfo(string ip)
@@ -171,10 +171,27 @@ public class GeoIpIpService : IGeoIpService
         throw new Exception($"GeoIp database file not found at: {Path.GetFullPath(geoIpSettings.GeoIpDatabasePath)}");
     }
 
-    private string GetGeoIpDbPath()
+    private async Task<string> GetGeoIpDbPath(CancellationToken cancellationToken)
     {
-        throw new NotImplementedException();
-        // return ""
+        // private const string DbPath = "GeoLite2-City.mmdb"; // Path to store the GeoLite2 database
+        return await GetStringParamFromSettings("DbPath", cancellationToken);
     }
     
+    private async Task<string> GetGeoIpDownloadUrl(CancellationToken cancellationToken)
+    {
+        // private const string LicenseKey = "YOUR_LICENSE_KEY"; // Replace with your MaxMind License Key
+        // private const string DownloadUrl = $"https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key={LicenseKey}&suffix=tar.gz";
+        // var licenseKey = await GetStringParamFromSettings("LicenseKey", cancellationToken);
+        return await GetStringParamFromSettings("GeoIpDownloadUrl", cancellationToken);
+    }
+
+
+    private async Task<string> GetStringParamFromSettings(string key, CancellationToken cancellationToken)
+    {
+        var settingType = await _settingsService.GetValueAsync<string>($"{key}_Type", cancellationToken) ?? 
+                          throw new InvalidOperationException($"Param for {key} not found.");
+        
+        return await _settingsService.GetValueAsync<string>(key, cancellationToken) ?? 
+               throw new InvalidOperationException($"Param for {key} not found.");
+    }
 }

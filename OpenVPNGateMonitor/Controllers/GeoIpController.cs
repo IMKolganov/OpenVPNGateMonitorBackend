@@ -23,7 +23,7 @@ public class GeoIpController : ControllerBase
     [HttpGet("GetDatabasePath")]
     public IActionResult GetDatabasePath(CancellationToken cancellationToken = default)
     {
-        return Ok(_geoIpService.GetDataBasePath());
+        return Ok(_geoIpService.GetDataBasePath(cancellationToken));
     }
     
     [HttpGet("GetGeoInfo")]
@@ -37,16 +37,16 @@ public class GeoIpController : ControllerBase
     }
     
     [HttpGet("GetVersionDatabase")]
-    public async Task<IActionResult> GetVersionDatabase()
+    public async Task<IActionResult> GetVersionDatabase(CancellationToken cancellationToken = default)
     {
-        var version = await _geoIpService.GetDatabaseVersionAsync("");
+        var version = await _geoIpService.GetDatabaseVersionAsync(cancellationToken);
         return Ok(new { version });
     }
 
     [HttpPost("UpdateDatabase")]
-    public async Task<IActionResult> UpdateDatabase()
+    public async Task<IActionResult> UpdateDatabase(CancellationToken cancellationToken = default)
     {
-        await _geoIpService.DownloadAndUpdateDatabaseAsync("", "");
+        await _geoIpService.DownloadAndUpdateDatabaseAsync(cancellationToken);
         return Ok(new { message = "Database updated!" });
     }
 }
