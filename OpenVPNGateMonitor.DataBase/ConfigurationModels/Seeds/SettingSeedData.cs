@@ -33,6 +33,36 @@ public static class SettingSeedData
             Key = "OpenVPN_Polling_Interval_Unit_Type",
             ValueType = "string",
             StringValue = "string"
-        }
+        },
+        
+        new Setting
+        {
+            Id = 5, 
+            Key = "GeoIp_Download_Url",
+            ValueType = "string",
+            StringValue = "https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key={LicenseKey}&suffix=tar.gz"
+        },
+        new Setting
+        {
+            Id = 6, 
+            Key = "GeoIp_Download_Url_Type",
+            ValueType = "string",
+            StringValue = "string"
+        },
+        
+        new Setting
+        {
+            Id = 7, 
+            Key = "GeoIp_Db_Path",
+            ValueType = "string",
+            StringValue = "GeoLite2/GeoLite2-City.mmdb"
+        },
+        new Setting
+        {
+            Id = 8, 
+            Key = "GeoIp_Db_Path_Type",
+            ValueType = "string",
+            StringValue = "string"
+        },
     };
 }

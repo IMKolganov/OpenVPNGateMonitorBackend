@@ -24,10 +24,10 @@ public class OpenVpnClientService : IOpenVpnClientService
         CancellationToken cancellationToken)
     {
         var response = await commandQueue.SendCommandAsync("status 3", cancellationToken);
-        return ParseStatus(response);
+        return await ParseStatus(response, cancellationToken);
     }
 
-    private List<OpenVpnClient> ParseStatus(string data)
+    private async Task<List<OpenVpnClient>> ParseStatus(string data, CancellationToken cancellationToken)
     {
         var id = 0;
         var clients = new List<OpenVpnClient>();
@@ -46,7 +46,7 @@ public class OpenVpnClientService : IOpenVpnClientService
                 {
                     client.Id = id;//todo: remove
                     id++;
-                    var geoInfo = _geoIpService.GetGeoInfo(client.RemoteIp);//todo: add mapper for project
+                    var geoInfo = await _geoIpService.GetGeoInfo(client.RemoteIp, cancellationToken);//todo: add mapper for project
                     if (geoInfo != null)
                     {
                         client.Country = geoInfo.Country;

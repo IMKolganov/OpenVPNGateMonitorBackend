@@ -1,8 +1,6 @@
 ﻿using System.Net;
 using MaxMind.GeoIP2;
 using MaxMind.GeoIP2.Exceptions;
-using MaxMind.GeoIP2.Responses;
-using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.Others;
@@ -10,13 +8,13 @@ using OpenVPNGateMonitor.Services.Untils;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
 
-public class GeoIpIpService : IGeoIpService
+public class GeoIpService : IGeoIpService
 {
     private static readonly HttpClient Client = new HttpClient();
-    private readonly ILogger<GeoIpIpService> _logger;
+    private readonly ILogger<GeoIpService> _logger;
     private readonly ISettingsService _settingsService;
 
-    public GeoIpIpService(ILogger<GeoIpIpService> logger, ISettingsService settingsService)
+    public GeoIpService(ILogger<GeoIpService> logger, ISettingsService settingsService)
     {
         _logger = logger;
         _settingsService = settingsService;
@@ -100,7 +98,7 @@ public class GeoIpIpService : IGeoIpService
         return Path.GetFullPath(await GetGeoIpDbPath(cancellationToken));
     }
     
-    public OpenVpnGeoInfo? GetGeoInfo(string ip)
+    public async Task<OpenVpnGeoInfo?> GetGeoInfo(string ip, CancellationToken cancellationToken)
     {
         try
         {
@@ -124,8 +122,8 @@ public class GeoIpIpService : IGeoIpService
             if (ipAddress.IsIPv6LinkLocal || ipAddress.IsIPv6Multicast)
                 return null;
 
-            var geoIpSettings = new GeoIpSettings();
-            CityResponse cityResponse = ReadDataBase(geoIpSettings)!.City(ip);
+            var databaseReader = await ReadDataBase(cancellationToken);
+            var cityResponse = databaseReader.City(ip);
 
             return new OpenVpnGeoInfo
             {
@@ -161,20 +159,22 @@ public class GeoIpIpService : IGeoIpService
                IPAddress.IsLoopback(ip);
     }
 
-    private DatabaseReader ReadDataBase(GeoIpSettings geoIpSettings)
+    private async Task<DatabaseReader> ReadDataBase(CancellationToken cancellationToken)
     {
-        if (File.Exists(geoIpSettings.GeoIpDatabasePath))
+        var geoIpDatabasePath = await GetGeoIpDbPath(cancellationToken);
+        
+        if (File.Exists(geoIpDatabasePath))
         {
-           return new DatabaseReader(geoIpSettings.GeoIpDatabasePath);
+           return new DatabaseReader(geoIpDatabasePath);
         }
 
-        throw new Exception($"GeoIp database file not found at: {Path.GetFullPath(geoIpSettings.GeoIpDatabasePath)}");
+        throw new Exception($"GeoIp database file not found at: {Path.GetFullPath(geoIpDatabasePath)}");
     }
 
     private async Task<string> GetGeoIpDbPath(CancellationToken cancellationToken)
     {
         // private const string DbPath = "GeoLite2-City.mmdb"; // Path to store the GeoLite2 database
-        return await GetStringParamFromSettings("DbPath", cancellationToken);
+        return await GetStringParamFromSettings("GeoIp_Db_Path", cancellationToken);
     }
     
     private async Task<string> GetGeoIpDownloadUrl(CancellationToken cancellationToken)
@@ -182,7 +182,7 @@ public class GeoIpIpService : IGeoIpService
         // private const string LicenseKey = "YOUR_LICENSE_KEY"; // Replace with your MaxMind License Key
         // private const string DownloadUrl = $"https://download.maxmind.com/app/geoip_download?edition_id=GeoLite2-City&license_key={LicenseKey}&suffix=tar.gz";
         // var licenseKey = await GetStringParamFromSettings("LicenseKey", cancellationToken);
-        return await GetStringParamFromSettings("GeoIpDownloadUrl", cancellationToken);
+        return await GetStringParamFromSettings("GeoIp_Download_Url", cancellationToken);
     }
 
 
@@ -190,6 +190,11 @@ public class GeoIpIpService : IGeoIpService
     {
         var settingType = await _settingsService.GetValueAsync<string>($"{key}_Type", cancellationToken) ?? 
                           throw new InvalidOperationException($"Param for {key} not found.");
+
+        if (settingType != "string")
+        {
+            throw new Exception($"Setting type for {key} is not string.");
+        }
         
         return await _settingsService.GetValueAsync<string>(key, cancellationToken) ?? 
                throw new InvalidOperationException($"Param for {key} not found.");

@@ -33,7 +33,7 @@ public class GeoIpController : ControllerBase
         if (string.IsNullOrEmpty(ipaddress))
             return BadRequest("vpnServerId is required.");
         
-        return Ok(_geoIpService.GetGeoInfo(ipaddress)!);
+        return Ok(_geoIpService.GetGeoInfo(ipaddress, cancellationToken)!);
     }
     
     [HttpGet("GetVersionDatabase")]

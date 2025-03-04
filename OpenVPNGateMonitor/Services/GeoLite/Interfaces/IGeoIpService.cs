@@ -7,5 +7,5 @@ public interface IGeoIpService
     Task<string> GetDatabaseVersionAsync(CancellationToken cancellationToken);
     Task DownloadAndUpdateDatabaseAsync(CancellationToken cancellationToken);
     Task<string> GetDataBasePath(CancellationToken cancellationToken);
-    OpenVpnGeoInfo? GetGeoInfo(string ip);
+    Task<OpenVpnGeoInfo?> GetGeoInfo(string ip, CancellationToken cancellationToken);
 }

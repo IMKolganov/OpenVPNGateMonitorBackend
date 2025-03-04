@@ -37,7 +37,7 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnSummaryStatService, OpenVpnSummaryStatService>();
         services.AddScoped<IOpenVpnVersionService, OpenVpnVersionService>();
         
-        services.AddSingleton<IGeoIpService, GeoIpIpService>();
+        services.AddSingleton<IGeoIpService, GeoIpService>();
         
         services.AddScoped<IOpenVpnServerService, OpenVpnServerService>();
 
