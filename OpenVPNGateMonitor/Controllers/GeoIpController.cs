@@ -1,5 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
+using OpenVPNGateMonitor.Services.GeoLite;
+using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 
 namespace OpenVPNGateMonitor.Controllers;
@@ -32,5 +34,19 @@ public class GeoIpController : ControllerBase
             return BadRequest("vpnServerId is required.");
         
         return Ok(_geoIpService.GetGeoInfo(ipaddress)!);
+    }
+    
+    [HttpGet("GetVersionDatabase")]
+    public async Task<IActionResult> GetVersionDatabase()
+    {
+        var version = await _geoIpService.GetDatabaseVersionAsync("");
+        return Ok(new { version });
+    }
+
+    [HttpPost("UpdateDatabase")]
+    public async Task<IActionResult> UpdateDatabase()
+    {
+        await _geoIpService.DownloadAndUpdateDatabaseAsync("", "");
+        return Ok(new { message = "Database updated!" });
     }
 }

@@ -4,6 +4,8 @@ using OpenVPNGateMonitor.Services.Api.Auth;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.Services.GeoLite;
+using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
@@ -35,7 +37,7 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnSummaryStatService, OpenVpnSummaryStatService>();
         services.AddScoped<IOpenVpnVersionService, OpenVpnVersionService>();
         
-        services.AddScoped<IGeoIpService, GeoIpService>();
+        services.AddSingleton<IGeoIpService, GeoIpIpService>();
         
         services.AddScoped<IOpenVpnServerService, OpenVpnServerService>();
 
