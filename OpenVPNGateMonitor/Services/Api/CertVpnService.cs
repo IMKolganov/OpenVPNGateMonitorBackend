@@ -5,7 +5,7 @@ using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
-using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
+using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api;
 

@@ -1,7 +1,7 @@
 ﻿using System.IO.Compression;
 using System.Text;
 
-namespace OpenVPNGateMonitor.Services.Untils;
+namespace OpenVPNGateMonitor.Services.Helpers;
 
 public static class GZip
 {

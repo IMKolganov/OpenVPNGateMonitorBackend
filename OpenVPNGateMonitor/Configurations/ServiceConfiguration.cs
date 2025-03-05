@@ -3,14 +3,12 @@ using OpenVPNGateMonitor.Services.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.BackgroundServices;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
-using OpenVPNGateMonitor.Services.GeoLite;
-using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
+using OpenVPNGateMonitor.Services.EasyRsaServices;
+using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 using OpenVPNGateMonitor.Services.Others;
-using OpenVPNGateMonitor.Services.UntilsServices;
-using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
 
 namespace OpenVPNGateMonitor.Configurations;
 

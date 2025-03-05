@@ -1,6 +1,6 @@
 ﻿using OpenVPNGateMonitor.Services.Others;
 
-namespace OpenVPNGateMonitor.Services.GeoLite.Untils;
+namespace OpenVPNGateMonitor.Services.GeoLite.Helpers;
 
 public static class GeoLiteLoadConfigs
 {

@@ -1,9 +1,9 @@
 ﻿using System.Text;
 using System.Net.Http.Headers;
 using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Services.GeoLite.Helpers;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
-using OpenVPNGateMonitor.Services.GeoLite.Untils;
-using OpenVPNGateMonitor.Services.Untils;
+using OpenVPNGateMonitor.Services.Helpers;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
 
