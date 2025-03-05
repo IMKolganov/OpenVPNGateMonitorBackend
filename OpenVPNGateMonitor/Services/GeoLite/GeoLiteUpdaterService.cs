@@ -1,9 +1,9 @@
 ﻿using System.Text;
 using System.Net.Http.Headers;
+using System.Text.RegularExpressions;
 using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Untils;
-using OpenVPNGateMonitor.Services.Others;
 using OpenVPNGateMonitor.Services.Untils;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
@@ -23,25 +23,45 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
         _databaseFactory = databaseFactory;
         _logger = logger;
     }
-    
+
     public async Task<string> GetDatabaseVersionAsync(CancellationToken cancellationToken)
     {
         try
         {
             _logger.LogInformation("Checking the latest database version...");
 
-            string downloadUrl = await GetDownloadUrlAsync(cancellationToken);
-            string credentials = await GetAuthHeaderAsync(cancellationToken);
+            var downloadUrl = await GetDownloadUrlAsync(cancellationToken);
+            var credentials = await GetAuthHeaderAsync(cancellationToken);
 
             var request = new HttpRequestMessage(HttpMethod.Head, downloadUrl);
             request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
 
-            HttpResponseMessage response = await _httpClient.SendAsync(request, cancellationToken);
-            if (response.IsSuccessStatusCode && response.Headers.TryGetValues("Last-Modified", out var values))
+            var response = await _httpClient.SendAsync(request, cancellationToken);
+            response.EnsureSuccessStatusCode();
+
+            if (response.Content.Headers.TryGetValues("Last-Modified", out var lastModifiedValues))
             {
-                string version = values.FirstOrDefault() ?? throw new InvalidOperationException();
-                _logger.LogInformation("Database version: {Version}", version);
-                return version;
+                var lastModified = lastModifiedValues.FirstOrDefault();
+                if (!string.IsNullOrEmpty(lastModified))
+                {
+                    _logger.LogInformation("GeoLite2 Last-Modified: {LastModified}", lastModified);
+                    return lastModified;
+                }
+            }
+
+            if (response.Content.Headers.TryGetValues("Content-Disposition", out var contentDispositionValues))
+            {
+                var contentDisposition = contentDispositionValues.FirstOrDefault();
+                if (!string.IsNullOrEmpty(contentDisposition))
+                {
+                    var match = Regex.Match(contentDisposition, @"\d{8}");
+                    if (match.Success)
+                    {
+                        var version = match.Value;
+                        _logger.LogInformation("GeoLite2 version from Content-Disposition: {Version}", version);
+                        return version;
+                    }
+                }
             }
 
             _logger.LogWarning("Could not retrieve the database version.");
@@ -60,27 +80,27 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
 
         try
         {
-            string timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
 
-            string dbPath =
+            var dbPath =
                 await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_Db_Path", _serviceProvider,
                     cancellationToken);
             if (string.IsNullOrEmpty(dbPath))
                 throw new InvalidOperationException("GeoIp_Db_Path is not configured.");
 
-            string baseDir = Path.GetDirectoryName(dbPath) ??
-                             throw new InvalidOperationException("Invalid GeoIp_Db_Path");
+            var baseDir = Path.GetDirectoryName(dbPath) ??
+                          throw new InvalidOperationException("Invalid GeoIp_Db_Path");
 
-            string extractDir = Path.Combine(baseDir, $"GeoLite2_{timestamp}");
-            string tempFile = Path.Combine(extractDir, $"GeoLite2-City_{timestamp}.tar.gz");
+            var extractDir = Path.Combine(baseDir, $"GeoLite2_{timestamp}");
+            var tempFile = Path.Combine(extractDir, $"GeoLite2-City_{timestamp}.tar.gz");
 
             if (!Directory.Exists(baseDir))
                 Directory.CreateDirectory(baseDir);
             if (!Directory.Exists(extractDir))
                 Directory.CreateDirectory(extractDir);
 
-            string downloadUrl = await GetDownloadUrlAsync(cancellationToken);
-            string credentials = await GetAuthHeaderAsync(cancellationToken);
+            var downloadUrl = await GetDownloadUrlAsync(cancellationToken);
+            var credentials = await GetAuthHeaderAsync(cancellationToken);
 
             result.DownloadUrl = downloadUrl;
             result.TempFilePath = tempFile;
@@ -112,7 +132,7 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
                 return result;
             }
 
-            string extractedPath = extractedDirs.First();
+            var extractedPath = extractedDirs.First();
             result.ExtractedPath = extractedPath;
 
             _logger.LogInformation("Extracted database directory: {ExtractedPath}", extractedPath);
@@ -127,10 +147,25 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
 
             _logger.LogInformation("Updating database file...");
 
+            await _databaseFactory.CloseDatabaseAsync(cancellationToken);
+
             if (File.Exists(dbPath))
             {
                 _logger.LogInformation("Deleting old database file: {DbPath}", dbPath);
-                File.Delete(dbPath);
+                
+                for (int i = 0; i < 10; i++)
+                {
+                    try
+                    {
+                        File.Delete(dbPath);
+                        break;
+                    }
+                    catch (IOException)
+                    {
+                        _logger.LogWarning("File is still locked. Retrying in 500ms...");
+                        await Task.Delay(500, cancellationToken);
+                    }
+                }
             }
 
             File.Copy(mmdbFile, dbPath, true);
@@ -161,11 +196,10 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
             ?? throw new InvalidOperationException("GeoIp_Download_Url is not configured.");
     }
 
-
     private async Task<string> GetAuthHeaderAsync(CancellationToken cancellationToken)
     {
-        string accountId = await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_Account_ID", _serviceProvider, cancellationToken);
-        string licenseKey = await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_License_Key", _serviceProvider, cancellationToken);
+        var accountId = await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_Account_ID", _serviceProvider, cancellationToken);
+        var licenseKey = await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_License_Key", _serviceProvider, cancellationToken);
 
         if (string.IsNullOrEmpty(accountId) || string.IsNullOrEmpty(licenseKey))
             throw new InvalidOperationException("GeoLite Account ID or License Key is missing.");

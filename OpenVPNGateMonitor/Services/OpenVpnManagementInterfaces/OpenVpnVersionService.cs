@@ -23,8 +23,8 @@ public class OpenVpnVersionService : IOpenVpnVersionService
 
     private (string OpenVpnVersion, int ManagementVersion) ParseVersion(string data)
     {
-        string openVpnVersion = "Unknown";
-        int managementVersion = -1;
+        var openVpnVersion = "Unknown";
+        var managementVersion = -1;
 
         foreach (var line in data.Split('\n', StringSplitOptions.RemoveEmptyEntries))
         {
