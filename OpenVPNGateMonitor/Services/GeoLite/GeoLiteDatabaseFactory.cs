@@ -1,7 +1,6 @@
 ﻿using MaxMind.GeoIP2;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Untils;
-using OpenVPNGateMonitor.Services.Others;
 
 namespace OpenVPNGateMonitor.Services.GeoLite;
 

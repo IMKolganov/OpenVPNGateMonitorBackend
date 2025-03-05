@@ -51,7 +51,11 @@ public class GeoLiteController : ControllerBase
     [HttpPost("UpdateDatabase")]
     public async Task<IActionResult> UpdateDatabase(CancellationToken cancellationToken = default)
     {
-        await _geoLiteUpdaterService.DownloadAndUpdateDatabaseAsync(cancellationToken);
-        return Ok(new { message = "Database updated successfully!" });
+        var updateResult = await _geoLiteUpdaterService.DownloadAndUpdateDatabaseAsync(cancellationToken);
+
+        if (!updateResult.Success)
+            return BadRequest(new { message = "Database update failed", error = updateResult.ErrorMessage });
+
+        return Ok(updateResult);
     }
 }

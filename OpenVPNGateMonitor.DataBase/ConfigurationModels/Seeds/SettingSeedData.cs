@@ -64,5 +64,35 @@ public static class SettingSeedData
             ValueType = "string",
             StringValue = "string"
         },
+        
+        new Setting
+        {
+            Id = 9, 
+            Key = "GeoIp_Account_ID",
+            ValueType = "string",
+            StringValue = "YOUR_ACCOUNT_ID"
+        },
+        new Setting
+        {
+            Id = 10, 
+            Key = "GeoIp_Account_ID_Type",
+            ValueType = "string",
+            StringValue = "string"
+        },
+        
+        new Setting
+        {
+            Id = 11, 
+            Key = "GeoIp_License_Key",
+            ValueType = "string",
+            StringValue = "YOUR_LICENSE_KEY"
+        },
+        new Setting
+        {
+            Id = 12, 
+            Key = "GeoIp_License_Key_Type",
+            ValueType = "string",
+            StringValue = "string"
+        },
     };
 }

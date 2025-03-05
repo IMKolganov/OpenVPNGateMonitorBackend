@@ -1,4 +1,5 @@
 ﻿using System.IO.Compression;
+using System.Text;
 
 namespace OpenVPNGateMonitor.Services.Untils;
 
@@ -15,7 +16,7 @@ public static class GZip
             ExtractTar(tarStream, outputDir);
         }
     }
-    
+
     private static void ExtractTar(Stream tarStream, string outputDir)
     {
         using (var reader = new BinaryReader(tarStream))
@@ -23,22 +24,38 @@ public static class GZip
             while (tarStream.Position < tarStream.Length)
             {
                 var header = reader.ReadBytes(512);
-                if (header.All(b => b == 0))
-                    break;
+                if (header.All(b => b == 0)) break;
 
-                var name = System.Text.Encoding.ASCII.GetString(header, 0, 100).Trim('\0');
-                if (string.IsNullOrWhiteSpace(name))
-                    break;
+                string name = Encoding.ASCII.GetString(header, 0, 100).Trim('\0');
+                if (string.IsNullOrWhiteSpace(name)) break;
 
-                var sizeString = System.Text.Encoding.ASCII.GetString(header, 124, 12).Trim('\0').Trim();
-                var size = Convert.ToInt64(sizeString, 8);
+                byte typeFlag = header[156];
+                if (typeFlag == 49)
+                {
+                    continue;
+                }
 
-                var outputFile = Path.Combine(outputDir, name);
+                string sizeString = Encoding.ASCII.GetString(header, 124, 12).Trim('\0').Trim();
+                long size = Convert.ToInt64(sizeString, 8);
+
+                string outputFile = Path.GetFullPath(Path.Combine(outputDir, name.Replace('/', Path.DirectorySeparatorChar)));
+
+                if (!outputFile.StartsWith(Path.GetFullPath(outputDir)))
+                {
+                    throw new InvalidOperationException($"Invalid tar path detected: {name}");
+                }
+
+                if (name.EndsWith("/") || name.EndsWith("\\"))
+                {
+                    Directory.CreateDirectory(outputFile);
+                    continue;
+                }
+
                 Directory.CreateDirectory(Path.GetDirectoryName(outputFile) ?? throw new InvalidOperationException());
 
                 using (var output = new FileStream(outputFile, FileMode.Create, FileAccess.Write, FileShare.None))
                 {
-                    var buffer = new byte[512];
+                    byte[] buffer = new byte[512];
                     long remaining = size;
                     while (remaining > 0)
                     {
