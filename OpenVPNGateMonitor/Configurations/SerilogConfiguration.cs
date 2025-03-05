@@ -1,43 +1,81 @@
-﻿using OpenVPNGateMonitor.Models.Helpers;
-using Microsoft.EntityFrameworkCore;
+﻿using Elastic.Serilog.Sinks;
+using Elastic.Transport;
+using Elastic.Clients.Elasticsearch;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using OpenVPNGateMonitor.Models.Helpers;
 using Serilog;
-using Serilog.Sinks.Elasticsearch;
+using Serilog.Events;
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace OpenVPNGateMonitor.Configurations;
-
-public static class SerilogConfiguration
+namespace OpenVPNGateMonitor.Configurations
 {
-    public static void ConfigureSerilog(this IHostBuilder host, IConfiguration configuration)
+    public static class SerilogConfiguration
     {
-        var elasticsearchSettings = configuration.GetSection("Elasticsearch").Get<ElasticsearchSettings>();
-        if (elasticsearchSettings == null) throw new NullReferenceException(nameof(elasticsearchSettings));
-        
-        Log.Logger = new LoggerConfiguration()
-            .WriteTo.Console()
-            .WriteTo.Elasticsearch(new ElasticsearchSinkOptions(new Uri(elasticsearchSettings.Uri))
+        public static void ConfigureSerilog(this IHostBuilder host, IConfiguration configuration)
+        {
+            var elasticsearchSettings = configuration.GetSection("Elasticsearch").Get<ElasticsearchSettings>();
+            if (elasticsearchSettings == null) throw new NullReferenceException(nameof(elasticsearchSettings));
+
+            var nodes = new List<Uri> { new Uri(elasticsearchSettings.Uri) };
+
+            try
             {
-                IndexFormat = elasticsearchSettings.IndexFormat,
-                AutoRegisterTemplate = true,
-                AutoRegisterTemplateVersion = AutoRegisterTemplateVersion.ESv8,
-                NumberOfShards = 1,
-                NumberOfReplicas = 0,
-                ModifyConnectionSettings = conn => conn
-                    .ServerCertificateValidationCallback((sender, cert, chain, errors) => true)
-                    .BasicAuthentication(elasticsearchSettings.Username, elasticsearchSettings.Password),
-                FailureCallback = (logEvent, exception) =>
+                var settings = new ElasticsearchClientSettings(new Uri(elasticsearchSettings.Uri))
+                    .CertificateFingerprint("IGNORE")
+                    .ServerCertificateValidationCallback((sender, certificate, chain, sslPolicyErrors) => true);
+                
+                if (!string.IsNullOrEmpty(elasticsearchSettings.Username) && !string.IsNullOrEmpty(elasticsearchSettings.Password))
                 {
-                    Console.WriteLine($"Unable to submit event: {logEvent.RenderMessage()}");
-                    if (exception != null)
-                        Console.WriteLine($"Exception: {exception.Message}");
-                },
-                EmitEventFailure = EmitEventFailureHandling.WriteToSelfLog
+                    settings = settings.Authentication(new BasicAuthentication(
+                        elasticsearchSettings.Username,
+                        elasticsearchSettings.Password
+                    ));
+                }
 
-            })
-            .Enrich.FromLogContext()
-            .MinimumLevel.Information()
-            .CreateLogger();
-;
+                var client = new ElasticsearchClient(settings);
 
-        host.UseSerilog();
+                // Проверяем соединение с Elasticsearch
+                var pingResponse = client.Ping();
+                if (!pingResponse.IsValidResponse)
+                {
+                    Console.WriteLine($"❌ Elasticsearch connection failed: {pingResponse.DebugInformation}");
+                    return;
+                }
+                Console.WriteLine("✅ Elasticsearch connection successful!");
+
+                Log.Logger = new LoggerConfiguration()
+                    .WriteTo.Console()
+                    .WriteTo.Elasticsearch(
+                        nodes,
+                        opts =>
+                        {
+                            opts.DataStream = new Elastic.Ingest.Elasticsearch.DataStreams.DataStreamName("logs", "dotnet");
+                            opts.IlmPolicy = "logs";
+                            opts.MinimumLevel = LogEventLevel.Information;
+                        },
+                        transportConfig =>
+                        {
+                            if (!string.IsNullOrEmpty(elasticsearchSettings.Username) &&
+                                !string.IsNullOrEmpty(elasticsearchSettings.Password))
+                            {
+                                transportConfig.Authentication(new BasicAuthentication(
+                                    elasticsearchSettings.Username,
+                                    elasticsearchSettings.Password));
+                            }
+                        })
+                    .Enrich.FromLogContext()
+                    .MinimumLevel.Information()
+                    .CreateLogger();
+
+                host.UseSerilog();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"❌ Serilog initialization failed: {ex.Message}");
+            }
+        }
     }
 }

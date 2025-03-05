@@ -11,6 +11,7 @@
 
     <ItemGroup>
         <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.17.1" />
+        <PackageReference Include="Elastic.Serilog.Sinks" Version="8.12.3" />
         <PackageReference Include="MaxMind.GeoIP2" Version="5.2.0" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.2" />
         <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="9.0.1" />
@@ -30,7 +31,6 @@
         <PackageReference Include="Serilog.Extensions.Hosting" Version="9.0.0" />
         <PackageReference Include="Serilog.Extensions.Logging" Version="9.0.1-dev-02308" />
         <PackageReference Include="Serilog.Sinks.Console" Version="6.0.0" />
-        <PackageReference Include="Serilog.Sinks.Elasticsearch" Version="10.0.0" />
         <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
         <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.6.0" />
     </ItemGroup>
