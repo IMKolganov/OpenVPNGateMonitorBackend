@@ -21,6 +21,25 @@ public class GeoLiteQueryService : IGeoLiteQueryService
         return await _dbFactory.GetDatabasePath();
     }
     
+    public async Task<string> GetDatabaseVersionAsync(CancellationToken cancellationToken)
+    {
+        try
+        {
+            var databaseReader = await _dbFactory.GetDatabaseAsync(cancellationToken);
+            var metadata = databaseReader.Metadata;
+
+            var version = metadata.BuildDate.ToString("yyyy-MM-dd HH:mm:ss");
+
+            _logger.LogInformation("GeoLite2 database version (Build Date): {Version}", version);
+            return version;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving database version.");
+            return "Error retrieving version.";
+        }
+    }
+    
     public async Task<OpenVpnGeoInfo?> GetGeoInfoAsync(string ip, CancellationToken cancellationToken)
     {
         try

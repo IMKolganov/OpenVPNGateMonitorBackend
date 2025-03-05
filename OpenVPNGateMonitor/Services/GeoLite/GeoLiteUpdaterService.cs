@@ -24,56 +24,6 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
         _logger = logger;
     }
 
-    public async Task<string> GetDatabaseVersionAsync(CancellationToken cancellationToken)
-    {
-        try
-        {
-            _logger.LogInformation("Checking the latest database version...");
-
-            var downloadUrl = await GetDownloadUrlAsync(cancellationToken);
-            var credentials = await GetAuthHeaderAsync(cancellationToken);
-
-            var request = new HttpRequestMessage(HttpMethod.Head, downloadUrl);
-            request.Headers.Authorization = new AuthenticationHeaderValue("Basic", credentials);
-
-            var response = await _httpClient.SendAsync(request, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            if (response.Content.Headers.TryGetValues("Last-Modified", out var lastModifiedValues))
-            {
-                var lastModified = lastModifiedValues.FirstOrDefault();
-                if (!string.IsNullOrEmpty(lastModified))
-                {
-                    _logger.LogInformation("GeoLite2 Last-Modified: {LastModified}", lastModified);
-                    return lastModified;
-                }
-            }
-
-            if (response.Content.Headers.TryGetValues("Content-Disposition", out var contentDispositionValues))
-            {
-                var contentDisposition = contentDispositionValues.FirstOrDefault();
-                if (!string.IsNullOrEmpty(contentDisposition))
-                {
-                    var match = Regex.Match(contentDisposition, @"\d{8}");
-                    if (match.Success)
-                    {
-                        var version = match.Value;
-                        _logger.LogInformation("GeoLite2 version from Content-Disposition: {Version}", version);
-                        return version;
-                    }
-                }
-            }
-
-            _logger.LogWarning("Could not retrieve the database version.");
-            return "Unknown";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error retrieving database version.");
-            return "Error";
-        }
-    }
-
     public async Task<GeoLiteUpdateResponse> DownloadAndUpdateDatabaseAsync(CancellationToken cancellationToken)
     {
         var result = new GeoLiteUpdateResponse();
@@ -82,12 +32,13 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
         {
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
 
-            var dbPath = await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_Db_Path", _serviceProvider, cancellationToken);
+            var dbPath =
+                await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_Db_Path", _serviceProvider,
+                    cancellationToken);
             if (string.IsNullOrEmpty(dbPath))
                 throw new InvalidOperationException("GeoIp_Db_Path is not configured.");
 
-            var baseDir = Path.GetDirectoryName(dbPath) ??
-                          throw new InvalidOperationException("Invalid GeoIp_Db_Path");
+            var baseDir = Path.GetDirectoryName(dbPath) ?? throw new InvalidOperationException("Invalid GeoIp_Db_Path");
 
             var extractDir = Path.Combine(baseDir, $"GeoLite2_{timestamp}");
             var tempFile = Path.Combine(extractDir, $"GeoLite2-City_{timestamp}.tar.gz");
@@ -111,7 +62,13 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
             using (var response =
                    await _httpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken))
             {
-                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode)
+                {
+                    result.ErrorMessage = HandleHttpError(response);
+                    _logger.LogError("Failed to download database: {ErrorMessage}", result.ErrorMessage);
+                    return result;
+                }
+
                 await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
                 await using var fileStream =
                     new FileStream(tempFile, FileMode.Create, FileAccess.Write, FileShare.None);
@@ -151,9 +108,8 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
 
             result.DatabasePath = dbPath;
             result.Success = true;
-            result.Version = await GetDatabaseVersionAsync(cancellationToken);
 
-            _logger.LogInformation("Database successfully updated to version: {Version}", result.Version);
+            _logger.LogInformation("Database successfully updated.");
 
             await _databaseFactory.ReloadDatabaseAsync(cancellationToken);
 
@@ -183,5 +139,26 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
             throw new InvalidOperationException("GeoLite Account ID or License Key is missing.");
 
         return Convert.ToBase64String(Encoding.ASCII.GetBytes($"{accountId}:{licenseKey}"));
+    }
+    
+    private string HandleHttpError(HttpResponseMessage response)
+    {
+        var statusCode = (int)response.StatusCode;
+        var reason = response.ReasonPhrase ?? "Unknown";
+
+        var errorMessage = statusCode switch
+        {
+            400 => "400 Bad Request – Invalid request sent to the server.",
+            401 => "401 Unauthorized – Invalid API key or authentication failed.",
+            403 => "403 Forbidden – Access to the resource is restricted.",
+            404 => "404 Not Found – The requested resource could not be found.",
+            429 => "429 Too Many Requests – Rate limit exceeded, try again later.",
+            500 => "500 Internal Server Error – The server encountered an error.",
+            503 => "503 Service Unavailable – The service is temporarily down, retry later.",
+            _ => $"{statusCode} {reason} – Unexpected error occurred."
+        };
+
+        _logger.LogError("Failed to retrieve database version: {ErrorMessage}", errorMessage);
+        return $"Error: {errorMessage}";
     }
 }

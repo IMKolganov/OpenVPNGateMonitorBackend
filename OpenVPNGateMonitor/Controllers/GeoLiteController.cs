@@ -44,7 +44,7 @@ public class GeoLiteController : ControllerBase
     [HttpGet("GetVersionDatabase")]
     public async Task<IActionResult> GetVersionDatabase(CancellationToken cancellationToken = default)
     {
-        var version = await _geoLiteUpdaterService.GetDatabaseVersionAsync(cancellationToken);
+        var version = await _geoLiteQueryService.GetDatabaseVersionAsync(cancellationToken);
         return Ok(new { version });
     }
 
