@@ -1,6 +1,5 @@
 ﻿using System.Text;
 using System.Net.Http.Headers;
-using System.Text.RegularExpressions;
 using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.GeoLite.Untils;
