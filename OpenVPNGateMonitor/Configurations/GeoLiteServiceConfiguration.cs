@@ -8,7 +8,6 @@ public static class GeoLiteServiceConfiguration
     public static void ConfigureGeoLiteServices(this IServiceCollection services)
     {
         services.AddSingleton<GeoLiteDatabaseFactory>();
-        services.AddSingleton<IGeoLiteDatabaseFactory>(provider => provider.GetRequiredService<GeoLiteDatabaseFactory>());
 
         services.AddScoped<IGeoLiteQueryService, GeoLiteQueryService>();
         services.AddSingleton<IGeoLiteUpdaterService, GeoLiteUpdaterService>();

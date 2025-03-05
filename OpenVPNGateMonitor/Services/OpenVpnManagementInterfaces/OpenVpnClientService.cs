@@ -2,6 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
@@ -10,12 +11,13 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 public class OpenVpnClientService : IOpenVpnClientService
 {
     private readonly ILogger<IOpenVpnClientService> _logger;
+    private readonly IGeoLiteQueryService _geoLiteQueryService;
     
-    public OpenVpnClientService(ILogger<IOpenVpnClientService> logger, //IGeoIpService geoIpService, 
+    public OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoLiteQueryService geoLiteQueryService, 
         ICommandQueueManager commandQueueManager)
     {
         _logger = logger;
-        // _geoIpService = geoIpService; 
+        _geoLiteQueryService = geoLiteQueryService;
     }
     
     public async Task<List<OpenVpnClient>> GetClientsAsync(ICommandQueue commandQueue, 
@@ -44,21 +46,20 @@ public class OpenVpnClientService : IOpenVpnClientService
                 {
                     client.Id = id;//todo: remove
                     id++;
-                    // var geoInfo = await _geoIpService.GetGeoInfo(client.RemoteIp, cancellationToken);//todo: add mapper for project
-                    // if (geoInfo != null)
-                    // {
-                    //     client.Country = geoInfo.Country;
-                    //     client.Region = geoInfo.Region;
-                    //     client.City = geoInfo.City;
-                    //     client.Latitude = geoInfo.Latitude;
-                    //     client.Longitude = geoInfo.Longitude;
-                    // }
+                    var geoInfo = await _geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);//todo: add mapper for project
+                    if (geoInfo != null)
+                    {
+                        client.Country = geoInfo.Country;
+                        client.Region = geoInfo.Region;
+                        client.City = geoInfo.City;
+                        client.Latitude = geoInfo.Latitude;
+                        client.Longitude = geoInfo.Longitude;
+                    }
 
                     var sessionId = GenerateSessionId(client.CommonName, 
                         client.RemoteIp, client.ConnectedSince);
                     
                     client.SessionId = sessionId;
-                    //save to db
                     clients.Add(client);
                 }
             }

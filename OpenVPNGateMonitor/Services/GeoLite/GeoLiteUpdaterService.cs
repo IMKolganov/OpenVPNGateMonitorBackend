@@ -82,9 +82,7 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
         {
             var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss");
 
-            var dbPath =
-                await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_Db_Path", _serviceProvider,
-                    cancellationToken);
+            var dbPath = await GeoLiteLoadConfigs.GetStringParamFromSettings("GeoIp_Db_Path", _serviceProvider, cancellationToken);
             if (string.IsNullOrEmpty(dbPath))
                 throw new InvalidOperationException("GeoIp_Db_Path is not configured.");
 
@@ -147,26 +145,7 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
 
             _logger.LogInformation("Updating database file...");
 
-            await _databaseFactory.CloseDatabaseAsync(cancellationToken);
-
-            if (File.Exists(dbPath))
-            {
-                _logger.LogInformation("Deleting old database file: {DbPath}", dbPath);
-                
-                for (int i = 0; i < 10; i++)
-                {
-                    try
-                    {
-                        File.Delete(dbPath);
-                        break;
-                    }
-                    catch (IOException)
-                    {
-                        _logger.LogWarning("File is still locked. Retrying in 500ms...");
-                        await Task.Delay(500, cancellationToken);
-                    }
-                }
-            }
+            _databaseFactory.DeleteDatabase();
 
             File.Copy(mmdbFile, dbPath, true);
 
@@ -178,8 +157,7 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
 
             await _databaseFactory.ReloadDatabaseAsync(cancellationToken);
 
-            // File.Delete(tempFile);
-            // Directory.Delete(extractedPath, true);
+            _logger.LogInformation("GeoLite2 database update completed successfully.");
         }
         catch (Exception ex)
         {
