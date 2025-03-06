@@ -36,11 +36,18 @@ public static class ServiceConfiguration
         
         services.AddScoped<IOpenVpnServerService, OpenVpnServerService>();
 
-        services.AddSingleton<ICommandQueueManager, CommandQueueManager>();
+        services.AddSingleton<CommandQueueManager>();
+        services.AddSingleton<ICommandQueueManager>(provider => provider.GetRequiredService<CommandQueueManager>());
 
-        services.AddSingleton<IEasyRsaService, EasyRsaService>();
-        services.AddSingleton<IEasyRsaParseDbService, EasyRsaParseDbService>();
-        services.AddSingleton<IEasyRsaExecCommandService, EasyRsaExecCommandService>();
+        services.AddSingleton<EasyRsaService>();
+        services.AddSingleton<IEasyRsaService>(provider => provider.GetRequiredService<EasyRsaService>());
+
+        services.AddSingleton<EasyRsaParseDbService>();
+        services.AddSingleton<IEasyRsaParseDbService>(provider => provider.GetRequiredService<EasyRsaParseDbService>());
+
+        services.AddSingleton<EasyRsaExecCommandService>();
+        services.AddSingleton<IEasyRsaExecCommandService>(provider => provider.GetRequiredService<EasyRsaExecCommandService>());
+
         
         services.AddScoped<IOpenVpnTelnetService, OpenVpnTelnetService>();
         
@@ -51,8 +58,9 @@ public static class ServiceConfiguration
         services.AddSingleton<OpenVpnServerStatusManager>();
         services.AddSingleton<OpenVpnServerProcessorFactory>();
 
-        services.AddSingleton<IOpenVpnBackgroundService, OpenVpnBackgroundService>();
-        services.AddHostedService(provider => (OpenVpnBackgroundService)provider.GetRequiredService<IOpenVpnBackgroundService>());
+        services.AddSingleton<OpenVpnBackgroundService>();
+        services.AddSingleton<IOpenVpnBackgroundService>(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
+        services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
         
         services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();
