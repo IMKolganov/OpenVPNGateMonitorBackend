@@ -51,8 +51,8 @@ public static class ServiceConfiguration
         services.AddSingleton<OpenVpnServerStatusManager>();
         services.AddSingleton<OpenVpnServerProcessorFactory>();
 
-        services.AddHostedService<OpenVpnBackgroundService>();
         services.AddSingleton<IOpenVpnBackgroundService, OpenVpnBackgroundService>();
+        services.AddHostedService(provider => (OpenVpnBackgroundService)provider.GetRequiredService<IOpenVpnBackgroundService>());
         
         services.AddScoped<IOpenVpnServerOvpnFileConfigService, OpenVpnServerOvpnFileConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();

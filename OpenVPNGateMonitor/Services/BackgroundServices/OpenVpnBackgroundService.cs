@@ -9,6 +9,7 @@ namespace OpenVPNGateMonitor.Services.BackgroundServices;
 
 public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundService
 {
+    private static int _instanceCount = 0;
     private readonly ILogger<OpenVpnBackgroundService> _logger;
     private readonly OpenVpnServerProcessorFactory _processorFactory;
     private readonly OpenVpnServerStatusManager _statusManager;
@@ -25,53 +26,77 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         _processorFactory = processorFactory;
         _statusManager = statusManager;
         _serviceProvider = serviceProvider;
+        
+        int newInstanceCount = Interlocked.Increment(ref _instanceCount);
+        
+        if (newInstanceCount > 1)
+        {
+            _logger.LogCritical($"Multiple instances detected! Total instances: {newInstanceCount}");
+            throw new InvalidOperationException("Only one instance of OpenVpnBackgroundService is allowed.");
+        }
+        
+        _logger.LogInformation($"OpenVpnBackgroundService instance created. Total instances: {newInstanceCount}");
+        _logger.LogInformation($"Initial delay token source: {_delayTokenSource.GetHashCode()}");
     }
-
+    
     public Dictionary<int, BackgroundServerStatus> GetStatus() => _statusManager.GetAllStatuses();
 
     public async Task RunNow(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Manual trigger received. Cancelling wait...");
-        await _delayTokenSource.CancelAsync();
+        _logger.LogInformation($"Current delay token before cancel: {_delayTokenSource.GetHashCode()}");
+
+        if (!_delayTokenSource.IsCancellationRequested)
+        {
+            await _delayTokenSource.CancelAsync();
+        }
+
+        _logger.LogInformation("Resetting delay token source to allow immediate execution...");
+        _delayTokenSource.Dispose();
+        _delayTokenSource = new CancellationTokenSource();
+        _logger.LogInformation($"New delay token source: {_delayTokenSource.GetHashCode()}");
     }
 
     private async Task RunOpenVpnTask(int nextRunSeconds, CancellationToken cancellationToken)
     {
+        _logger.LogInformation("Starting OpenVPN task execution...");
         using var scope = _serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();
 
         await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
         {
+            _logger.LogInformation($"Processing server {server.Id}: {server.ManagementIp}:{server.ManagementPort}");
             try
             {
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Running, nextRunSeconds);
-                // var processor = _processorFactory.GetOrCreateProcessor(server);
-                //
-                // await processor.ProcessServerAsync(server, ct);
-
+                
+                var processor = _processorFactory.GetOrCreateProcessor(server);
+                await processor.ProcessServerAsync(server, ct);
+                
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle, nextRunSeconds);
+                _logger.LogInformation($"Completed processing for server {server.Id}");
             }
             catch (TimeoutException ex)
             {
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, "Timeout");
-                _logger.LogError(ex, $"Timeout while processing OpenVPN server " +
-                                     $"{server.ManagementIp}:{server.ManagementPort}");
+                _logger.LogError(ex, $"Timeout while processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
             }
             catch (Exception ex)
             {
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, ex.Message);
-                _logger.LogError(ex, $"OpenVpnBackgroundService: Error processing OpenVPN server" +
-                                     $" {server.ManagementIp}:{server.ManagementPort}");
+                _logger.LogError(ex, $"Error processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
             }
         });
+        _logger.LogInformation("OpenVPN task execution completed.");
     }
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        _logger.LogInformation("OpenVPN Background Service execution started.");
         var nextRunSeconds = 0;
         using var scope = _serviceProvider.CreateScope();
-        
+
         try
         {
             var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
@@ -80,16 +105,18 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         }
         catch (Exception ex)
         {
-            _logger.LogInformation($"Cancelling polling interval. Error: {ex}");
+            _logger.LogWarning($"Cancelling polling interval due to error: {ex}");
         }
 
         if (nextRunSeconds == 0)
         {
+            _logger.LogWarning("Polling interval is 0. Exiting service.");
             return;
         }
+
         _logger.LogInformation($"Polling interval: {nextRunSeconds} seconds");
-        
-        _logger.LogInformation("OpenVPN Background Service started. Running initial execution...");
+
+        _logger.LogInformation("Running initial execution...");
         await RunOpenVpnTask(nextRunSeconds, cancellationToken);
 
         while (!cancellationToken.IsCancellationRequested)
@@ -104,24 +131,21 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             {
                 var waitTime = (nextRunTime - now).TotalMilliseconds;
                 _logger.LogInformation($"Waiting {waitTime / 1000:F0} seconds until next run at {nextRunTime}");
-
-                if (!_delayTokenSource.IsCancellationRequested)
-                {
-                    await _delayTokenSource.CancelAsync();
-                }
-                _delayTokenSource.Dispose();
-                _delayTokenSource = new CancellationTokenSource();
+                _logger.LogInformation($"Delay token before waiting: {_delayTokenSource.GetHashCode()}");
 
                 try
                 {
-                    await Task.Delay(TimeSpan.FromMilliseconds(waitTime), _delayTokenSource.Token);
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _delayTokenSource.Token);
+                    await Task.Delay(TimeSpan.FromMilliseconds(waitTime), linkedCts.Token);
                 }
                 catch (TaskCanceledException)
                 {
                     _logger.LogInformation("Manual trigger received. Skipping wait.");
+                    _logger.LogInformation("Is cancellation requested: " + cancellationToken.IsCancellationRequested);
                 }
             }
 
+            _logger.LogInformation("Executing OpenVPN task.");
             await RunOpenVpnTask(nextRunSeconds, cancellationToken);
         }
     }
@@ -129,9 +153,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     private async Task<int> GetPollingIntervalSecondsAsync(ISettingsService settingsService, CancellationToken cancellationToken)
     {
         var interval = await settingsService.GetValueAsync<int>("OpenVPN_Polling_Interval", cancellationToken);
-
         var unit = await settingsService.GetValueAsync<string>("OpenVPN_Polling_Interval_Unit", cancellationToken);
-
         unit ??= "seconds";
         
         return unit.ToLower() switch
@@ -140,5 +162,4 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             _ => interval 
         };
     }
-
 }

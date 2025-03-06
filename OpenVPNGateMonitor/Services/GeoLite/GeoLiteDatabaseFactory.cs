@@ -78,7 +78,7 @@ public class GeoLiteDatabaseFactory
             _lock.ExitUpgradeableReadLock();
         }
 
-        await _loadingTask; // ✅ Дожидаемся загрузки БД
+        await _loadingTask;
     }
 
     private async Task LoadDatabaseInternalAsync(CancellationToken cancellationToken)
