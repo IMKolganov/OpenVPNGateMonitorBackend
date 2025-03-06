@@ -9,4 +9,5 @@ public class RegisteredApp : BaseEntity<int>
     [Required] public string Name { get; set; } = string.Empty;
     public string ClientSecret { get; set; } = Guid.NewGuid().ToString("N");
     public bool IsRevoked { get; set; } = false;
+    public bool IsSystem { get; set; } = false;
 }

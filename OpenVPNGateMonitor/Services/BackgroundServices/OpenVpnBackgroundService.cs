@@ -46,9 +46,9 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             try
             {
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Running, nextRunSeconds);
-                var processor = _processorFactory.GetOrCreateProcessor(server);
-
-                await processor.ProcessServerAsync(server, ct);
+                // var processor = _processorFactory.GetOrCreateProcessor(server);
+                //
+                // await processor.ProcessServerAsync(server, ct);
 
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle, nextRunSeconds);
             }
@@ -71,10 +71,22 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     {
         var nextRunSeconds = 0;
         using var scope = _serviceProvider.CreateScope();
-        var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-        var settingsService = new SettingsService(unitOfWork);
         
-        nextRunSeconds = await GetPollingIntervalSecondsAsync(settingsService, cancellationToken);
+        try
+        {
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var settingsService = new SettingsService(unitOfWork);
+            nextRunSeconds = await GetPollingIntervalSecondsAsync(settingsService, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogInformation($"Cancelling polling interval. Error: {ex}");
+        }
+
+        if (nextRunSeconds == 0)
+        {
+            return;
+        }
         _logger.LogInformation($"Polling interval: {nextRunSeconds} seconds");
         
         _logger.LogInformation("OpenVPN Background Service started. Running initial execution...");

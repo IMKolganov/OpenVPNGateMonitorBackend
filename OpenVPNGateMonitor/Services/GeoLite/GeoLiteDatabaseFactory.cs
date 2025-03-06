@@ -11,6 +11,7 @@ public class GeoLiteDatabaseFactory
     private DatabaseReader? _currentDb;
     private string? _dbPath;
     private const string GeoIpDbPath = "GeoIp_Db_Path";
+    private Task? _loadingTask;
 
     /// <summary>
     /// Indicates whether the database is loaded.
@@ -39,8 +40,7 @@ public class GeoLiteDatabaseFactory
             _lock.ExitReadLock();
         }
 
-        // First call must ensure DB is loaded
-        await LoadDatabaseAsync(cancellationToken);
+        await EnsureDatabaseLoadedAsync(cancellationToken);
 
         _lock.EnterReadLock();
         try
@@ -57,41 +57,55 @@ public class GeoLiteDatabaseFactory
     /// Loads the database from the configured file path.
     /// Ensures that multiple concurrent requests wait until the DB is fully loaded.
     /// </summary>
-    public async Task LoadDatabaseAsync(CancellationToken cancellationToken)
+    private async Task EnsureDatabaseLoadedAsync(CancellationToken cancellationToken)
     {
+        if (_loadingTask != null)
+        {
+            await _loadingTask;
+            return;
+        }
+
         _lock.EnterUpgradeableReadLock();
         try
         {
             if (IsDatabaseLoaded)
                 return;
 
-            _lock.EnterWriteLock();
-            try
-            {
-                if (IsDatabaseLoaded)
-                    return;
-
-                _logger.LogInformation("Closing and reloading GeoLite2 database...");
-                CloseDatabase();
-
-                _dbPath = await GeoLiteLoadConfigs.GetStringParamFromSettings(GeoIpDbPath, _serviceProvider, cancellationToken);
-                if (string.IsNullOrEmpty(_dbPath) || !File.Exists(_dbPath))
-                {
-                    _logger.LogWarning("Database file not found: {DbPath}", _dbPath);
-                    return;
-                }
-
-                _currentDb = new DatabaseReader(_dbPath);
-                _logger.LogInformation("Loaded GeoLite2 database from {DbPath}", _dbPath);
-            }
-            finally
-            {
-                _lock.ExitWriteLock();
-            }
+            _loadingTask = LoadDatabaseInternalAsync(cancellationToken);
         }
         finally
         {
             _lock.ExitUpgradeableReadLock();
+        }
+
+        await _loadingTask; // ✅ Дожидаемся загрузки БД
+    }
+
+    private async Task LoadDatabaseInternalAsync(CancellationToken cancellationToken)
+    {
+        _lock.EnterWriteLock();
+        try
+        {
+            if (IsDatabaseLoaded)
+                return;
+
+            _logger.LogInformation("Closing and reloading GeoLite2 database...");
+            CloseDatabase();
+
+            _dbPath = await GeoLiteLoadConfigs.GetStringParamFromSettings(GeoIpDbPath, _serviceProvider, cancellationToken);
+            if (string.IsNullOrEmpty(_dbPath) || !File.Exists(_dbPath))
+            {
+                _logger.LogWarning("Database file not found: {DbPath}", _dbPath);
+                return;
+            }
+
+            _currentDb = new DatabaseReader(_dbPath);
+            _logger.LogInformation("Loaded GeoLite2 database from {DbPath}", _dbPath);
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+            _loadingTask = null;
         }
     }
     
@@ -123,7 +137,18 @@ public class GeoLiteDatabaseFactory
     public async Task ReloadDatabaseAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Reloading GeoLite2 database...");
-        await LoadDatabaseAsync(cancellationToken);
+
+        _lock.EnterWriteLock();
+        try
+        {
+            CloseDatabase();
+        }
+        finally
+        {
+            _lock.ExitWriteLock();
+        }
+
+        await EnsureDatabaseLoadedAsync(cancellationToken);
     }
 
     /// <summary>
