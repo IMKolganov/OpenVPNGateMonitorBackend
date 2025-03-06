@@ -1,5 +1,4 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
-using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Sinks.Elasticsearch;
 

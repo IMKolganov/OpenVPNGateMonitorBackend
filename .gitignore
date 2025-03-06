@@ -364,3 +364,4 @@ appsettings.json
 appsettings.Development.json
 .idea
 GeoLite2-City.mmdb
+GeoLite2/

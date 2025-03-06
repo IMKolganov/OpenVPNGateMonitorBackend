@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
+using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
-namespace OpenVPNGateMonitor.Services.UntilsServices;
+namespace OpenVPNGateMonitor.Services.EasyRsaServices;
 
 public class EasyRsaExecCommandService : IEasyRsaExecCommandService
 {

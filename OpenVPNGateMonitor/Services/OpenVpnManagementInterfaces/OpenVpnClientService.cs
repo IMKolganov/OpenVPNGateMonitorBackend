@@ -2,6 +2,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
+using OpenVPNGateMonitor.Services.GeoLite.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
@@ -10,23 +11,23 @@ namespace OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces;
 public class OpenVpnClientService : IOpenVpnClientService
 {
     private readonly ILogger<IOpenVpnClientService> _logger;
-    private readonly IGeoIpService _geoIpService;
+    private readonly IGeoLiteQueryService _geoLiteQueryService;
     
-    public OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoIpService geoIpService, 
+    public OpenVpnClientService(ILogger<IOpenVpnClientService> logger, IGeoLiteQueryService geoLiteQueryService, 
         ICommandQueueManager commandQueueManager)
     {
         _logger = logger;
-        _geoIpService = geoIpService; 
+        _geoLiteQueryService = geoLiteQueryService;
     }
     
     public async Task<List<OpenVpnClient>> GetClientsAsync(ICommandQueue commandQueue, 
         CancellationToken cancellationToken)
     {
         var response = await commandQueue.SendCommandAsync("status 3", cancellationToken);
-        return ParseStatus(response);
+        return await ParseStatus(response, cancellationToken);
     }
 
-    private List<OpenVpnClient> ParseStatus(string data)
+    private async Task<List<OpenVpnClient>> ParseStatus(string data, CancellationToken cancellationToken)
     {
         var id = 0;
         var clients = new List<OpenVpnClient>();
@@ -45,7 +46,7 @@ public class OpenVpnClientService : IOpenVpnClientService
                 {
                     client.Id = id;//todo: remove
                     id++;
-                    var geoInfo = _geoIpService.GetGeoInfo(client.RemoteIp);//todo: add mapper for project
+                    var geoInfo = await _geoLiteQueryService.GetGeoInfoAsync(client.RemoteIp, cancellationToken);//todo: add mapper for project
                     if (geoInfo != null)
                     {
                         client.Country = geoInfo.Country;
@@ -54,13 +55,11 @@ public class OpenVpnClientService : IOpenVpnClientService
                         client.Latitude = geoInfo.Latitude;
                         client.Longitude = geoInfo.Longitude;
                     }
-                
 
                     var sessionId = GenerateSessionId(client.CommonName, 
                         client.RemoteIp, client.ConnectedSince);
                     
                     client.SessionId = sessionId;
-                    //save to db
                     clients.Add(client);
                 }
             }

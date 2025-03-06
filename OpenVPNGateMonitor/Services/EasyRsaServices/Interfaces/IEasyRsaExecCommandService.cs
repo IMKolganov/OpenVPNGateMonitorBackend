@@ -1,4 +1,4 @@
-﻿namespace OpenVPNGateMonitor.Services.UntilsServices;
+﻿namespace OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
 public interface IEasyRsaExecCommandService
 {

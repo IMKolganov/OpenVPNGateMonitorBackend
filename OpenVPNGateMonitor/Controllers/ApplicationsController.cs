@@ -5,7 +5,7 @@ using OpenVPNGateMonitor.Services.Api.Auth;
 
 namespace OpenVPNGateMonitor.Controllers;
 
-[Route("api/applications")]
+[Route("api/[controller]")]
 [ApiController]
 public class ApplicationsController : ControllerBase
 {
