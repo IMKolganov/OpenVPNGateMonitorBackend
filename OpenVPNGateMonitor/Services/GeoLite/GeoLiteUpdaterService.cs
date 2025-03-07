@@ -101,7 +101,7 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
 
             _logger.LogInformation("Updating database file...");
 
-            _databaseFactory.DeleteDatabase();
+            await _databaseFactory.DeleteDatabaseAsync();
 
             File.Copy(mmdbFile, dbPath, true);
 
