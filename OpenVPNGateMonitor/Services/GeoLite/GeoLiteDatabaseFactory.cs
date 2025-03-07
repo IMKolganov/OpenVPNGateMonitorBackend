@@ -7,15 +7,12 @@ public class GeoLiteDatabaseFactory
 {
     private readonly ILogger<GeoLiteDatabaseFactory> _logger;
     private readonly IServiceProvider _serviceProvider;
-    private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.SupportsRecursion);
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
     private DatabaseReader? _currentDb;
     private string? _dbPath;
     private const string GeoIpDbPath = "GeoIp_Db_Path";
     private Task? _loadingTask;
 
-    /// <summary>
-    /// Indicates whether the database is loaded.
-    /// </summary>
     public bool IsDatabaseLoaded => _currentDb != null;
 
     public GeoLiteDatabaseFactory(ILogger<GeoLiteDatabaseFactory> logger, IServiceProvider serviceProvider)
@@ -24,92 +21,46 @@ public class GeoLiteDatabaseFactory
         _logger = logger;
     }
     
-    /// <summary>
-    /// Returns the current instance of the database reader. If it's not loaded, loads it first.
-    /// </summary>
     public async Task<DatabaseReader> GetDatabaseAsync(CancellationToken cancellationToken)
     {
-        _lock.TryEnterReadLock(10000);
-        try
-        {
-            if (_currentDb != null)
-                return _currentDb;
-        }
-        finally
-        {
-            _lock.ExitReadLock();
-        }
+        if (_currentDb != null)
+            return _currentDb;
 
         await EnsureDatabaseLoadedAsync(cancellationToken);
+        
+        if (_currentDb == null)
+            throw new InvalidOperationException("Database is not loaded.");
 
-        _lock.TryEnterReadLock(10000);
-        try
-        {
-            return _currentDb ?? throw new InvalidOperationException("Database is not loaded.");
-        }
-        finally
-        {
-            _lock.ExitReadLock();
-        }
+        return _currentDb;
     }
-    
-    /// <summary>
-    /// Loads the database from the configured file path.
-    /// Ensures that multiple concurrent requests wait until the DB is fully loaded.
-    /// </summary>
+
     private async Task EnsureDatabaseLoadedAsync(CancellationToken cancellationToken)
     {
         if (_loadingTask != null)
         {
-            try
-            {
-                await _loadingTask.WaitAsync(cancellationToken);
-                return;
-            }
-            catch (OperationCanceledException)
-            {
-                _loadingTask = null;
-                return;
-            }
-            catch (Exception ex)
-            {
-                _loadingTask = null;
-                throw new InvalidOperationException("Database loading failed.", ex);
-            }
+            await _loadingTask.WaitAsync(cancellationToken);
+            return;
         }
 
-        _lock.TryEnterUpgradeableReadLock(10000);
+        await _semaphore.WaitAsync(cancellationToken);
         try
         {
             if (IsDatabaseLoaded)
                 return;
 
-            _loadingTask = Task.Run(() => LoadDatabaseInternalAsync(cancellationToken), cancellationToken);
+            _loadingTask = LoadDatabaseInternalAsync(cancellationToken);
         }
         finally
         {
-            _lock.ExitUpgradeableReadLock();
+            _semaphore.Release();
         }
 
-        try
-        {
-            await _loadingTask.WaitAsync(cancellationToken);
-        }
-        catch (OperationCanceledException)
-        {
-            _loadingTask = null;
-            return;
-        }
-        catch (Exception ex)
-        {
-            _loadingTask = null;
-            throw new InvalidOperationException("Database loading failed.", ex);
-        }
+        await _loadingTask.WaitAsync(cancellationToken);
     }
 
     private async Task LoadDatabaseInternalAsync(CancellationToken cancellationToken)
     {
-        _lock.TryEnterWriteLock(10000);
+        await _semaphore.WaitAsync(cancellationToken);
         try
         {
             if (IsDatabaseLoaded)
@@ -130,14 +81,14 @@ public class GeoLiteDatabaseFactory
         }
         finally
         {
-            _lock.ExitWriteLock();
             _loadingTask = null;
+            _semaphore.Release();
         }
     }
     
-    public void DeleteDatabase()
+    public async Task DeleteDatabaseAsync()
     {
-        _lock.TryEnterWriteLock(10000);
+        await _semaphore.WaitAsync();
         try
         {
             if (IsDatabaseLoaded)
@@ -153,47 +104,23 @@ public class GeoLiteDatabaseFactory
         }
         finally
         {
-            _lock.ExitWriteLock();
+            _semaphore.Release();
         }
     }
 
-    /// <summary>
-    /// Reloads the database by closing the old instance and loading a new one.
-    /// </summary>
     public async Task ReloadDatabaseAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Reloading GeoLite2 database...");
-
-        _lock.TryEnterWriteLock(10000);
-        try
-        {
-            CloseDatabase();
-        }
-        finally
-        {
-            _lock.ExitWriteLock();
-        }
-
+        await DeleteDatabaseAsync();
         await EnsureDatabaseLoadedAsync(cancellationToken);
     }
 
-    /// <summary>
-    /// Returns the current database file path.
-    /// </summary>
-    public Task<string> GetDatabasePath()
+    public async Task<string> GetDatabasePathAsync()
     {
-        _lock.TryEnterReadLock(10000);
-        try
-        {
-            if (_dbPath == null)
-                throw new InvalidOperationException("Database is not loaded.");
+        if (_dbPath == null)
+            throw new InvalidOperationException("Database is not loaded.");
 
-            return Task.FromResult(_dbPath);
-        }
-        finally
-        {
-            _lock.ExitReadLock();
-        }
+        return await Task.FromResult(_dbPath);
     }
     
     private void CloseDatabase()
