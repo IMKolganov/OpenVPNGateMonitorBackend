@@ -29,7 +29,7 @@ public class GeoLiteDatabaseFactory
     /// </summary>
     public async Task<DatabaseReader> GetDatabaseAsync(CancellationToken cancellationToken)
     {
-        _lock.EnterReadLock();
+        _lock.TryEnterReadLock(10000);
         try
         {
             if (_currentDb != null)
@@ -42,7 +42,7 @@ public class GeoLiteDatabaseFactory
 
         await EnsureDatabaseLoadedAsync(cancellationToken);
 
-        _lock.EnterReadLock();
+        _lock.TryEnterReadLock(10000);
         try
         {
             return _currentDb ?? throw new InvalidOperationException("Database is not loaded.");
@@ -109,7 +109,7 @@ public class GeoLiteDatabaseFactory
 
     private async Task LoadDatabaseInternalAsync(CancellationToken cancellationToken)
     {
-        _lock.EnterWriteLock();
+        _lock.TryEnterWriteLock(10000);
         try
         {
             if (IsDatabaseLoaded)
@@ -137,7 +137,7 @@ public class GeoLiteDatabaseFactory
     
     public void DeleteDatabase()
     {
-        _lock.EnterWriteLock();
+        _lock.TryEnterWriteLock(10000);
         try
         {
             if (IsDatabaseLoaded)
@@ -164,7 +164,7 @@ public class GeoLiteDatabaseFactory
     {
         _logger.LogInformation("Reloading GeoLite2 database...");
 
-        _lock.EnterWriteLock();
+        _lock.TryEnterWriteLock(10000);
         try
         {
             CloseDatabase();
@@ -182,7 +182,7 @@ public class GeoLiteDatabaseFactory
     /// </summary>
     public Task<string> GetDatabasePath()
     {
-        _lock.EnterReadLock();
+        _lock.TryEnterReadLock(10000);
         try
         {
             if (_dbPath == null)
