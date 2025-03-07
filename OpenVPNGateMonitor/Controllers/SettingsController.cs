@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.Others;
 
@@ -6,6 +7,7 @@ namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class SettingsController : ControllerBase
 {
     private readonly ISettingsService _settingsService;
@@ -14,7 +16,7 @@ public class SettingsController : ControllerBase
     {
         _settingsService = settingsService;
     }
-
+    
     [HttpGet("Get")]
     public async Task<IActionResult> Get([FromQuery] string key, CancellationToken cancellationToken = default)
     {

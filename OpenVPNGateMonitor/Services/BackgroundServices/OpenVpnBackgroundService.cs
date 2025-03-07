@@ -94,33 +94,27 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("OpenVPN Background Service execution started.");
-        var nextRunSeconds = 0;
-        using var scope = _serviceProvider.CreateScope();
-
-        try
-        {
-            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
-            var settingsService = new SettingsService(unitOfWork);
-            nextRunSeconds = await GetPollingIntervalSecondsAsync(settingsService, cancellationToken);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning($"Cancelling polling interval due to error: {ex}");
-        }
-
-        if (nextRunSeconds == 0)
-        {
-            _logger.LogWarning("Polling interval is 0. Exiting service.");
-            return;
-        }
-
-        _logger.LogInformation($"Polling interval: {nextRunSeconds} seconds");
-
-        _logger.LogInformation("Running initial execution...");
+        var nextRunSeconds = await GetPollingIntervalSecondsAsync(cancellationToken);
         await RunOpenVpnTask(nextRunSeconds, cancellationToken);
-
         while (!cancellationToken.IsCancellationRequested)
         {
+            nextRunSeconds = await GetPollingIntervalSecondsAsync(cancellationToken);
+            if (nextRunSeconds == 0)
+            {
+                _logger.LogWarning("Polling interval is 0. Pausing execution...");
+            
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(10), cancellationToken);
+                    continue;
+                }
+                catch (TaskCanceledException)
+                {
+                    _logger.LogInformation("Cancellation requested. Exiting service.");
+                    return;
+                }
+            }
+            
             var statuses = _statusManager.GetAllStatuses().Values.ToList();
             var nextRunTime = statuses.Any()
                 ? statuses.Select(status => status.NextRunTime).Min()
@@ -148,6 +142,23 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             _logger.LogInformation("Executing OpenVPN task.");
             await RunOpenVpnTask(nextRunSeconds, cancellationToken);
         }
+    }
+
+    private async Task<int> GetPollingIntervalSecondsAsync(CancellationToken cancellationToken)
+    {
+        using var scope = _serviceProvider.CreateScope();
+        try
+        {
+            var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+            var settingsService = new SettingsService(unitOfWork);
+            return await GetPollingIntervalSecondsAsync(settingsService, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"Cancelling polling interval due to error: {ex}");
+        }
+
+        return 0;
     }
     
     private async Task<int> GetPollingIntervalSecondsAsync(ISettingsService settingsService, CancellationToken cancellationToken)

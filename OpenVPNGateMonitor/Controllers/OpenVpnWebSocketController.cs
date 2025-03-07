@@ -1,5 +1,6 @@
 ﻿using System.Net.WebSockets;
 using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
@@ -9,6 +10,7 @@ namespace OpenVPNGateMonitor.Controllers;
 
 [Route("api/openvpn")]
 [ApiController]
+[Authorize]
 public class OpenVpnWebSocketController : ControllerBase
 {
     private readonly IOpenVpnTelnetService _openVpnTelnetService;

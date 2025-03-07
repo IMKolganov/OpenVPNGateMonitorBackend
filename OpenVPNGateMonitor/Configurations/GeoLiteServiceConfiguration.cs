@@ -10,7 +10,10 @@ public static class GeoLiteServiceConfiguration
         services.AddSingleton<GeoLiteDatabaseFactory>();
 
         services.AddScoped<IGeoLiteQueryService, GeoLiteQueryService>();
-        services.AddSingleton<IGeoLiteUpdaterService, GeoLiteUpdaterService>();
+
+        services.AddSingleton<GeoLiteUpdaterService>();
+        services.AddSingleton<IGeoLiteUpdaterService>(provider => provider.GetRequiredService<GeoLiteUpdaterService>());
+
         services.AddHttpClient<IGeoLiteUpdaterService, GeoLiteUpdaterService>();
     }
 }

@@ -1,5 +1,4 @@
-﻿using System.Reflection;
-using OpenVPNGateMonitor.Middlewares;
+﻿using OpenVPNGateMonitor.Middlewares;
 
 namespace OpenVPNGateMonitor.Configurations;
 

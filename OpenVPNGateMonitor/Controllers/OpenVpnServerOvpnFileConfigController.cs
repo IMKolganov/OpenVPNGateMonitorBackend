@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Api;
@@ -7,6 +8,7 @@ namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize]
 public class OpenVpnServerOvpnFileConfigController : ControllerBase
 {
     private readonly IOpenVpnServerOvpnFileConfigService _openVpnServerOvpnFileConfigService;

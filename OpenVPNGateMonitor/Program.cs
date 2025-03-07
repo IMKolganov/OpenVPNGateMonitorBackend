@@ -6,6 +6,7 @@ builder.Services.ConfigureServices(builder.Configuration);
 builder.Services.ConfigureGeoLiteServices();
 builder.Services.ConfigureAuthServices();
 builder.Services.DataBaseServices(builder.Configuration);
+builder.Services.ConfigureJwt(builder.Configuration);
 
 builder.Host.ConfigureSerilog(builder.Configuration);
 
