@@ -7,6 +7,7 @@ namespace OpenVPNGateMonitor.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
+[Authorize]
 public class ApplicationsController : ControllerBase
 {
     private readonly IApplicationService _appService;
@@ -17,7 +18,6 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpPost("RegisterApplication")]
-    // [Authorize]
     public async Task<IActionResult> RegisterApplication([FromBody] RegisterAppRequest request)
     {
         var newApp = await _appService.RegisterApplicationAsync(request.Name);
@@ -25,7 +25,6 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpGet("GetAllApplications")]
-    // [Authorize]
     public async Task<IActionResult> GetAllApplications()
     {
         var apps = await _appService.GetAllApplicationsAsync();
@@ -33,7 +32,6 @@ public class ApplicationsController : ControllerBase
     }
 
     [HttpPost("RevokeApplication/{clientId}")]
-    // [Authorize]
     public async Task<IActionResult> RevokeApplication(string clientId)
     {
         var result = await _appService.RevokeApplicationAsync(clientId);

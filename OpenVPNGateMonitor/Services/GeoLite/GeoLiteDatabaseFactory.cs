@@ -61,24 +61,50 @@ public class GeoLiteDatabaseFactory
     {
         if (_loadingTask != null)
         {
-            await _loadingTask;
-            return;
+            try
+            {
+                await _loadingTask.WaitAsync(cancellationToken);
+                return;
+            }
+            catch (OperationCanceledException)
+            {
+                _loadingTask = null;
+                return;
+            }
+            catch (Exception ex)
+            {
+                _loadingTask = null;
+                throw new InvalidOperationException("Database loading failed.", ex);
+            }
         }
 
-        _lock.EnterUpgradeableReadLock();
+        _lock.TryEnterUpgradeableReadLock(10000);
         try
         {
             if (IsDatabaseLoaded)
                 return;
 
-            _loadingTask = LoadDatabaseInternalAsync(cancellationToken);
+            _loadingTask = Task.Run(() => LoadDatabaseInternalAsync(cancellationToken), cancellationToken);
         }
         finally
         {
             _lock.ExitUpgradeableReadLock();
         }
 
-        await _loadingTask;
+        try
+        {
+            await _loadingTask.WaitAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            _loadingTask = null;
+            return;
+        }
+        catch (Exception ex)
+        {
+            _loadingTask = null;
+            throw new InvalidOperationException("Database loading failed.", ex);
+        }
     }
 
     private async Task LoadDatabaseInternalAsync(CancellationToken cancellationToken)

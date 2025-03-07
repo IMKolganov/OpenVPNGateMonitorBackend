@@ -93,6 +93,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
+        return;
         _logger.LogInformation("OpenVPN Background Service execution started.");
         var nextRunSeconds = 0;
         using var scope = _serviceProvider.CreateScope();
