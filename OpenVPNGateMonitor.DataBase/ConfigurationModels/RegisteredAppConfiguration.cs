@@ -17,5 +17,7 @@ public class RegisteredAppConfiguration : BaseEntityConfiguration<RegisteredApp>
             .IsRequired();
         entity.Property(e => e.IsRevoked)
             .IsRequired();
+        entity.Property(e => e.IsSystem)
+            .IsRequired();
     }
 }

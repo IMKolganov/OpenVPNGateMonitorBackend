@@ -1,5 +1,4 @@
-﻿using OpenVPNGateMonitor.Models.Helpers.Api;
-using OpenVPNGateMonitor.Models.Helpers.Background;
+﻿using OpenVPNGateMonitor.Models.Helpers.Background;
 
 namespace OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
 

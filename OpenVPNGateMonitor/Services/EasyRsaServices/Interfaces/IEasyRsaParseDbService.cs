@@ -1,6 +1,6 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers;
 
-namespace OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
+namespace OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
 public interface IEasyRsaParseDbService
 {

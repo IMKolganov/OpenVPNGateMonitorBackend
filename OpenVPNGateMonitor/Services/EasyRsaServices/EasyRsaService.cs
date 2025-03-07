@@ -1,9 +1,9 @@
 ﻿using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers;
-using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
+using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
-namespace OpenVPNGateMonitor.Services.UntilsServices;
+namespace OpenVPNGateMonitor.Services.EasyRsaServices;
 
 public class EasyRsaService : IEasyRsaService
 {

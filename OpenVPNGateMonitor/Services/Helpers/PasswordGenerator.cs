@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace OpenVPNGateMonitor.Services.Untils;
+namespace OpenVPNGateMonitor.Services.Helpers;
 
 public class PasswordGenerator
 {

@@ -3,13 +3,13 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using System.Threading.Tasks;
-using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers.Auth;
 using OpenVPNGateMonitor.Services.Api.Auth;
 
 namespace OpenVPNGateMonitor.Controllers;
 
-[Route("api/auth")]
+[Route("api/[controller]")]
 [ApiController]
 public class AuthController : ControllerBase
 {
@@ -21,7 +21,36 @@ public class AuthController : ControllerBase
         _config = config;
         _appService = appService;
     }
+    
+    [HttpGet("system-secret-status")]
+    public async Task<IActionResult> GetSystemStatus()
+    {
+        var isSet = await _appService.IsSystemApplicationSetAsync();
+        return Ok(new { systemSet = isSet });
+    }
+    
+    [HttpPost("set-system-secret")]
+    public async Task<IActionResult> SetSystemSecret([FromBody] SetSecretRequest request)
+    {
+        var systemApp = await _appService.GetApplicationSystemByClientIdAsync(request.ClientId);
 
+        if (systemApp != null && !string.IsNullOrEmpty(systemApp.ClientSecret))
+        {
+            return BadRequest(new { message = "System application is already set" });
+        }
+
+        systemApp ??= new RegisteredApp()
+        {
+            Name = "OpenVPN Gate Monitor Dashboard",
+            ClientId = request.ClientId,
+            ClientSecret = request.ClientSecret,
+            IsSystem = true
+        };
+        await _appService.UpdateApplicationAsync(systemApp);
+
+        return Ok(new { message = "ClientSecret set successfully" });
+    }
+    
     [HttpPost("token")]
     public async Task<IActionResult> GenerateToken([FromBody] TokenRequest request)
     {

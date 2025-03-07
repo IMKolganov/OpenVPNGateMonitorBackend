@@ -1,5 +1,5 @@
 ﻿using System.Reflection;
-using OpenVPNGateMonitor.Services.UntilsServices.Interfaces;
+using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
 namespace OpenVPNGateMonitor.Configurations;
 

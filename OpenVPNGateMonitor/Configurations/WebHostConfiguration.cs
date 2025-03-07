@@ -1,7 +1,4 @@
-﻿using System.Security.Cryptography.X509Certificates;
-using OpenVPNGateMonitor.Models.Helpers;
-
-namespace OpenVPNGateMonitor.Configurations;
+﻿namespace OpenVPNGateMonitor.Configurations;
 
 public static class WebHostConfiguration
 {
