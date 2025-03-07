@@ -18,7 +18,7 @@ public class GeoLiteQueryService : IGeoLiteQueryService
     
     public async Task<string> GetDatabasePathAsync()
     {
-        return await _dbFactory.GetDatabasePath();
+        return await _dbFactory.GetDatabasePathAsync();
     }
     
     public async Task<string> GetDatabaseVersionAsync(CancellationToken cancellationToken)
