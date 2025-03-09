@@ -14,6 +14,7 @@ public class GeoLiteDatabaseFactory
     private Task? _loadingTask;
 
     public bool IsDatabaseLoaded => _currentDb != null;
+    public string DatabasePath => _dbPath ?? string.Empty;
 
     public GeoLiteDatabaseFactory(ILogger<GeoLiteDatabaseFactory> logger, IServiceProvider serviceProvider)
     {
@@ -86,9 +87,9 @@ public class GeoLiteDatabaseFactory
         }
     }
     
-    public async Task DeleteDatabaseAsync()
+    public async Task DeleteDatabaseAsync(CancellationToken cancellationToken)
     {
-        await _semaphore.WaitAsync();
+        await _semaphore.WaitAsync(cancellationToken);
         try
         {
             if (IsDatabaseLoaded)
@@ -111,7 +112,6 @@ public class GeoLiteDatabaseFactory
     public async Task ReloadDatabaseAsync(CancellationToken cancellationToken)
     {
         _logger.LogInformation("Reloading GeoLite2 database...");
-        await DeleteDatabaseAsync();
         await EnsureDatabaseLoadedAsync(cancellationToken);
     }
 

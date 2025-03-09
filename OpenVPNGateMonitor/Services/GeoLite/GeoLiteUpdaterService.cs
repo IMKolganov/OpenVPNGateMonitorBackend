@@ -100,16 +100,18 @@ public class GeoLiteUpdaterService : IGeoLiteUpdaterService
             }
 
             _logger.LogInformation("Updating database file...");
-
-            await _databaseFactory.DeleteDatabaseAsync();
-
+            result.DatabasePath = dbPath;
+            if (result.DatabasePath == _databaseFactory.DatabasePath)
+            {
+                await _databaseFactory.DeleteDatabaseAsync(cancellationToken);
+            }
+            
             File.Copy(mmdbFile, dbPath, true);
 
-            result.DatabasePath = dbPath;
             result.Success = true;
 
             _logger.LogInformation("Database successfully updated.");
-
+            
             await _databaseFactory.ReloadDatabaseAsync(cancellationToken);
 
             _logger.LogInformation("GeoLite2 database update completed successfully.");
