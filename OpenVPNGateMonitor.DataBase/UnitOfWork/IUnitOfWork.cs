@@ -1,3 +1,4 @@
+using Microsoft.EntityFrameworkCore.Storage;
 using OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
 using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
 
@@ -9,4 +10,5 @@ public interface IUnitOfWork : IDisposable
     IQuery<T> GetQuery<T>() where T : class;
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
     void SaveChanges();
+    Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default);
 }

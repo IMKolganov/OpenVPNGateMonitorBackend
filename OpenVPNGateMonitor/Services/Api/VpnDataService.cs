@@ -26,10 +26,8 @@ public class VpnDataService : IVpnDataService
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
-
-        var totalCount = await _unitOfWork.GetQuery<OpenVpnServerClient>().AsQueryable().CountAsync(cancellationToken);
-
-        return new OpenVpnServerClientsResponse(){ OpenVpnServerClients = openVpnServerClients, TotalCount = totalCount };
+        
+        return new OpenVpnServerClientsResponse(){ OpenVpnServerClients = openVpnServerClients, TotalCount = openVpnServerClients.Count };
     }
 
     public async Task<OpenVpnServerClientsResponse> GetAllHistoryOpenVpnServerClients(

@@ -1,11 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.DataBase.Repositories.Interfaces;
 using OpenVPNGateMonitor.DataBase.Repositories.Queries.Interfaces;
 
 namespace OpenVPNGateMonitor.DataBase.UnitOfWork;
 
-public class UnitOfWork : IUnitOfWork, IDisposable
+public class UnitOfWork : IUnitOfWork
 {
     private readonly ApplicationDbContext? _context;
     private readonly IDbContextFactory<ApplicationDbContext> _dbContextFactory;
@@ -37,13 +38,24 @@ public class UnitOfWork : IUnitOfWork, IDisposable
             return await _context.SaveChangesAsync(cancellationToken);
         }
 
-        using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        await using var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
         return await dbContext.SaveChangesAsync(cancellationToken);
     }
 
     public void SaveChanges()
     {
         _context?.SaveChanges();
+    }
+
+    public async Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default)
+    {
+        if (_context != null)
+        {
+            return await _context.Database.BeginTransactionAsync(cancellationToken);
+        }
+
+        var dbContext = await _dbContextFactory.CreateDbContextAsync(cancellationToken);
+        return await dbContext.Database.BeginTransactionAsync(cancellationToken);
     }
 
     public void Dispose()
