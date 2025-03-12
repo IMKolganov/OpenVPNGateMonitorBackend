@@ -51,7 +51,7 @@ public class OpenVpnServerService : IOpenVpnServerService
             var openVpnClients = await _openVpnClientService.GetClientsAsync(commandQueue, cancellationToken);
             _logger.LogInformation("Retrieved {Count} clients from OpenVPN.", openVpnClients.Count);
 
-            await SetDisconnectForAllUsers(cancellationToken);
+            await SetDisconnectForAllUsers(vpnServerId, cancellationToken);
 
             var openVpnServerClientRepository = _unitOfWork.GetRepository<OpenVpnServerClient>();
 
@@ -254,10 +254,10 @@ public class OpenVpnServerService : IOpenVpnServerService
         return sessionId;
     }
 
-    private async Task<bool> SetDisconnectForAllUsers(CancellationToken cancellationToken)
+    private async Task<bool> SetDisconnectForAllUsers(int vpnServerId, CancellationToken cancellationToken)
     {
         var existingAllOpenVpnServerClient = await _unitOfWork.GetQuery<OpenVpnServerClient>()
-            .AsQueryable().Where(x => x.IsConnected)
+            .AsQueryable().Where(x => x.IsConnected && x.VpnServerId == vpnServerId)
             .ToListAsync(cancellationToken);
 
         foreach (var client in existingAllOpenVpnServerClient)

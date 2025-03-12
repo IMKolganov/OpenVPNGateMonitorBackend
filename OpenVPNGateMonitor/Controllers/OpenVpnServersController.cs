@@ -42,7 +42,6 @@ public class OpenVpnServersController : ControllerBase
 
         var result = await _vpnDataService.GetAllConnectedOpenVpnServerClients(vpnServerId, page, 
             pageSize, cancellationToken);
-        _logger.LogInformation(JsonConvert.SerializeObject(result, Formatting.Indented));
 
         return Ok(result);
     }
