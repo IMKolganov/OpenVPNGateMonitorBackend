@@ -33,6 +33,15 @@ public class OvpnFileService : IOvpnFileService
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<List<IssuedOvpnFile>> GetAllOvpnFilesByExternalId(int vpnServerId, string externalId,
+        CancellationToken cancellationToken)
+    {
+        return await _unitOfWork.GetQuery<IssuedOvpnFile>()
+            .AsQueryable().Where(x=> x.ServerId == vpnServerId && x.ExternalId == externalId)
+            .OrderBy(x=>x.Id)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<AddOvpnFileResponse> AddOvpnFile(string externalId, string commonName, int vpnServerId, 
         CancellationToken cancellationToken, string issuedTo = "openVpnClient")
     {
