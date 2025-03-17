@@ -27,6 +27,19 @@ public class OpenVpnFilesController : ControllerBase
         return Ok(await _ovpFileService.GetAllOvpnFiles(vpnServerId, cancellationToken));
     }
     
+    [HttpGet("GetAllByExternalIdOvpnFiles")]
+    public async Task<IActionResult> GetAllByExternalIdOvpnFiles(int vpnServerId, string externalId,
+        CancellationToken cancellationToken)
+    {
+        if (vpnServerId == 0)
+            return BadRequest("vpnServerId is required.");
+        
+        if (string.IsNullOrEmpty(externalId))
+            return BadRequest("vpnServerId is required.");
+
+        return Ok(await _ovpFileService.GetAllOvpnFilesByExternalId(vpnServerId, externalId, cancellationToken));
+    }
+    
     [HttpPost("AddOvpnFile")]
     public async Task<IActionResult> AddOvpnFile([FromBody] AddOvpnFileRequest request, CancellationToken cancellationToken = default)
     {
