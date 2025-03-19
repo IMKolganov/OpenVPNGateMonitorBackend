@@ -87,8 +87,10 @@ public class EasyRsaService : IEasyRsaService
 
     public CertificateRevokeResult RevokeCertificate(OpenVpnServerCertConfig openVpnServerCertConfig, string cnName)
     {
-        var certificateRevokeResult = new CertificateRevokeResult();
-        certificateRevokeResult.CertificatePath = Path.Combine(openVpnServerCertConfig.PkiPath, "issued", $"{cnName}.crt");
+        var certificateRevokeResult = new CertificateRevokeResult
+        {
+            CertificatePath = Path.Combine(openVpnServerCertConfig.PkiPath, "issued", $"{cnName}.crt")
+        };
         if (!File.Exists(certificateRevokeResult.CertificatePath))
         {
             _logger.LogInformation($"EasyRsa path: {openVpnServerCertConfig.EasyRsaPath}");

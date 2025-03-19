@@ -1,49 +1,50 @@
-﻿using Microsoft.AspNetCore.Authorization;
+﻿using Mapster;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
+using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Requests;
+using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Responses;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class OpenVpnServerCertsController : ControllerBase
+public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> logger, ICertVpnService certVpnService)
+    : ControllerBase
 {
-    private readonly ILogger<OpenVpnServerCertsController> _logger;
-    private readonly ICertVpnService _certVpnService;
+    private readonly ILogger<OpenVpnServerCertsController> _logger = logger;
 
-    public OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> logger, ICertVpnService certVpnService)
-    {
-        _logger = logger;
-        _certVpnService = certVpnService;
-    }
-    
-
-    [HttpGet("GetAllVpnServerCertificates/{vpnServerId}")]
+    [HttpPost("GetAllVpnServerCertificates")]
     public async Task<IActionResult> GetAllVpnServerCertificates(
-        int vpnServerId, CancellationToken cancellationToken = default)
-    {
-        if (vpnServerId == 0)
-            return BadRequest("vpnServerId is required.");
-        
-        return Ok(await _certVpnService.GetAllVpnServerCertificates(vpnServerId, cancellationToken));
-    }
-    
-    [HttpGet("GetAllVpnServerCertificatesByStatus/{vpnServerId}")]
-    public async Task<IActionResult> GetAllVpnServerCertificatesByStatus(int vpnServerId, CertificateStatus certificateStatus, 
+        [FromBody] GetAllVpnServerCertificatesRequest request,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await _certVpnService.GetAllVpnServerCertificatesByStatus(vpnServerId, certificateStatus, 
-            cancellationToken));
+        var certificates = await certVpnService.GetAllVpnServerCertificates(request.VpnServerId, cancellationToken);
+        return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(certificates.Adapt<List<VpnServerCertificateResponse>>()));
     }
-    
-    [HttpGet("AddServerCertificate/{vpnServerId}")]
-    public async Task<IActionResult> AddServerCertificate(int vpnServerId, string cnName, 
+
+    [HttpPost("GetAllVpnServerCertificatesByStatus")]
+    public async Task<IActionResult> GetAllVpnServerCertificatesByStatus(
+        [FromBody] GetAllVpnServerCertificatesByStatusRequest request,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await _certVpnService.AddServerCertificate(vpnServerId, cnName, cancellationToken));
+        var certificates = await certVpnService.GetAllVpnServerCertificatesByStatus(
+            request.VpnServerId, request.CertificateStatus, cancellationToken);
+        return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(certificates.Adapt<List<VpnServerCertificateResponse>>()));
+    }
+
+    [HttpPost("AddServerCertificate")]
+    public async Task<IActionResult> AddServerCertificate(
+        [FromBody] AddServerCertificateRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var certificate = await certVpnService.AddServerCertificate(
+            request.VpnServerId, request.CnName, cancellationToken);
+
+        return Ok(ApiResponse<VpnServerCertificateResponse>.SuccessResponse(certificate.Adapt<VpnServerCertificateResponse>()));
     }
     
     [HttpPost("RevokeServerCertificate")]
@@ -51,28 +52,26 @@ public class OpenVpnServerCertsController : ControllerBase
         [FromBody] RevokeCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (request.VpnServerId <= 0 || string.IsNullOrWhiteSpace(request.CommonName))//todo: make validation
-        {
-            return BadRequest("Invalid request. 'VpnServerId' & 'CnName' are required.");
-        }
-
-        var result = await _certVpnService.RevokeServerCertificate(request.VpnServerId, request.CommonName, cancellationToken);
-        return Ok(result);
+        var result = await certVpnService.RevokeServerCertificate(request.VpnServerId, request.CommonName, cancellationToken);
+        return Ok(ApiResponse<RevokeCertificateResponse>.SuccessResponse(result.Adapt<RevokeCertificateResponse>()));
     }
-    
-    [HttpGet("GetOpenVpnServerCertConf/{vpnServerId:int}")]
-    public async Task<IActionResult> GetOpenVpnServerCertConf(int vpnServerId, CancellationToken cancellationToken = default)
-    {
-        if (vpnServerId == 0)
-            return BadRequest("vpnServerId is required.");
 
-        return Ok( await _certVpnService.GetOpenVpnServerCertConf(vpnServerId, cancellationToken));
-    }
-    
-    [HttpPost("UpdateServerCertConfig")]
-    public async Task<IActionResult> UpdateServerCertConfig(OpenVpnServerCertConfigRequest request, 
+    [HttpGet("GetOpenVpnServerCertConf")]
+    public async Task<IActionResult> GetOpenVpnServerCertConf(
+        [FromBody] GetOpenVpnServerCertConfRequest request,
         CancellationToken cancellationToken = default)
     {
-        return Ok(await _certVpnService.UpdateServerCertConfig(request, cancellationToken));
+        var config = await certVpnService.GetOpenVpnServerCertConf(request.VpnServerId, cancellationToken);
+        return Ok(ApiResponse<ServerCertConfigResponse>.SuccessResponse(config.Adapt<ServerCertConfigResponse>()));
+    }
+
+    [HttpPost("UpdateServerCertConfig")]
+    public async Task<IActionResult> UpdateServerCertConfig(
+        [FromBody] UpdateServerCertConfigRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var updatedConfig = await certVpnService.UpdateServerCertConfig(request.Adapt<OpenVpnServerCertConfigRequest>(), cancellationToken);
+
+        return Ok(ApiResponse<UpdateServerCertConfigResponse>.SuccessResponse(updatedConfig.Adapt<UpdateServerCertConfigResponse>()));
     }
 }
