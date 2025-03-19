@@ -11,6 +11,8 @@
 
     <ItemGroup>
         <PackageReference Include="Elastic.Clients.Elasticsearch" Version="8.17.1" />
+        <PackageReference Include="Mapster" Version="7.4.0" />
+        <PackageReference Include="Mapster.DependencyInjection" Version="1.0.1" />
         <PackageReference Include="MaxMind.GeoIP2" Version="5.2.0" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.2" />
         <PackageReference Include="Microsoft.AspNetCore.Cryptography.KeyDerivation" Version="9.0.1" />
@@ -38,6 +40,7 @@
     <ItemGroup>
       <ProjectReference Include="..\OpenVPNGateMonitor.DataBase\OpenVPNGateMonitor.DataBase.csproj" />
       <ProjectReference Include="..\OpenVPNGateMonitor.Models\OpenVPNGateMonitor.Models.csproj" />
+      <ProjectReference Include="..\OpenVPNGateMonitor.SharedModels\OpenVPNGateMonitor.SharedModels.csproj" />
     </ItemGroup>
 
     <ItemGroup>

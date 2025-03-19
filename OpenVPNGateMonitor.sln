@@ -14,6 +14,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVPNGateMonitor.DataBase
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVPNGateMonitor.Models", "OpenVPNGateMonitor.Models\OpenVPNGateMonitor.Models.csproj", "{E2C13E06-0FF3-4C60-BD09-CAB6D141DA06}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVPNGateMonitor.SharedModels", "OpenVPNGateMonitor.SharedModels\OpenVPNGateMonitor.SharedModels.csproj", "{067E77AA-E6F3-4A86-95B6-C1C9A974FA2F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -32,6 +34,10 @@ Global
 		{E2C13E06-0FF3-4C60-BD09-CAB6D141DA06}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{E2C13E06-0FF3-4C60-BD09-CAB6D141DA06}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{E2C13E06-0FF3-4C60-BD09-CAB6D141DA06}.Release|Any CPU.Build.0 = Release|Any CPU
+		{067E77AA-E6F3-4A86-95B6-C1C9A974FA2F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{067E77AA-E6F3-4A86-95B6-C1C9A974FA2F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{067E77AA-E6F3-4A86-95B6-C1C9A974FA2F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{067E77AA-E6F3-4A86-95B6-C1C9A974FA2F}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
 	EndGlobalSection

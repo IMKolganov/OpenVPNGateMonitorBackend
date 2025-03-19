@@ -1,42 +1,41 @@
+using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Services.Api.Auth;
+using OpenVPNGateMonitor.SharedModels.Applications.Requests;
+using OpenVPNGateMonitor.SharedModels.Applications.Responses;
+using OpenVPNGateMonitor.SharedModels.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [Route("api/[controller]")]
 [ApiController]
 [Authorize]
-public class ApplicationsController : ControllerBase
+public class ApplicationsController(IApplicationService appService) : ControllerBase
 {
-    private readonly IApplicationService _appService;
-
-    public ApplicationsController(IApplicationService appService)
-    {
-        _appService = appService;
-    }
-
     [HttpPost("RegisterApplication")]
-    public async Task<IActionResult> RegisterApplication([FromBody] RegisterAppRequest request)
+    public async Task<IActionResult> RegisterApplication([FromBody] RegisterApplicationRequest request)
     {
-        var newApp = await _appService.RegisterApplicationAsync(request.Name);
-        return Ok(new { clientId = newApp.ClientId, clientSecret = newApp.ClientSecret });
+        var newApp = await appService.RegisterApplicationAsync(request.Name);
+        
+        return Ok(ApiResponse<RegisterApplicationResponse>.SuccessResponse(newApp.Adapt<RegisterApplicationResponse>()));
     }
 
     [HttpGet("GetAllApplications")]
     public async Task<IActionResult> GetAllApplications()
     {
-        var apps = await _appService.GetAllApplicationsAsync();
-        return Ok(apps);
+        var apps = await appService.GetAllApplicationsAsync();
+        return Ok(ApiResponse<List<ApplicationDto>>.SuccessResponse(apps.Adapt<List<ApplicationDto>>()));
     }
 
-    [HttpPost("RevokeApplication/{clientId}")]
-    public async Task<IActionResult> RevokeApplication(string clientId)
+    [HttpPost("RevokeApplication")]
+    public async Task<IActionResult> RevokeApplication([FromBody] RevokeApplicationRequest request)
     {
-        var result = await _appService.RevokeApplicationAsync(clientId);
-        if (!result) return NotFound(new { message = "Application not found" });
+        var result = await appService.RevokeApplicationAsync(request.ClientId);
+        
+        if (!result)
+            return NotFound(ApiResponse<string>.ErrorResponse("Application not found"));
 
-        return Ok(new { message = "Application revoked" });
+        return Ok(ApiResponse<string>.SuccessResponse("Application revoked"));
     }
 }

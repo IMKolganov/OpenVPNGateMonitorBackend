@@ -1,15 +1,14 @@
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers;
 
 namespace OpenVPNGateMonitor.Services.Api.Auth;
 
 public interface IApplicationService
 {
-    Task<RegisteredApp> RegisterApplicationAsync(string name);
-    Task<RegisteredApp?> GetApplicationByClientIdAsync(string clientId);
-    Task<RegisteredApp?> GetApplicationSystemByClientIdAsync(string clientId);
+    Task<ClientApplication> RegisterApplicationAsync(string name);
+    Task<ClientApplication?> GetApplicationByClientIdAsync(string clientId);
+    Task<ClientApplication?> GetApplicationSystemByClientIdAsync(string clientId);
     Task<bool> IsSystemApplicationSetAsync();
-    Task<List<RegisteredApp>> GetAllApplicationsAsync();
-    Task<RegisteredApp> UpdateApplicationAsync(RegisteredApp registeredApp);
+    Task<List<ClientApplication>> GetAllApplicationsAsync();
+    Task<ClientApplication> UpdateApplicationAsync(ClientApplication clientApplication);
     Task<bool> RevokeApplicationAsync(string clientId);
 }
