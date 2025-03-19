@@ -21,7 +21,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<OpenVpnServerCertConfig> OpenVpnServerCertConfigs { get; set; } = null!;
     public DbSet<IssuedOvpnFile> IssuedOvpnFiles { get; set; } = null!;
     public DbSet<OpenVpnServerOvpnFileConfig> OpenVpnServerOvpnFileConfigs { get; set; } = null!;
-    public DbSet<RegisteredApp> RegisteredApps { get; set; } = null!;
+    public DbSet<ClientApplication> ClientApplications { get; set; } = null!;
     public DbSet<Setting> Settings { get; set; } = null!;
     
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -34,7 +34,7 @@ public class ApplicationDbContext : DbContext
         modelBuilder.ApplyConfiguration(new OpenVpnServerCertConfigConfiguration());
         modelBuilder.ApplyConfiguration(new IssuedOvpnFileConfiguration());
         modelBuilder.ApplyConfiguration(new OpenVpnServerOvpnFileConfigConfiguration());
-        modelBuilder.ApplyConfiguration(new RegisteredAppConfiguration());
+        modelBuilder.ApplyConfiguration(new ClientApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new SettingConfiguration());
     }
 }

@@ -4,9 +4,9 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
-public class RegisteredAppConfiguration : BaseEntityConfiguration<RegisteredApp>
+public class ClientApplicationConfiguration : BaseEntityConfiguration<ClientApplication>
 {
-    public override void Configure(EntityTypeBuilder<RegisteredApp> entity)
+    public override void Configure(EntityTypeBuilder<ClientApplication> entity)
     {
         base.Configure(entity);
         entity.Property(e => e.ClientId)

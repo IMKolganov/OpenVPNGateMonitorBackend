@@ -2,7 +2,7 @@
 
 namespace OpenVPNGateMonitor.Models;
 
-public class RegisteredApp : BaseEntity<int>
+public class ClientApplication : BaseEntity<int>
 {
     [Key]
     public string ClientId { get; set; } = Guid.NewGuid().ToString("N");
