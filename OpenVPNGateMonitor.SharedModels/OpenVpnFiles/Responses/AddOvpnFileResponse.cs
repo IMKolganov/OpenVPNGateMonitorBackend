@@ -1,4 +1,6 @@
-﻿namespace OpenVPNGateMonitor.Models.Helpers.Api;
+﻿using OpenVPNGateMonitor.Models;
+
+namespace OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
 
 public class AddOvpnFileResponse
 {
