@@ -28,9 +28,8 @@ public static class DataBaseConfigurations
         };
 
         // Scoped ApplicationDbContext
-        services.AddDbContext<ApplicationDbContext>((serviceProvider, options) =>
+        services.AddDbContext<ApplicationDbContext>((options) =>
         {
-            var config = serviceProvider.GetRequiredService<IConfiguration>();
             options.UseNpgsql(
                 connectionString,
                 npgsqlOptions => npgsqlOptions.MigrationsHistoryTable(
@@ -41,9 +40,8 @@ public static class DataBaseConfigurations
         }, ServiceLifetime.Scoped);
 
         // Scoped DbContextFactory
-        services.AddDbContextFactory<ApplicationDbContext>((serviceProvider, options) =>
+        services.AddDbContextFactory<ApplicationDbContext>((options) =>
         {
-            var config = serviceProvider.GetRequiredService<IConfiguration>();
             options.UseNpgsql(
                 connectionString,
                 npgsqlOptions => npgsqlOptions.MigrationsHistoryTable(
