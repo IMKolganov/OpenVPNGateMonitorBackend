@@ -1,74 +1,67 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.Others;
+using OpenVPNGateMonitor.SharedModels.Responses;
+using OpenVPNGateMonitor.SharedModels.Settings.Requests;
+using OpenVPNGateMonitor.SharedModels.Settings.Responses;
 
 namespace OpenVPNGateMonitor.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class SettingsController : ControllerBase
+public class SettingsController(ISettingsService settingsService) : ControllerBase
 {
-    private readonly ISettingsService _settingsService;
-
-    public SettingsController(IOpenVpnTelnetService openVpnTelnetService, ISettingsService settingsService)
-    {
-        _settingsService = settingsService;
-    }
-    
     [HttpGet("Get")]
-    public async Task<IActionResult> Get([FromQuery] string key, CancellationToken cancellationToken = default)
+    public async Task<IActionResult> Get([FromQuery] GetSettingRequest request, CancellationToken cancellationToken = default)
     {
-        var settingType = await _settingsService.GetValueAsync<string>($"{key}_Type", cancellationToken);
+        var settingType = await settingsService.GetValueAsync<string>($"{request.Key}_Type", cancellationToken);
         if (settingType == null)
         {
-            return NotFound($"Setting '{key}' not found.");
+            return NotFound(ApiResponse<string>.ErrorResponse($"Setting '{request.Key}' not found."));
         }
 
-        object? value = settingType switch
+        object? value = settingType.ToLower() switch
         {
-            "int" => await _settingsService.GetValueAsync<int>(key, cancellationToken),
-            "bool" => await _settingsService.GetValueAsync<bool>(key, cancellationToken),
-            "double" => await _settingsService.GetValueAsync<double>(key, cancellationToken),
-            "datetime" => await _settingsService.GetValueAsync<DateTime>(key, cancellationToken),
-            "string" => await _settingsService.GetValueAsync<string>(key, cancellationToken),
+            "int" => await settingsService.GetValueAsync<int>(request.Key, cancellationToken),
+            "bool" => await settingsService.GetValueAsync<bool>(request.Key, cancellationToken),
+            "double" => await settingsService.GetValueAsync<double>(request.Key, cancellationToken),
+            "datetime" => await settingsService.GetValueAsync<DateTime>(request.Key, cancellationToken),
+            "string" => await settingsService.GetValueAsync<string>(request.Key, cancellationToken),
             _ => null
         };
 
-        return value is null ? NotFound($"Setting '{key}' not found.") : Ok(new { key, value });
+        if (value is null)
+        {
+            return NotFound(ApiResponse<string>.ErrorResponse($"Setting '{request.Key}' not found."));
+        }
+
+        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse { Key = request.Key, Value = value }));
     }
 
     [HttpPost("Set")]
     public async Task<IActionResult> Set(
-        [FromQuery] string key, 
-        [FromQuery] string value, 
-        [FromQuery] string type, 
+        [FromBody] SetSettingRequest request,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(type))
+        object? convertedValue = request.Type.ToLower() switch
         {
-            return BadRequest("Key, value, and type are required.");
-        }
-
-        object? convertedValue = type.ToLower() switch
-        {
-            "int" => int.TryParse(value, out var intValue) ? intValue : null,
-            "bool" => bool.TryParse(value, out var boolValue) ? boolValue : null,
-            "double" => double.TryParse(value, out var doubleValue) ? doubleValue : null,
-            "datetime" => DateTime.TryParse(value, out var dateTimeValue) ? dateTimeValue : null,
-            "string" => value,
+            "int" => int.TryParse(request.Value, out var intValue) ? intValue : null,
+            "bool" => bool.TryParse(request.Value, out var boolValue) ? boolValue : null,
+            "double" => double.TryParse(request.Value, out var doubleValue) ? doubleValue : null,
+            "datetime" => DateTime.TryParse(request.Value, out var dateTimeValue) ? dateTimeValue : null,
+            "string" => request.Value,
             _ => null
         };
 
         if (convertedValue is null)
         {
-            return BadRequest($"Invalid value '{value}' for type '{type}'. Supported types: int, bool, double, datetime, string.");
+            return BadRequest(ApiResponse<string>.ErrorResponse($"Invalid value '{request.Value}' for type '{request.Type}'."));
         }
 
-        await _settingsService.SetValueAsync(key, convertedValue, cancellationToken);
-        await _settingsService.SetValueAsync($"{key}_Type", type.ToLower(), cancellationToken);
+        await settingsService.SetValueAsync(request.Key, convertedValue, cancellationToken);
+        await settingsService.SetValueAsync($"{request.Key}_Type", request.Type.ToLower(), cancellationToken);
 
-        return Ok(new { key, value = convertedValue });
+        return Ok(ApiResponse<SettingResponse>.SuccessResponse(new SettingResponse { Key = request.Key, Value = convertedValue }));
     }
 }

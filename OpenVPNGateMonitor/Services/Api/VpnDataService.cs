@@ -1,7 +1,7 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.Api;
@@ -16,7 +16,7 @@ public class VpnDataService : IVpnDataService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<OpenVpnServerClientsResponse> GetAllConnectedOpenVpnServerClients(
+    public async Task<OpenVpnServerClientList> GetAllConnectedOpenVpnServerClients(
         int vpnServerId, int page, int pageSize, CancellationToken cancellationToken)
     {
         var openVpnServerClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
@@ -27,10 +27,10 @@ public class VpnDataService : IVpnDataService
             .Take(pageSize)
             .ToListAsync(cancellationToken);
         
-        return new OpenVpnServerClientsResponse(){ OpenVpnServerClients = openVpnServerClients, TotalCount = openVpnServerClients.Count };
+        return new OpenVpnServerClientList(){ OpenVpnServerClients = openVpnServerClients, TotalCount = openVpnServerClients.Count };
     }
 
-    public async Task<OpenVpnServerClientsResponse> GetAllHistoryOpenVpnServerClients(
+    public async Task<OpenVpnServerClientList> GetAllHistoryOpenVpnServerClients(
         int vpnServerId, int page, int pageSize, CancellationToken cancellationToken)
     {
         var openVpnServerClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
@@ -43,10 +43,10 @@ public class VpnDataService : IVpnDataService
 
         var totalCount = await _unitOfWork.GetQuery<OpenVpnServerClient>().AsQueryable().CountAsync(cancellationToken);
         
-        return new OpenVpnServerClientsResponse(){ OpenVpnServerClients = openVpnServerClients, TotalCount = totalCount };
+        return new OpenVpnServerClientList(){ OpenVpnServerClients = openVpnServerClients, TotalCount = totalCount };
     }
 
-    public async Task<List<OpenVpnServerInfoResponse>> GetAllOpenVpnServers(CancellationToken cancellationToken)
+    public async Task<List<OpenVpnServerInfo>> GetAllOpenVpnServers(CancellationToken cancellationToken)
     {
         var openVpnServers = await _unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
@@ -64,7 +64,7 @@ public class VpnDataService : IVpnDataService
             })
             .ToDictionaryAsync(x => x.ServerId, cancellationToken);
 
-        var openVpnServerInfoResponses = new List<OpenVpnServerInfoResponse>();
+        var openVpnServerInfoResponses = new List<OpenVpnServerInfo>();
 
         foreach (var openVpnServer in openVpnServers)
         {
@@ -77,7 +77,7 @@ public class VpnDataService : IVpnDataService
             var totalBytesIn = serverTraffic.ContainsKey(openVpnServer.Id) ? serverTraffic[openVpnServer.Id].TotalBytesIn : 0;
             var totalBytesOut = serverTraffic.ContainsKey(openVpnServer.Id) ? serverTraffic[openVpnServer.Id].TotalBytesOut : 0;
             
-            openVpnServerInfoResponses.Add(new OpenVpnServerInfoResponse()
+            openVpnServerInfoResponses.Add(new OpenVpnServerInfo()
             {
                 OpenVpnServer = openVpnServer,
                 OpenVpnServerStatusLog = openVpnServerStatusLog,
@@ -89,7 +89,7 @@ public class VpnDataService : IVpnDataService
         return openVpnServerInfoResponses;
     }
     
-    public async Task<OpenVpnServerInfoResponse> GetOpenVpnServerWithStats(int vpnServerId, CancellationToken cancellationToken)
+    public async Task<OpenVpnServerInfo> GetOpenVpnServerWithStats(int vpnServerId, CancellationToken cancellationToken)
     {
         var openVpnServer = await _unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
@@ -105,7 +105,7 @@ public class VpnDataService : IVpnDataService
             .OrderBy(x=>x.Id)
             .LastOrDefaultAsync(cancellationToken);
         
-        var openVpnServerInfoResponse = new OpenVpnServerInfoResponse()
+        var openVpnServerInfoResponse = new OpenVpnServerInfo()
         {
             OpenVpnServer = openVpnServer,
             OpenVpnServerStatusLog = openVpnServerStatusLog

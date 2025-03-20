@@ -1,7 +1,7 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers;
-using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Responses;
 
@@ -25,7 +25,7 @@ public class VpnServerCertificateMapping : IRegister
             .Map(dest => dest.Success, _ => true)
             .Map(dest => dest.Message, _ => "Server certificate configuration updated successfully.");
         
-        config.NewConfig<UpdateServerCertConfigRequest, OpenVpnServerCertConfigRequest>();//todo: check
+        config.NewConfig<UpdateServerCertConfigRequest, OpenVpnServerCertConfigInfo>();//todo: check
 
     }
 }

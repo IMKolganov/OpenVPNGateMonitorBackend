@@ -1,7 +1,7 @@
 ﻿using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using OpenVPNGateMonitor.Models.Helpers.Api;
+using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServerCerts.Responses;
@@ -70,7 +70,7 @@ public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> 
         [FromBody] UpdateServerCertConfigRequest request,
         CancellationToken cancellationToken = default)
     {
-        var updatedConfig = await certVpnService.UpdateServerCertConfig(request.Adapt<OpenVpnServerCertConfigRequest>(), cancellationToken);
+        var updatedConfig = await certVpnService.UpdateServerCertConfig(request.Adapt<OpenVpnServerCertConfigInfo>(), cancellationToken);
 
         return Ok(ApiResponse<UpdateServerCertConfigResponse>.SuccessResponse(updatedConfig.Adapt<UpdateServerCertConfigResponse>()));
     }

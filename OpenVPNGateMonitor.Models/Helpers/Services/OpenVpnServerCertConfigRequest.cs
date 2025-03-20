@@ -1,6 +1,6 @@
-﻿namespace OpenVPNGateMonitor.Models.Helpers.Api;
+﻿namespace OpenVPNGateMonitor.Models.Helpers.Services;
 
-public class OpenVpnServerCertConfigRequest
+public class OpenVpnServerCertConfigInfo
 {
     public int VpnServerId { get; set; }
     public string EasyRsaPath { get; init; } = "/etc/openvpn/easy-rsa";

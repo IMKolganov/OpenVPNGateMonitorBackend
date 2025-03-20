@@ -9,7 +9,10 @@
 
     <ItemGroup>
       <Folder Include="Auth\Requests\" />
+      <Folder Include="OpenVpnWebSocket\Mappings\" />
+      <Folder Include="OpenVpnWebSocket\Responses\" />
       <Folder Include="Requests\" />
+      <Folder Include="Settings\Mappings\" />
     </ItemGroup>
 
     <ItemGroup>
