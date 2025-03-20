@@ -1,5 +1,13 @@
-﻿# Use the ARM64 SDK image for building the app
+﻿# Define the TARGETARCH argument
+ARG TARGETARCH
+
+# Use the .NET SDK for building
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
+
+# Check if the argument is passed
+ARG TARGETARCH
+RUN if [ -z "$TARGETARCH" ]; then echo "ERROR: TARGETARCH is not set!"; exit 1; fi
+RUN echo "BUILD STAGE: TARGETARCH=${TARGETARCH}"
 
 # Set the working directory
 WORKDIR /src
@@ -15,13 +23,13 @@ COPY . .
 
 # Build the application
 ARG BUILD_CONFIGURATION=Debug
-RUN dotnet build "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/build --runtime linux-arm64 --self-contained false
+RUN dotnet build "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/build --runtime linux-${TARGETARCH} --self-contained false
 
 # Publish the application
 FROM build AS publish
 ARG BUILD_CONFIGURATION=Debug
 RUN echo "Using build configuration: $BUILD_CONFIGURATION" && \
-    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish --runtime linux-arm64 --self-contained false
+    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish --runtime linux-${TARGETARCH} --self-contained false
 
 # Use the ASP.NET runtime for the final image
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
