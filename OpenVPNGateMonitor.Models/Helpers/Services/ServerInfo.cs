@@ -1,6 +1,6 @@
 ﻿using OpenVPNGateMonitor.Models.Helpers.OpenVpnManagementInterfaces;
 
-namespace OpenVPNGateMonitor.Models.Helpers.Api;
+namespace OpenVPNGateMonitor.Models.Helpers.Services;
 
 public class ServerInfo
 {
