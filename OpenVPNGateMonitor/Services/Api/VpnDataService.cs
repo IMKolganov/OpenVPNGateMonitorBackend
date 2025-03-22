@@ -46,7 +46,7 @@ public class VpnDataService : IVpnDataService
         return new OpenVpnServerClientList(){ OpenVpnServerClients = openVpnServerClients, TotalCount = totalCount };
     }
 
-    public async Task<List<OpenVpnServerInfo>> GetAllOpenVpnServers(CancellationToken cancellationToken)
+    public async Task<List<OpenVpnServerWithStatus>> GetAllOpenVpnServersWithStatus(CancellationToken cancellationToken)
     {
         var openVpnServers = await _unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
@@ -64,7 +64,7 @@ public class VpnDataService : IVpnDataService
             })
             .ToDictionaryAsync(x => x.ServerId, cancellationToken);
 
-        var openVpnServerInfoResponses = new List<OpenVpnServerInfo>();
+        var openVpnServerInfoResponses = new List<OpenVpnServerWithStatus>();
 
         foreach (var openVpnServer in openVpnServers)
         {
@@ -77,7 +77,7 @@ public class VpnDataService : IVpnDataService
             var totalBytesIn = serverTraffic.ContainsKey(openVpnServer.Id) ? serverTraffic[openVpnServer.Id].TotalBytesIn : 0;
             var totalBytesOut = serverTraffic.ContainsKey(openVpnServer.Id) ? serverTraffic[openVpnServer.Id].TotalBytesOut : 0;
             
-            openVpnServerInfoResponses.Add(new OpenVpnServerInfo()
+            openVpnServerInfoResponses.Add(new OpenVpnServerWithStatus()
             {
                 OpenVpnServer = openVpnServer,
                 OpenVpnServerStatusLog = openVpnServerStatusLog,
@@ -89,7 +89,7 @@ public class VpnDataService : IVpnDataService
         return openVpnServerInfoResponses;
     }
     
-    public async Task<OpenVpnServerInfo> GetOpenVpnServerWithStats(int vpnServerId, CancellationToken cancellationToken)
+    public async Task<OpenVpnServerWithStatus> GetOpenVpnServerWithStatus(int vpnServerId, CancellationToken cancellationToken)
     {
         var openVpnServer = await _unitOfWork.GetQuery<OpenVpnServer>()
             .AsQueryable()
@@ -105,7 +105,7 @@ public class VpnDataService : IVpnDataService
             .OrderBy(x=>x.Id)
             .LastOrDefaultAsync(cancellationToken);
         
-        var openVpnServerInfoResponse = new OpenVpnServerInfo()
+        var openVpnServerInfoResponse = new OpenVpnServerWithStatus()
         {
             OpenVpnServer = openVpnServer,
             OpenVpnServerStatusLog = openVpnServerStatusLog

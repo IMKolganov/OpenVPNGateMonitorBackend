@@ -1,6 +1,6 @@
 ﻿namespace OpenVPNGateMonitor.Models.Helpers.Services;
 
-public class OpenVpnServerInfo
+public class OpenVpnServerWithStatus
 {
     public required OpenVpnServer OpenVpnServer { get; set; }
     public OpenVpnServerStatusLog? OpenVpnServerStatusLog { get; set; }
