@@ -1,6 +1,7 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Enums;
+using OpenVPNGateMonitor.Models.Helpers.Background;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnServers.Responses;
@@ -52,8 +53,11 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.ManagementPort, src => src.ManagementPort)
             .Map(dest => dest.IsOnline, src => src.IsOnline);
         
-        config.NewConfig<KeyValuePair<string, ServiceStatus>, ServiceStatusResponse>()
-            .Map(dest => dest.ServiceName, src => src.Key)
-            .Map(dest => dest.Status, src => src.Value.ToString());
+        config.NewConfig<KeyValuePair<string, BackgroundServerStatus>, ServiceStatusResponse>()
+            .Map(dest => dest.VpnServerId, src => src.Value.VpnServerId)
+            .Map(dest => dest.Status, src => src.Value.Status.ToString())
+            .Map(dest => dest.ErrorMessage, src => src.Value.ErrorMessage)
+            .Map(dest => dest.NextRunTime, src => src.Value.NextRunTime);
+
     }
 }

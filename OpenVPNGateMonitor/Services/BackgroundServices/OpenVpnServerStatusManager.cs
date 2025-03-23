@@ -13,12 +13,14 @@ public class OpenVpnServerStatusManager
         _serverStatuses.AddOrUpdate(serverId,
             new BackgroundServerStatus
             {
+                VpnServerId = serverId,
                 Status = status, 
                 ErrorMessage = errorMessage, 
                 NextRunTime = DateTime.UtcNow.AddSeconds(nextRunSeconds)
             },
             (_, existing) =>
             {
+                existing.VpnServerId = serverId;
                 existing.Status = status;
                 existing.ErrorMessage = errorMessage;
                 existing.NextRunTime = DateTime.UtcNow.AddSeconds(nextRunSeconds);

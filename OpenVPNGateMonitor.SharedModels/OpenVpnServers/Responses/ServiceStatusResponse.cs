@@ -1,7 +1,11 @@
-﻿namespace OpenVPNGateMonitor.SharedModels.OpenVpnServers.Responses;
+﻿using OpenVPNGateMonitor.Models.Enums;
+
+namespace OpenVPNGateMonitor.SharedModels.OpenVpnServers.Responses;
 
 public class ServiceStatusResponse
 {
-    public string ServiceName { get; set; } = string.Empty;
-    public string Status { get; set; } = string.Empty;
+    public int VpnServerId { get; set; }
+    public ServiceStatus Status { get; set; } = ServiceStatus.Idle;
+    public string? ErrorMessage { get; set; }
+    public DateTime NextRunTime { get; set; }
 }

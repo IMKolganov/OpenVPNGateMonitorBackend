@@ -24,6 +24,7 @@ public class OpenVpnServersController(
     : ControllerBase
 {
     private readonly ILogger<OpenVpnServersController> _logger = logger;
+    private static bool _isStatusUpdateRunning = false;
 
     [HttpGet("GetAllConnectedClients")]
     public async Task<IActionResult> GetAllConnectedClients(
@@ -137,20 +138,32 @@ public class OpenVpnServersController(
 
     private async Task SendStatusUpdates(WebSocket webSocket)
     {
-        while (webSocket.State == WebSocketState.Open)
+        if (_isStatusUpdateRunning)
+            return;
+
+        _isStatusUpdateRunning = true;
+
+        try
         {
-            var serverStatuses = openVpnBackgroundService.GetStatus()
-                .Select(x => x.Adapt<ServiceStatusResponse>())
-                .ToList();
+            while (webSocket.State == WebSocketState.Open)
+            {
+                var statuses = openVpnBackgroundService.GetStatus().Values
+                    .Select(x => x.Adapt<ServiceStatusResponse>())
+                    .ToList();
 
-            var json = JsonConvert.SerializeObject(ApiResponse<List<ServiceStatusResponse>>.SuccessResponse(serverStatuses));
-            await webSocket.SendAsync(
-                Encoding.UTF8.GetBytes(json),
-                WebSocketMessageType.Text,
-                true,
-                CancellationToken.None);
+                var json = JsonConvert.SerializeObject(statuses);
+                await webSocket.SendAsync(
+                    Encoding.UTF8.GetBytes(json),
+                    WebSocketMessageType.Text,
+                    true,
+                    CancellationToken.None);
 
-            await Task.Delay(1000);
+                await Task.Delay(1000);
+            }
+        }
+        finally
+        {
+            _isStatusUpdateRunning = false;
         }
     }
 }

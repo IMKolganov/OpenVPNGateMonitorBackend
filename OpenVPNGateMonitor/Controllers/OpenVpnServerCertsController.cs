@@ -56,9 +56,9 @@ public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> 
         return Ok(ApiResponse<RevokeCertificateResponse>.SuccessResponse(result.Adapt<RevokeCertificateResponse>()));
     }
 
-    [HttpGet("GetOpenVpnServerCertConf")]
+    [HttpGet("GetOpenVpnServerCertConf/{vpnServerId:int}")]
     public async Task<IActionResult> GetOpenVpnServerCertConf(
-        [FromBody] GetOpenVpnServerCertConfRequest request,
+        [FromRoute] GetOpenVpnServerCertConfRequest request,
         CancellationToken cancellationToken = default)
     {
         var config = await certVpnService.GetOpenVpnServerCertConf(request.VpnServerId, cancellationToken);
