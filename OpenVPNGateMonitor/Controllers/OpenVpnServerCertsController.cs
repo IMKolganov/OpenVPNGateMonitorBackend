@@ -17,18 +17,18 @@ public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> 
 {
     private readonly ILogger<OpenVpnServerCertsController> _logger = logger;
 
-    [HttpPost("GetAllVpnServerCertificates")]
+    [HttpGet("GetAllVpnServerCertificates/{VpnServerId:int}")]
     public async Task<IActionResult> GetAllVpnServerCertificates(
-        [FromBody] GetAllVpnServerCertificatesRequest request,
+        [FromRoute] GetAllVpnServerCertificatesRequest request,
         CancellationToken cancellationToken = default)
     {
         var certificates = await certVpnService.GetAllVpnServerCertificates(request.VpnServerId, cancellationToken);
         return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(certificates.Adapt<List<VpnServerCertificateResponse>>()));
     }
 
-    [HttpPost("GetAllVpnServerCertificatesByStatus")]
+    [HttpGet("GetAllVpnServerCertificatesByStatus/{VpnServerId:int}")]
     public async Task<IActionResult> GetAllVpnServerCertificatesByStatus(
-        [FromBody] GetAllVpnServerCertificatesByStatusRequest request,
+        [FromRoute] GetAllVpnServerCertificatesByStatusRequest request,
         CancellationToken cancellationToken = default)
     {
         var certificates = await certVpnService.GetAllVpnServerCertificatesByStatus(
