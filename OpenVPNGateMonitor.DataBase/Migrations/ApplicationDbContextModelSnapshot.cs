@@ -23,6 +23,47 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("OpenVPNGateMonitor.Models.ClientApplication", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ClientSecret")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsRevoked")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("IsSystem")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("ClientApplications", "xgb_dashopnvpn");
+                });
+
             modelBuilder.Entity("OpenVPNGateMonitor.Models.IssuedOvpnFile", b =>
                 {
                     b.Property<int>("Id")
@@ -157,6 +198,32 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("OpenVpnServers", "xgb_dashopnvpn");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsOnline = false,
+                            LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Login = "",
+                            ManagementIp = "127.0.0.1",
+                            ManagementPort = 5093,
+                            Password = "",
+                            ServerName = "OpenVPN Server (udp)"
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            IsOnline = false,
+                            LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
+                            Login = "",
+                            ManagementIp = "127.0.0.1",
+                            ManagementPort = 5092,
+                            Password = "",
+                            ServerName = "OpenVPN Server (tcp)"
+                        });
                 });
 
             modelBuilder.Entity("OpenVPNGateMonitor.Models.OpenVpnServerCertConfig", b =>
@@ -403,47 +470,6 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("OpenVpnServerStatusLogs", "xgb_dashopnvpn");
-                });
-
-            modelBuilder.Entity("OpenVPNGateMonitor.Models.RegisteredApp", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("integer");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("ClientId")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<string>("ClientSecret")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.Property<DateTime>("CreateDate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<bool>("IsRevoked")
-                        .HasColumnType("boolean");
-
-                    b.Property<bool>("IsSystem")
-                        .HasColumnType("boolean");
-
-                    b.Property<DateTime>("LastUpdate")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("timestamp with time zone")
-                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("RegisteredApps", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("OpenVPNGateMonitor.Models.Setting", b =>

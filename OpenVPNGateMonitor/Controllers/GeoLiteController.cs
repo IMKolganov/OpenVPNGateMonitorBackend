@@ -7,27 +7,19 @@ namespace OpenVPNGateMonitor.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class GeoLiteController : ControllerBase
+public class GeoLiteController(
+    ILogger<GeoLiteController> logger,
+    IGeoLiteQueryService geoLiteQueryService,
+    IGeoLiteUpdaterService geoLiteUpdaterService)
+    : ControllerBase
 {
-    private readonly ILogger<GeoLiteController> _logger;
-    private readonly IGeoLiteQueryService _geoLiteQueryService;
-    private readonly IGeoLiteUpdaterService _geoLiteUpdaterService;
+    private readonly ILogger<GeoLiteController> _logger = logger;
 
-    public GeoLiteController(
-        ILogger<GeoLiteController> logger,
-        IGeoLiteQueryService geoLiteQueryService,
-        IGeoLiteUpdaterService geoLiteUpdaterService)
-    {
-        _logger = logger;
-        _geoLiteQueryService = geoLiteQueryService;
-        _geoLiteUpdaterService = geoLiteUpdaterService;
-    }
-    
     [HttpGet("GetDatabasePath")]
-    public async Task<IActionResult> GetDatabasePath(CancellationToken cancellationToken = default)
+    public Task<IActionResult> GetDatabasePath()
     {
-        var dbPath = await _geoLiteQueryService.GetDatabasePathAsync();
-        return Ok(new { databasePath = dbPath });
+        var dbPath = geoLiteQueryService.GetDatabasePath();
+        return Task.FromResult<IActionResult>(Ok(new { databasePath = dbPath }));
     }
     
     [HttpGet("GetGeoInfo")]
@@ -36,7 +28,7 @@ public class GeoLiteController : ControllerBase
         if (string.IsNullOrEmpty(ipaddress))
             return BadRequest("ipaddress is required.");
 
-        var geoInfo = await _geoLiteQueryService.GetGeoInfoAsync(ipaddress, cancellationToken);
+        var geoInfo = await geoLiteQueryService.GetGeoInfoAsync(ipaddress, cancellationToken);
         if (geoInfo == null)
             return NotFound(new { message = "No geo information found for the provided IP address." });
 
@@ -46,14 +38,14 @@ public class GeoLiteController : ControllerBase
     [HttpGet("GetVersionDatabase")]
     public async Task<IActionResult> GetVersionDatabase(CancellationToken cancellationToken = default)
     {
-        var version = await _geoLiteQueryService.GetDatabaseVersionAsync(cancellationToken);
+        var version = await geoLiteQueryService.GetDatabaseVersionAsync(cancellationToken);
         return Ok(new { version });
     }
 
     [HttpPost("UpdateDatabase")]
     public async Task<IActionResult> UpdateDatabase(CancellationToken cancellationToken = default)
     {
-        var updateResult = await _geoLiteUpdaterService.DownloadAndUpdateDatabaseAsync(cancellationToken);
+        var updateResult = await geoLiteUpdaterService.DownloadAndUpdateDatabaseAsync(cancellationToken);
 
         if (!updateResult.Success)
             return BadRequest(new { message = "Database update failed", error = updateResult.ErrorMessage });

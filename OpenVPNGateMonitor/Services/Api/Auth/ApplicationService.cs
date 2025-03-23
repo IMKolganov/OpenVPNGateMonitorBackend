@@ -13,40 +13,40 @@ public class ApplicationService : IApplicationService
         _unitOfWork = unitOfWork;
     }
 
-    public async Task<RegisteredApp> RegisterApplicationAsync(string name)
+    public async Task<ClientApplication> RegisterApplicationAsync(string name)
     {
-        var existRegisteredApp = await _unitOfWork.GetQuery<RegisteredApp>()
+        var existClientApplication = await _unitOfWork.GetQuery<ClientApplication>()
             .AsQueryable()
             .Where(x => x.Name == name)
             .FirstOrDefaultAsync();
 
-        if (existRegisteredApp != null)
+        if (existClientApplication != null)
         {
             throw new Exception("");
         }
 
-        var registeredApp = new RegisteredApp()
+        var clientApplication = new ClientApplication()
         {
             Name = name
         };
         
-        var repositoryRegisterApp = _unitOfWork.GetRepository<RegisteredApp>();
-        await repositoryRegisterApp.AddAsync(registeredApp);
+        var repositoryRegisterApp = _unitOfWork.GetRepository<ClientApplication>();
+        await repositoryRegisterApp.AddAsync(clientApplication);
         await _unitOfWork.SaveChangesAsync();
-        return registeredApp;
+        return clientApplication;
     }
 
-    public async Task<RegisteredApp?> GetApplicationByClientIdAsync(string clientId)
+    public async Task<ClientApplication?> GetApplicationByClientIdAsync(string clientId)
     {
-        return await _unitOfWork.GetQuery<RegisteredApp>()
+        return await _unitOfWork.GetQuery<ClientApplication>()
             .AsQueryable()
             .Where(x => x.ClientId == clientId)
             .FirstOrDefaultAsync();
     }
     
-    public async Task<RegisteredApp?> GetApplicationSystemByClientIdAsync(string clientId)
+    public async Task<ClientApplication?> GetApplicationSystemByClientIdAsync(string clientId)
     {
-        return await _unitOfWork.GetQuery<RegisteredApp>()
+        return await _unitOfWork.GetQuery<ClientApplication>()
             .AsQueryable()
             .Where(x => x.ClientId == clientId && x.IsSystem && x.IsRevoked == false)
             .FirstOrDefaultAsync();
@@ -54,45 +54,45 @@ public class ApplicationService : IApplicationService
     
     public async Task<bool> IsSystemApplicationSetAsync()
     {
-        var systemApp = await _unitOfWork.GetQuery<RegisteredApp>()
+        var systemApp = await _unitOfWork.GetQuery<ClientApplication>()
             .AsQueryable()
             .FirstOrDefaultAsync(x => x.IsSystem);
 
         return systemApp != null && !string.IsNullOrEmpty(systemApp.ClientSecret);
     }
 
-    public async Task<List<RegisteredApp>> GetAllApplicationsAsync()
+    public async Task<List<ClientApplication>> GetAllApplicationsAsync()
     {
-        return await _unitOfWork.GetQuery<RegisteredApp>()
+        return await _unitOfWork.GetQuery<ClientApplication>()
             .AsQueryable()
             .ToListAsync();
     }
     
-    public async Task<RegisteredApp> UpdateApplicationAsync(RegisteredApp registeredApp)
+    public async Task<ClientApplication> UpdateApplicationAsync(ClientApplication clientApplication)
     {
-        var repository = _unitOfWork.GetRepository<RegisteredApp>();
-        repository.Update(registeredApp);
+        var repository = _unitOfWork.GetRepository<ClientApplication>();
+        repository.Update(clientApplication);
         await _unitOfWork.SaveChangesAsync();
     
-        return registeredApp;
+        return clientApplication;
     }
 
     public async Task<bool> RevokeApplicationAsync(string clientId)
     {
-        var registeredApp = await _unitOfWork.GetQuery<RegisteredApp>()
+        var clientApplication = await _unitOfWork.GetQuery<ClientApplication>()
             .AsQueryable()
             .Where(x => x.ClientId == clientId)
             .FirstOrDefaultAsync();
 
-        if (registeredApp == null)
+        if (clientApplication == null)
         {
-            throw new Exception(""); 
+            throw new InvalidOperationException("ClientApplication not found");
         }
 
-        registeredApp.IsRevoked = true;
+        clientApplication.IsRevoked = true;
         
-        var repositoryRegisterApp = _unitOfWork.GetRepository<RegisteredApp>();
-        repositoryRegisterApp.Update(registeredApp);
+        var repositoryRegisterApp = _unitOfWork.GetRepository<ClientApplication>();
+        repositoryRegisterApp.Update(clientApplication);
         await _unitOfWork.SaveChangesAsync();
         return true;
     }

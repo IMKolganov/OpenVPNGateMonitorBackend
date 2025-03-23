@@ -1,4 +1,5 @@
 ﻿using Microsoft.OpenApi.Models;
+using OpenVPNGateMonitor.Controllers;
 using OpenVPNGateMonitor.Services.Api.Auth;
 
 namespace OpenVPNGateMonitor.Configurations;
@@ -10,7 +11,10 @@ public static class AuthServiceConfiguration
         services.AddScoped<IApplicationService, ApplicationService>();
         
         services.AddAuthorization();
-        services.AddControllers();
+        services.AddControllers(options =>
+        {
+            options.Filters.Add<ValidationFilter>();
+        });
         services.AddEndpointsApiExplorer();
         
         services.AddSwaggerGen(options =>

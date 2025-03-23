@@ -5,6 +5,7 @@ using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.Api.Interfaces;
 using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
+using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
 
 namespace OpenVPNGateMonitor.Services.Api;
 
@@ -103,7 +104,7 @@ public class OvpnFileService : IOvpnFileService
         return new AddOvpnFileResponse { OvpnFile = fileInfo, IssuedOvpnFile  = issuedOvpnFile };
     }
 
-    public async Task<IssuedOvpnFile> RevokeOvpnFile(IssuedOvpnFile issuedOvpnFile, CancellationToken cancellationToken)
+    public async Task<IssuedOvpnFile?> RevokeOvpnFile(IssuedOvpnFile issuedOvpnFile, CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
             .AsQueryable()
