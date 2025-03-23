@@ -44,7 +44,7 @@ public class SettingsService : ISettingsService
             .Where(x => x.Key == key)
             .FirstOrDefaultAsync(cancellationToken);
 
-        bool isNewSetting = false;
+        var isNewSetting = false;
 
         if (setting == null)
         {

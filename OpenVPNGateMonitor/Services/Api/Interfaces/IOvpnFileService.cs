@@ -1,7 +1,6 @@
 ﻿using OpenVPNGateMonitor.Models;
-using OpenVPNGateMonitor.Models.Helpers;
-using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Models.Helpers.Services;
+using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
 
 namespace OpenVPNGateMonitor.Services.Api.Interfaces;
 
@@ -13,7 +12,7 @@ public interface IOvpnFileService
         CancellationToken cancellationToken);
     Task<AddOvpnFileResponse> AddOvpnFile(string externalId, string commonName, int vpnServerId,
         CancellationToken cancellationToken, string issuedTo = "openVpnClient");
-    Task<IssuedOvpnFile> RevokeOvpnFile(IssuedOvpnFile issuedOvpnFile,
+    Task<IssuedOvpnFile?> RevokeOvpnFile(IssuedOvpnFile issuedOvpnFile,
         CancellationToken cancellationToken);
     Task<OvpnFileResult> GetOvpnFile(int issuedOvpnFileId, int vpnServerId,
         CancellationToken cancellationToken);

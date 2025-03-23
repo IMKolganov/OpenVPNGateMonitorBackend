@@ -115,12 +115,12 @@ public class GeoLiteDatabaseFactory
         await EnsureDatabaseLoadedAsync(cancellationToken);
     }
 
-    public async Task<string> GetDatabasePathAsync()
+    public string GetDatabasePath()
     {
         if (_dbPath == null)
             throw new InvalidOperationException("Database is not loaded.");
 
-        return await Task.FromResult(_dbPath);
+        return _dbPath;
     }
     
     private void CloseDatabase()

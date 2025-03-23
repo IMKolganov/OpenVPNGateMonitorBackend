@@ -80,7 +80,7 @@ public class CommandQueue : ICommandQueue
 
         await _telnetClient.SendAsync(command, cancellationToken);
 
-        var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(timeoutMs));
+        var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(timeoutMs, cancellationToken));
 
         if (completedTask == tcs.Task)
         {
