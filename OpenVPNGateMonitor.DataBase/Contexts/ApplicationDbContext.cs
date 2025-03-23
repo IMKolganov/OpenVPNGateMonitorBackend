@@ -16,6 +16,18 @@ public class ApplicationDbContext : DbContext
                           ?? configuration["DataBaseSettings:DefaultSchema"]) ?? "public";
     }
     
+    public override int SaveChanges()
+    {
+        UpdateTimestamps();
+        return base.SaveChanges();
+    }
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        UpdateTimestamps();
+        return await base.SaveChangesAsync(cancellationToken);
+    }
+    
     public DbSet<OpenVpnServerStatusLog> OpenVpnServerStatusLogs { get; set; } = null!;
     public DbSet<OpenVpnServerClient> OpenVpnServerClients { get; set; } = null!;
     public DbSet<OpenVpnServer> OpenVpnServers { get; set; } = null!;
@@ -37,5 +49,29 @@ public class ApplicationDbContext : DbContext
         modelBuilder.ApplyConfiguration(new OpenVpnServerOvpnFileConfigConfiguration());
         modelBuilder.ApplyConfiguration(new ClientApplicationConfiguration());
         modelBuilder.ApplyConfiguration(new SettingConfiguration());
+    }
+    
+    private void UpdateTimestamps()
+    {
+        var entries = ChangeTracker.Entries()
+            .Where(e => e.Entity is IBaseEntity)
+            .ToList();
+
+        foreach (var entry in entries)
+        {
+            var entity = (IBaseEntity)entry.Entity;
+
+            if (entry.State == EntityState.Added)
+            {
+                var now = DateTime.UtcNow;
+                entity.CreateDate = now;
+                entity.LastUpdate = now;
+            }
+            else if (entry.State == EntityState.Modified)
+            {
+                entry.Property(nameof(IBaseEntity.CreateDate)).IsModified = false;
+                entity.LastUpdate = DateTime.UtcNow;
+            }
+        }
     }
 }

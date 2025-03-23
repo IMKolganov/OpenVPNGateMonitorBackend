@@ -38,19 +38,25 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.ServerName, src => src.ServerName)
             .Map(dest => dest.ManagementIp, src => src.ManagementIp)
             .Map(dest => dest.ManagementPort, src => src.ManagementPort)
+            .Map(dest => dest.Login, src => src.Login)
+            .Map(dest => dest.Password, src => src.Password)
             .Map(dest => dest.IsOnline, src => src.IsOnline);
 
         config.NewConfig<AddServerRequest, OpenVpnServer>()
             .Map(dest => dest.ServerName, src => src.ServerName)
             .Map(dest => dest.ManagementIp, src => src.ManagementIp)
             .Map(dest => dest.ManagementPort, src => src.ManagementPort)
+            .Map(dest => dest.Login, src => src.Login)
+            .Map(dest => dest.Password, src => src.Password)
             .Map(dest => dest.IsOnline, src => src.IsOnline);
 
         config.NewConfig<UpdateServerRequest, OpenVpnServer>()
-            .Map(dest => dest.Id, src => src.ServerId)
+            .Map(dest => dest.Id, src => src.Id)
             .Map(dest => dest.ServerName, src => src.ServerName)
             .Map(dest => dest.ManagementIp, src => src.ManagementIp)
             .Map(dest => dest.ManagementPort, src => src.ManagementPort)
+            .Map(dest => dest.Login, src => src.Login)
+            .Map(dest => dest.Password, src => src.Password)
             .Map(dest => dest.IsOnline, src => src.IsOnline);
         
         config.NewConfig<KeyValuePair<string, BackgroundServerStatus>, ServiceStatusResponse>()

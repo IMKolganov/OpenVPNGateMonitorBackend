@@ -128,8 +128,12 @@ public class VpnDataService : IVpnDataService
     {
         var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
         await openVpnServerRepository.AddAsync(openVpnServer, cancellationToken);
-        await _unitOfWork.SaveChangesAsync(cancellationToken); 
-        return openVpnServer;
+        await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return await _unitOfWork.GetQuery<OpenVpnServer>()
+            .AsQueryable()
+            .Where(x => x.Id == openVpnServer.Id)
+            .FirstOrDefaultAsync(cancellationToken: cancellationToken) ?? throw new InvalidOperationException();
     }
     
     public async Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
@@ -137,15 +141,18 @@ public class VpnDataService : IVpnDataService
         var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
         openVpnServerRepository.Update(openVpnServer);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
-        return openVpnServer;
+        return await _unitOfWork.GetQuery<OpenVpnServer>()
+            .AsQueryable()
+            .Where(x => x.Id == openVpnServer.Id)
+            .FirstOrDefaultAsync(cancellationToken: cancellationToken) ?? throw new InvalidOperationException();
     }
     
-    public async Task<OpenVpnServer> DeleteOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
+    public async Task<bool> DeleteOpenVpnServer(int vpnServerId, CancellationToken cancellationToken)
     {
         var openVpnServerRepository = _unitOfWork.GetRepository<OpenVpnServer>();
         var openVpnServer = await openVpnServerRepository.GetByIdAsync(vpnServerId);
         openVpnServerRepository.Delete(openVpnServer ?? throw new InvalidOperationException("OpenVpnServer not found"));
         await _unitOfWork.SaveChangesAsync(cancellationToken); 
-        return openVpnServer;
+        return true;
     }
 }

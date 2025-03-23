@@ -41,7 +41,7 @@ public class SettingsController(ISettingsService settingsService) : ControllerBa
 
     [HttpPost("Set")]
     public async Task<IActionResult> Set(
-        [FromBody] SetSettingRequest request,
+        [FromQuery] SetSettingRequest request,
         CancellationToken cancellationToken = default)
     {
         object? convertedValue = request.Type.ToLower() switch

@@ -15,5 +15,5 @@ public interface IVpnDataService
     Task<OpenVpnServer> GetOpenVpnServer(int vpnServerId, CancellationToken cancellationToken);
     Task<OpenVpnServer> AddOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken);
     Task<OpenVpnServer> UpdateOpenVpnServer(OpenVpnServer openVpnServer, CancellationToken cancellationToken);
-    Task<OpenVpnServer> DeleteOpenVpnServer(int vpnServerId, CancellationToken cancellationToken);
+    Task<bool> DeleteOpenVpnServer(int vpnServerId, CancellationToken cancellationToken);
 }

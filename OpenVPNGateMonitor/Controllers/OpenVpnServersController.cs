@@ -72,7 +72,7 @@ public class OpenVpnServersController(
         return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(server.Adapt<OpenVpnServerResponse>()));
     }
 
-    [HttpPut("AddServer")]
+    [HttpPost("AddServer")]
     public async Task<IActionResult> AddServer(
         [FromBody] AddServerRequest request, CancellationToken cancellationToken = default)
     {
@@ -96,7 +96,7 @@ public class OpenVpnServersController(
     {
         var deletedServer = await vpnDataService.DeleteOpenVpnServer(request.VpnServerId, cancellationToken);
 
-        return Ok(ApiResponse<OpenVpnServerResponse>.SuccessResponse(deletedServer.Adapt<OpenVpnServerResponse>()));
+        return Ok(ApiResponse<bool>.SuccessResponse(deletedServer));
     }
     
     [HttpGet("status")]

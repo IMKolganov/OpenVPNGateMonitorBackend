@@ -31,13 +31,16 @@ public class AuthController(IConfiguration config, IApplicationService appServic
             return BadRequest(new AuthResponse { Message = "System application is already set" });
         }
 
+        var hashedSecret = BCrypt.Net.BCrypt.HashPassword(request.ClientSecret);
+
         systemApp ??= new ClientApplication
         {
             Name = "OpenVPN Gate Monitor Dashboard",
             ClientId = request.ClientId,
-            ClientSecret = request.ClientSecret,
+            ClientSecret = hashedSecret,
             IsSystem = true
         };
+
         await appService.UpdateApplicationAsync(systemApp);
 
         return Ok(new AuthResponse { Message = "ClientSecret set successfully" });
@@ -47,7 +50,16 @@ public class AuthController(IConfiguration config, IApplicationService appServic
     public async Task<IActionResult> GenerateToken([FromBody] TokenRequest request)
     {
         var app = await appService.GetApplicationByClientIdAsync(request.ClientId);
-        if (app == null || app.ClientSecret != request.ClientSecret)
+        if (app == null)
+        {
+            return Unauthorized(new AuthResponse { Message = "Invalid credentials" });
+        }
+
+        var isValid = app.IsSystem
+            ? BCrypt.Net.BCrypt.Verify(request.ClientSecret, app.ClientSecret)
+            : app.ClientSecret == request.ClientSecret;
+
+        if (!isValid)
         {
             return Unauthorized(new AuthResponse { Message = "Invalid credentials" });
         }

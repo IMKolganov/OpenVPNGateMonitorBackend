@@ -9,7 +9,7 @@ public class ApplicationMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
-        config.NewConfig<ClientApplication, ApplicationDto>();
+        config.NewConfig<ClientApplication, ApplicationResponse>();
         config.NewConfig<RegisterApplicationRequest, ClientApplication>();
     }
 }

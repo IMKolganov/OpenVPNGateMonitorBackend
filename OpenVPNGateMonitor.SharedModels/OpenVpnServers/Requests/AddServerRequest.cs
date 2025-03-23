@@ -12,6 +12,7 @@ public class AddServerRequest
 
     [Range(1, 65535, ErrorMessage = "Port must be between 1 and 65535.")]
     public int ManagementPort { get; set; }
-
+    public string? Login { get; set; } = string.Empty;
+    public string? Password { get; set; } = string.Empty;
     public bool IsOnline { get; set; } = false;
 }

@@ -25,7 +25,7 @@ public class ApplicationsController(IApplicationService appService) : Controller
     public async Task<IActionResult> GetAllApplications()
     {
         var apps = await appService.GetAllApplicationsAsync();
-        return Ok(ApiResponse<List<ApplicationDto>>.SuccessResponse(apps.Adapt<List<ApplicationDto>>()));
+        return Ok(ApiResponse<List<ApplicationResponse>>.SuccessResponse(apps.Adapt<List<ApplicationResponse>>()));
     }
 
     [HttpPost("RevokeApplication")]
