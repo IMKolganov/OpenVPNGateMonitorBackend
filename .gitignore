@@ -365,3 +365,5 @@ appsettings.Development.json
 .idea
 GeoLite2-City.mmdb
 GeoLite2/
+secrets/
+jwt-secret.txt
