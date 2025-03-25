@@ -215,29 +215,30 @@ public class OpenVpnServerService : IOpenVpnServerService
 
     private async Task<string> GetRemoteIpAddress()
     {
-        using HttpClient client = new HttpClient();
-        if (_externalIpServices is { Count: <= 0 })
+        using HttpClient client = new();
+
+        if (_externalIpServices is not { Count: > 0 })
         {
-            _logger.LogError("No external IP configured.");
+            _logger.LogError("No external IP services configured.");
             return "127.0.0.1";
         }
 
-        if (_externalIpServices != null)
-            foreach (string externalIpService in _externalIpServices)
+        foreach (string service in _externalIpServices)
+        {
+            try
             {
-                try
-                {
-                    string ip = await client.GetStringAsync(externalIpService);
-                    _logger.LogInformation("Retrieved external IP: {Ip} from {Service}", ip, externalIpService);
-                    return ip.Trim();
-                }
-                catch (Exception)
-                {
-                    _logger.LogError("Failed to get IP from: {Service}", externalIpService);
-                }
+                string ip = await client.GetStringAsync(service);
+                _logger.LogInformation("Retrieved external IP: {Ip} from {Service}", ip.Trim(), service);
+                return ip.Trim();
             }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get IP from {Service}", service);
+            }
+        }
 
-        throw new Exception("Unable to retrieve external IP.");
+        _logger.LogError("Unable to retrieve external IP from any configured service.");
+        return "127.0.0.1";
     }
     
     private Guid GenerateSessionId(string commonName, string realAddress, DateTime connectedSince)
