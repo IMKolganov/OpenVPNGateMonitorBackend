@@ -35,6 +35,12 @@ public class GlobalExceptionMiddleware
 
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        if (context.Response.HasStarted)
+        {
+            return Task.CompletedTask;
+        }
+
+        context.Response.Clear();
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = (int)HttpStatusCode.InternalServerError;
 
@@ -45,6 +51,7 @@ public class GlobalExceptionMiddleware
             Detail = exception.Message
         };
 
-        return context.Response.WriteAsync(JsonConvert.SerializeObject(response));
+        var json = JsonConvert.SerializeObject(response);
+        return context.Response.WriteAsync(json);
     }
 }

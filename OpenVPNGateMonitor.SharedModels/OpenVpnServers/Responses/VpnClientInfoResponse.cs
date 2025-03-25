@@ -2,6 +2,7 @@
 
 public class VpnClientInfoResponse
 {
+    public int Id { get; set; }
     public int VpnServerId { get; set; }
     public Guid SessionId { get; set; }
     public string CommonName { get; set; } = string.Empty;
