@@ -69,7 +69,7 @@ public class CertVpnService : ICertVpnService
             .AsQueryable()
             .Where(x => x.VpnServerId == vpnServerId)
             .FirstOrDefaultAsync(cancellationToken) ?? 
-               throw new InvalidOperationException("OpenVpnServerCertConfig not found");
+               new OpenVpnServerCertConfig() { VpnServerId = vpnServerId };
     }
 
     public async Task<OpenVpnServerCertConfig> UpdateServerCertConfig(
