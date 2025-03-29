@@ -30,7 +30,7 @@ namespace OpenVPNGateMonitor.Tests.Controllers
         {
             // Arrange
             TypeAdapterConfig.GlobalSettings.NewConfig<CertificateCaInfo, VpnServerCertificateResponse>()
-                .Map(dest => dest.CnName, src => src.CommonName)
+                .Map(dest => dest.CommonName, src => src.CommonName)
                 .Map(dest => dest.IsRevoked, src => src.Status == CertificateStatus.Revoked)
                 .Map(dest => dest.IssuedAt, src => src.RevokeDate ?? DateTime.MinValue)
                 .Map(dest => dest.CertificateData, src => src.SerialNumber)
@@ -69,8 +69,8 @@ namespace OpenVPNGateMonitor.Tests.Controllers
             Assert.True(response.Success);
             Assert.Equal(2, response.Data!.Count);
 
-            var cert1 = response.Data.FirstOrDefault(r => r.CnName == "cert1");
-            var cert2 = response.Data.FirstOrDefault(r => r.CnName == "cert2");
+            var cert1 = response.Data.FirstOrDefault(r => r.CommonName == "cert1");
+            var cert2 = response.Data.FirstOrDefault(r => r.CommonName == "cert2");
 
             Assert.NotNull(cert1);
             Assert.Equal("SN001", cert1!.CertificateData);
@@ -90,7 +90,7 @@ namespace OpenVPNGateMonitor.Tests.Controllers
             var request = new AddServerCertificateRequest
             {
                 VpnServerId = 10,
-                CnName = "test-cert"
+                CommonName = "test-cert"
             };
 
             var certResult = new CertificateBuildResult

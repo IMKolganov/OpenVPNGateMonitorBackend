@@ -54,19 +54,19 @@ public class CertVpnService : ICertVpnService
             .ToList();
     }
 
-    public async Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string cnName, 
+    public async Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string commonName, 
         CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
         //first realization, with "nopass", without any params if you need more check method BuildCertificate
-        return _easyRsaService.BuildCertificate(openVpnServerCertConfig, cnName);
+        return _easyRsaService.BuildCertificate(openVpnServerCertConfig, commonName);
     }
     
-    public async Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string cnName, 
+    public async Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string commonName, 
         CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
-        return _easyRsaService.RevokeCertificate(openVpnServerCertConfig, cnName);
+        return _easyRsaService.RevokeCertificate(openVpnServerCertConfig, commonName);
     }
 
     public async Task<OpenVpnServerCertConfig> GetOpenVpnServerCertConf(int vpnServerId, 
