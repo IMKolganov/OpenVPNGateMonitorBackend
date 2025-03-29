@@ -14,8 +14,8 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class OpenVpnFilesController(IOvpnFileService ovpFileService) : ControllerBase
 {
-    [HttpPost("GetAllOvpnFiles")]
-    public async Task<IActionResult> GetAllOvpnFiles([FromBody] GetAllOvpnFilesRequest request,
+    [HttpGet("GetAllOvpnFiles")]
+    public async Task<IActionResult> GetAllOvpnFiles([FromRoute] GetAllOvpnFilesRequest request,
         CancellationToken cancellationToken)
     {
         var files = await ovpFileService.GetAllOvpnFiles(request.VpnServerId, cancellationToken);
@@ -24,8 +24,8 @@ public class OpenVpnFilesController(IOvpnFileService ovpFileService) : Controlle
         return Ok(ApiResponse<List<OvpnFileResponse>>.SuccessResponse(response));
     }
 
-    [HttpPost("GetAllByExternalIdOvpnFiles")]
-    public async Task<IActionResult> GetAllByExternalIdOvpnFiles([FromBody] GetAllByExternalIdOvpnFilesRequest request,
+    [HttpGet("GetAllByExternalIdOvpnFiles")]
+    public async Task<IActionResult> GetAllByExternalIdOvpnFiles([FromRoute] GetAllByExternalIdOvpnFilesRequest request,
         CancellationToken cancellationToken)
     {
         var files = await ovpFileService.GetAllOvpnFilesByExternalId(

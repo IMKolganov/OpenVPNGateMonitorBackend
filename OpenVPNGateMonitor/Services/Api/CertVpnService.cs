@@ -27,9 +27,6 @@ public class CertVpnService : ICertVpnService
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
 
         if (openVpnServerCertConfig == null) throw new InvalidOperationException();
-        if(!_easyRsaService.CheckHealthFileSystem(openVpnServerCertConfig)){
-            throw new Exception("Something went wrong, some RSA directory could not be found");
-        }
         
         return _easyRsaService.GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath);
     }
@@ -38,10 +35,6 @@ public class CertVpnService : ICertVpnService
         CertificateStatus certificateStatus, CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
-        
-        if(!_easyRsaService.CheckHealthFileSystem(openVpnServerCertConfig)){
-            throw new Exception("Something went wrong, some RSA directory could not be found");
-        }
         
         return _easyRsaService.GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath)
             .Where(x=> x.Status == certificateStatus).ToList();
