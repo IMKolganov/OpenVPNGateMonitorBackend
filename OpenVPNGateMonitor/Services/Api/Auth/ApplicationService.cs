@@ -22,7 +22,7 @@ public class ApplicationService : IApplicationService
 
         if (existClientApplication != null)
         {
-            throw new Exception("");
+            throw new Exception("ClientApplication already exists");
         }
 
         var clientApplication = new ClientApplication()
