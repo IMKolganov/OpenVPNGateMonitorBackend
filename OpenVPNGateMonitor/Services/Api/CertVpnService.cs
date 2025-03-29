@@ -26,18 +26,32 @@ public class CertVpnService : ICertVpnService
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
 
-        if (openVpnServerCertConfig == null) throw new InvalidOperationException();
-        
-        return _easyRsaService.GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath);
+        if (openVpnServerCertConfig == null)
+            throw new InvalidOperationException();
+
+        return _easyRsaService
+            .GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath)
+            .Select(cert =>
+            {
+                cert.VpnServerId = vpnServerId;
+                return cert;
+            })
+            .ToList();
     }
     
-    public async Task<List<CertificateCaInfo>> GetAllVpnServerCertificatesByStatus(int vpnServerId,
+    public async Task<List<CertificateCaInfo>> GetAllVpnServerCertificatesByStatus(int vpnServerId, 
         CertificateStatus certificateStatus, CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
-        
+
         return _easyRsaService.GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath)
-            .Where(x=> x.Status == certificateStatus).ToList();
+            .Where(x => x.Status == certificateStatus)
+            .Select(x =>
+            {
+                x.VpnServerId = vpnServerId;
+                return x;
+            })
+            .ToList();
     }
 
     public async Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string cnName, 

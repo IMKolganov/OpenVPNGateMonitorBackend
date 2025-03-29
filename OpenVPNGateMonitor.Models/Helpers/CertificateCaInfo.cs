@@ -4,6 +4,7 @@ namespace OpenVPNGateMonitor.Models.Helpers;
 
 public class CertificateCaInfo
 {
+    public int VpnServerId { get; set; }
     public CertificateStatus Status { get; set; } = CertificateStatus.Unknown;
     public DateTime ExpiryDate { get; set; } = DateTime.MinValue;
     public DateTime? RevokeDate { get; set; }
