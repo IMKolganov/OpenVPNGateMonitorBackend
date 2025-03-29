@@ -112,7 +112,7 @@ public class OpenVpnFilesControllerTests
         var response = ok.Value.Should().BeAssignableTo<ApiResponse<AddOvpnFileApiResponse>>().Subject;
 
         response.Success.Should().BeTrue();
-        response.Data.FileName.Should().Be("dummy.ovpn");
+        response.Data!.FileName.Should().Be("dummy.ovpn");
         response.Data.Metadata.CommonName.Should().Be("client");
         response.Data.Metadata.ExternalId.Should().Be("user123");
     }

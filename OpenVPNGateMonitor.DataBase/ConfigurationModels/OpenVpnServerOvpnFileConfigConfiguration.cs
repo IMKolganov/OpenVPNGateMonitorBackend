@@ -9,7 +9,7 @@ public class OpenVpnServerOvpnFileConfigConfiguration : BaseEntityConfiguration<
     public override void Configure(EntityTypeBuilder<OpenVpnServerOvpnFileConfig> entity)
     {
         base.Configure(entity);
-        entity.Property(e => e.ServerId)
+        entity.Property(e => e.VpnServerId)
             .IsRequired();
         entity.Property(e => e.VpnServerIp)
             .IsRequired()
