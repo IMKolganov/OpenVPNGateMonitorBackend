@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.Models.Enums;
+﻿using System.Globalization;
+using OpenVPNGateMonitor.Models.Enums;
 using OpenVPNGateMonitor.Models.Helpers;
 using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
@@ -6,8 +7,7 @@ namespace OpenVPNGateMonitor.Services.EasyRsaServices;
 
 public class EasyRsaParseDbService : IEasyRsaParseDbService
 {
-    private const string Filename = "index.txt";
-    private const string TempFilename = "index.txt.tmp";
+    private const string Filename = "index.txt"; // TODO: Load from config if needed
     private readonly ILogger<IEasyRsaParseDbService> _logger;
 
     public EasyRsaParseDbService(ILogger<IEasyRsaParseDbService> logger)
@@ -17,16 +17,15 @@ public class EasyRsaParseDbService : IEasyRsaParseDbService
 
     public List<CertificateCaInfo> ParseCertificateInfoInIndexFile(string pkiPath)
     {
-        string indexFilePath = Path.Combine(pkiPath, Filename);
-        string tempFilePath = Path.Combine(pkiPath, TempFilename);
+        var indexFilePath = Path.Combine(pkiPath, Filename);
+        var result = new List<CertificateCaInfo>();
 
         try
         {
-            File.Copy(indexFilePath, tempFilePath, true);
+            using var stream = new FileStream(indexFilePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            using var reader = new StreamReader(stream);
 
-            var result = new List<CertificateCaInfo>();
-
-            foreach (var line in File.ReadLines(tempFilePath))
+            while (reader.ReadLine() is { } line)
             {
                 var parts = line.Split('\t');
                 if (parts.Length >= 5)
@@ -47,25 +46,11 @@ public class EasyRsaParseDbService : IEasyRsaParseDbService
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Failed to parse certificate in index file: {ex.Message}");
+            _logger.LogError(ex, "Failed to parse certificate in index file");
             throw;
         }
-        finally
-        {
-            try
-            {
-                if (File.Exists(tempFilePath))
-                {
-                    File.Delete(tempFilePath);
-                }
-            }
-            catch (Exception deleteEx)
-            {
-                _logger.LogWarning($"Failed to delete temporary file '{tempFilePath}': {deleteEx.Message}");
-            }
-        }
     }
-    
+
     private static CertificateStatus ParseStatus(string status)
     {
         return status switch
@@ -76,19 +61,21 @@ public class EasyRsaParseDbService : IEasyRsaParseDbService
             _ => CertificateStatus.Unknown
         };
     }
-    
-    private DateTime ParseDate(string dateString)
+
+    private static DateTime ParseDate(string dateString)
     {
-        // date format from index.txt: "250128120000Z" (YYMMDDHHMMSSZ)
-        if (DateTime.TryParseExact(dateString.Substring(0, dateString.Length - 1), 
-                "yyMMddHHmmss", 
-                null, 
-                System.Globalization.DateTimeStyles.AssumeUniversal, 
+        // date format from index.txt: "YYMMDDHHMMSSZ", for example: "250128120000Z"
+        var raw = dateString.TrimEnd('Z');
+        if (DateTime.TryParseExact(
+                raw,
+                "yyMMddHHmmss",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal,
                 out var date))
         {
             return date;
         }
-    
+
         throw new FormatException($"Invalid date format: {dateString}");
     }
 }
