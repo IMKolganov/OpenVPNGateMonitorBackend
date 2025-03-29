@@ -8,6 +8,6 @@ public class AddServerCertificateRequest
     [Range(1, int.MaxValue, ErrorMessage = "vpnServerId must be greater than 0.")]
     public int VpnServerId { get; set; }
 
-    [Required(ErrorMessage = "cnName is required.")]
-    public string CnName { get; set; } = string.Empty;
+    [Required(ErrorMessage = "commonName is required.")]
+    public string CommonName { get; set; } = string.Empty;
 }

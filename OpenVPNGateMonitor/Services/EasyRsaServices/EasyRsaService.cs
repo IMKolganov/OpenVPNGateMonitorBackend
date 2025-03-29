@@ -85,11 +85,11 @@ public class EasyRsaService : IEasyRsaService
             .Append("-----END CERTIFICATE-----"));
     }
 
-    public CertificateRevokeResult RevokeCertificate(OpenVpnServerCertConfig openVpnServerCertConfig, string cnName)
+    public CertificateRevokeResult RevokeCertificate(OpenVpnServerCertConfig openVpnServerCertConfig, string commonName)
     {
         var certificateRevokeResult = new CertificateRevokeResult
         {
-            CertificatePath = Path.Combine(openVpnServerCertConfig.PkiPath, "issued", $"{cnName}.crt")
+            CertificatePath = Path.Combine(openVpnServerCertConfig.PkiPath, "issued", $"{commonName}.crt")
         };
         if (!File.Exists(certificateRevokeResult.CertificatePath))
         {
@@ -98,13 +98,13 @@ public class EasyRsaService : IEasyRsaService
             throw new Exception($"Certificate file not found: {certificateRevokeResult.CertificatePath}");
         }
 
-        _logger.LogInformation($"Attempting to revoke certificate for: {cnName}");
+        _logger.LogInformation($"Attempting to revoke certificate for: {commonName}");
         _logger.LogInformation($"EasyRsaPath: {openVpnServerCertConfig.EasyRsaPath}");
         _logger.LogInformation($"PKI Path: {openVpnServerCertConfig.PkiPath}");
         _logger.LogInformation($"Certificate Path: {certificateRevokeResult.CertificatePath}");
 
         // Revoke the certificate
-        var revokeResult = _easyRsaExecCommandService.ExecuteEasyRsaCommand($"revoke {cnName}", 
+        var revokeResult = _easyRsaExecCommandService.ExecuteEasyRsaCommand($"revoke {commonName}", 
             openVpnServerCertConfig.EasyRsaPath, confirm: true);
         certificateRevokeResult.IsRevoked = revokeResult.IsSuccess;
         if (!certificateRevokeResult.IsRevoked)
@@ -112,33 +112,33 @@ public class EasyRsaService : IEasyRsaService
             switch (revokeResult.ExitCode)
             {
                 case 0:
-                    certificateRevokeResult.Message += $"Certificate revoked successfully: {cnName}";
-                    _logger.LogInformation($"Certificate revoked successfully: {cnName}");
+                    certificateRevokeResult.Message += $"Certificate revoked successfully: {commonName}";
+                    _logger.LogInformation($"Certificate revoked successfully: {commonName}");
                     break;
 
                 case 1:
                     if (revokeResult.Output.Contains("ERROR:Already revoked") 
                         || revokeResult.Error.Contains("ERROR:Already revoked"))
                     {
-                        certificateRevokeResult.Message += $"Certificate is already revoked: {cnName}";
-                        _logger.LogWarning($"Certificate is already revoked: {cnName}");
+                        certificateRevokeResult.Message += $"Certificate is already revoked: {commonName}";
+                        _logger.LogWarning($"Certificate is already revoked: {commonName}");
                     }
                     else if (revokeResult.Output.Contains("ERROR: Certificate not found") 
                              || revokeResult.Output.Contains("ERROR: Certificate not found"))
                     {
-                        certificateRevokeResult.Message += $"Certificate not found: {cnName}";
-                        _logger.LogWarning($"Certificate not found: {cnName}");
+                        certificateRevokeResult.Message += $"Certificate not found: {commonName}";
+                        _logger.LogWarning($"Certificate not found: {commonName}");
                     }
                     else
                     {
-                        throw new Exception($"Failed to revoke certificate. Unknown error: {cnName}, " +
+                        throw new Exception($"Failed to revoke certificate. Unknown error: {commonName}, " +
                                             $"ExitCode: {revokeResult.ExitCode}, Output: {revokeResult.Output}");
                     }
                     break;
 
                 default:
                     throw new Exception($"Unexpected exit code ({revokeResult.ExitCode}) " +
-                                        $"while revoking certificate: {cnName}");
+                                        $"while revoking certificate: {commonName}");
             }
         }
 

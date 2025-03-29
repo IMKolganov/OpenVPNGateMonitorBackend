@@ -9,46 +9,50 @@ public static class AuthServiceConfiguration
     public static void ConfigureAuthServices(this IServiceCollection services)
     {
         services.AddScoped<IApplicationService, ApplicationService>();
-        
+
         services.AddAuthorization();
+
         services.AddControllers(options =>
-        {
-            options.Filters.Add<ValidationFilter>();
-        });
+            {
+                options.Filters.Add<ValidationFilter>();
+            })
+            .AddNewtonsoftJson();
+
         services.AddEndpointsApiExplorer();
-        
+
         services.AddSwaggerGen(options =>
-        {
-            options.SwaggerDoc("v1", new OpenApiInfo 
-            { 
-                Title = "OpenVPN Gate Monitor API", 
-                Version = "v1" 
-            });
-
-            options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
             {
-                Name = "Authorization",
-                Type = SecuritySchemeType.Http,
-                Scheme = "Bearer",
-                BearerFormat = "JWT",
-                In = ParameterLocation.Header,
-                Description = "Enter the token in the format 'Bearer {your_token}'"
-            });
-
-            options.AddSecurityRequirement(new OpenApiSecurityRequirement
-            {
+                options.SwaggerDoc("v1", new OpenApiInfo
                 {
-                    new OpenApiSecurityScheme
+                    Title = "OpenVPN Gate Monitor API",
+                    Version = "v1"
+                });
+
+                options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+                {
+                    Name = "Authorization",
+                    Type = SecuritySchemeType.Http,
+                    Scheme = "Bearer",
+                    BearerFormat = "JWT",
+                    In = ParameterLocation.Header,
+                    Description = "Enter the token in the format 'Bearer {your_token}'"
+                });
+
+                options.AddSecurityRequirement(new OpenApiSecurityRequirement
+                {
                     {
-                        Reference = new OpenApiReference
+                        new OpenApiSecurityScheme
                         {
-                            Type = ReferenceType.SecurityScheme,
-                            Id = "Bearer"
-                        }
-                    },
-                    []
-                }
-            });
-        });
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "Bearer"
+                            }
+                        },
+                        Array.Empty<string>()
+                    }
+                });
+            })
+            .AddSwaggerGenNewtonsoftSupport();
     }
 }

@@ -26,40 +26,47 @@ public class CertVpnService : ICertVpnService
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
 
-        if (openVpnServerCertConfig == null) throw new InvalidOperationException();
-        if(!_easyRsaService.CheckHealthFileSystem(openVpnServerCertConfig)){
-            throw new Exception("Something went wrong, some RSA directory could not be found");
-        }
-        
-        return _easyRsaService.GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath);
+        if (openVpnServerCertConfig == null)
+            throw new InvalidOperationException();
+
+        return _easyRsaService
+            .GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath)
+            .Select(cert =>
+            {
+                cert.VpnServerId = vpnServerId;
+                return cert;
+            })
+            .ToList();
     }
     
-    public async Task<List<CertificateCaInfo>> GetAllVpnServerCertificatesByStatus(int vpnServerId,
+    public async Task<List<CertificateCaInfo>> GetAllVpnServerCertificatesByStatus(int vpnServerId, 
         CertificateStatus certificateStatus, CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
-        
-        if(!_easyRsaService.CheckHealthFileSystem(openVpnServerCertConfig)){
-            throw new Exception("Something went wrong, some RSA directory could not be found");
-        }
-        
+
         return _easyRsaService.GetAllCertificateInfoInIndexFile(openVpnServerCertConfig.PkiPath)
-            .Where(x=> x.Status == certificateStatus).ToList();
+            .Where(x => x.Status == certificateStatus)
+            .Select(x =>
+            {
+                x.VpnServerId = vpnServerId;
+                return x;
+            })
+            .ToList();
     }
 
-    public async Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string cnName, 
+    public async Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string commonName, 
         CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
         //first realization, with "nopass", without any params if you need more check method BuildCertificate
-        return _easyRsaService.BuildCertificate(openVpnServerCertConfig, cnName);
+        return _easyRsaService.BuildCertificate(openVpnServerCertConfig, commonName);
     }
     
-    public async Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string cnName, 
+    public async Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string commonName, 
         CancellationToken cancellationToken)
     {
         var openVpnServerCertConfig = await GetOpenVpnServerCertConf(vpnServerId, cancellationToken);
-        return _easyRsaService.RevokeCertificate(openVpnServerCertConfig, cnName);
+        return _easyRsaService.RevokeCertificate(openVpnServerCertConfig, commonName);
     }
 
     public async Task<OpenVpnServerCertConfig> GetOpenVpnServerCertConf(int vpnServerId, 
@@ -69,7 +76,7 @@ public class CertVpnService : ICertVpnService
             .AsQueryable()
             .Where(x => x.VpnServerId == vpnServerId)
             .FirstOrDefaultAsync(cancellationToken) ?? 
-               throw new InvalidOperationException("OpenVpnServerCertConfig not found");
+               new OpenVpnServerCertConfig() { VpnServerId = vpnServerId };
     }
 
     public async Task<OpenVpnServerCertConfig> UpdateServerCertConfig(

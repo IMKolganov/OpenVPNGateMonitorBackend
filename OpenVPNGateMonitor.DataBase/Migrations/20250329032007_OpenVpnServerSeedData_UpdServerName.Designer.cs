@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OpenVPNGateMonitor.DataBase.Contexts;
@@ -11,9 +12,11 @@ using OpenVPNGateMonitor.DataBase.Contexts;
 namespace OpenVPNGateMonitor.DataBase.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250329032007_OpenVpnServerSeedData_UpdServerName")]
+    partial class OpenVpnServerSeedData_UpdServerName
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -300,42 +303,6 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("OpenVpnServerCertConfigs", "xgb_dashopnvpn");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            CaCertPath = "/openvpn-udp/easy-rsa/pki/ca.crt",
-                            CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CrlOpenvpnPath = "/openvpn-udp/crl.pem",
-                            CrlPkiPath = "/openvpn-udp/easy-rsa/pki/crl.pem",
-                            EasyRsaPath = "/openvpn-udp/easy-rsa",
-                            LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            OvpnFileDir = "/openvpn-udp/clients",
-                            PkiPath = "/openvpn-udp/easy-rsa/pki/",
-                            RevokedOvpnFilesDirPath = "/openvpn-udp/clients/revoked/",
-                            ServerRemoteIp = "0.0.0.0",
-                            StatusFilePath = "/var/log/openvpn-status.log",
-                            TlsAuthKey = "/openvpn-udp/easy-rsa/pki/ta.key",
-                            VpnServerId = 1
-                        },
-                        new
-                        {
-                            Id = 2,
-                            CaCertPath = "/openvpn-tcp/easy-rsa/pki/ca.crt",
-                            CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CrlOpenvpnPath = "/openvpn-tcp/crl.pem",
-                            CrlPkiPath = "/openvpn-tcp/easy-rsa/pki/crl.pem",
-                            EasyRsaPath = "/openvpn-tcp/easy-rsa",
-                            LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            OvpnFileDir = "/openvpn-tcp/clients",
-                            PkiPath = "/openvpn-tcp/easy-rsa/pki/",
-                            RevokedOvpnFilesDirPath = "/openvpn-tcp/clients/revoked/",
-                            ServerRemoteIp = "0.0.0.0",
-                            StatusFilePath = "/var/log/openvpn-status.log",
-                            TlsAuthKey = "/openvpn-tcp/easy-rsa/pki/ta.key",
-                            VpnServerId = 2
-                        });
                 });
 
             modelBuilder.Entity("OpenVPNGateMonitor.Models.OpenVpnServerClient", b =>

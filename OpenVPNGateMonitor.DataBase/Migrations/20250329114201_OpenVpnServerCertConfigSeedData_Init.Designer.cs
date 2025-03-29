@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OpenVPNGateMonitor.DataBase.Contexts;
@@ -11,9 +12,11 @@ using OpenVPNGateMonitor.DataBase.Contexts;
 namespace OpenVPNGateMonitor.DataBase.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250329114201_OpenVpnServerCertConfigSeedData_Init")]
+    partial class OpenVpnServerCertConfigSeedData_Init
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -305,18 +308,18 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         new
                         {
                             Id = 1,
-                            CaCertPath = "/openvpn-udp/easy-rsa/pki/ca.crt",
+                            CaCertPath = "/openvpn-upd/easy-rsa/pki/ca.crt",
                             CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            CrlOpenvpnPath = "/openvpn-udp/crl.pem",
-                            CrlPkiPath = "/openvpn-udp/easy-rsa/pki/crl.pem",
-                            EasyRsaPath = "/openvpn-udp/easy-rsa",
+                            CrlOpenvpnPath = "/openvpn-upd/crl.pem",
+                            CrlPkiPath = "/openvpn-upd/easy-rsa/pki/crl.pem",
+                            EasyRsaPath = "/openvpn-upd/easy-rsa",
                             LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            OvpnFileDir = "/openvpn-udp/clients",
-                            PkiPath = "/openvpn-udp/easy-rsa/pki/",
-                            RevokedOvpnFilesDirPath = "/openvpn-udp/clients/revoked/",
+                            OvpnFileDir = "/openvpn-upd/clients",
+                            PkiPath = "/openvpn-upd/easy-rsa/pki/",
+                            RevokedOvpnFilesDirPath = "/openvpn-upd/clients/revoked/",
                             ServerRemoteIp = "0.0.0.0",
                             StatusFilePath = "/var/log/openvpn-status.log",
-                            TlsAuthKey = "/openvpn-udp/easy-rsa/pki/ta.key",
+                            TlsAuthKey = "/openvpn-upd/easy-rsa/pki/ta.key",
                             VpnServerId = 1
                         },
                         new

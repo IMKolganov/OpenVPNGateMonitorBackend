@@ -23,9 +23,6 @@ public class OpenVpnServersController(
     IOpenVpnBackgroundService openVpnBackgroundService)
     : ControllerBase
 {
-    private readonly ILogger<OpenVpnServersController> _logger = logger;
-    private static bool _isStatusUpdateRunning = false;
-
     [HttpGet("GetAllConnectedClients")]
     public async Task<IActionResult> GetAllConnectedClients(
         [FromQuery] GetConnectedClientsRequest request, CancellationToken cancellationToken = default)
@@ -138,11 +135,6 @@ public class OpenVpnServersController(
 
     private async Task SendStatusUpdates(WebSocket webSocket)
     {
-        if (_isStatusUpdateRunning)
-            return;
-
-        _isStatusUpdateRunning = true;
-
         try
         {
             while (webSocket.State == WebSocketState.Open)
@@ -152,6 +144,7 @@ public class OpenVpnServersController(
                     .ToList();
 
                 var json = JsonConvert.SerializeObject(statuses);
+
                 await webSocket.SendAsync(
                     Encoding.UTF8.GetBytes(json),
                     WebSocketMessageType.Text,
@@ -161,9 +154,24 @@ public class OpenVpnServersController(
                 await Task.Delay(1000);
             }
         }
+        catch (Exception ex)
+        {
+            logger.LogError($"WebSocket error: {ex.Message}");
+        }
         finally
         {
-            _isStatusUpdateRunning = false;
+            try
+            {
+                await webSocket.CloseAsync(
+                    WebSocketCloseStatus.NormalClosure,
+                    "Closing",
+                    CancellationToken.None);
+            }
+            catch (Exception ex)
+            {
+                logger.LogError($"Error closing WebSocket: {ex.Message}");
+            }
+            logger.LogInformation("WebSocket closed.");
         }
     }
 }
