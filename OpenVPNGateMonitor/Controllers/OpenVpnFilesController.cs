@@ -14,7 +14,7 @@ namespace OpenVPNGateMonitor.Controllers;
 [Authorize]
 public class OpenVpnFilesController(IOvpnFileService ovpFileService) : ControllerBase
 {
-    [HttpGet("GetAllOvpnFiles")]
+    [HttpGet("GetAllOvpnFiles/{VpnServerId:int}")]
     public async Task<IActionResult> GetAllOvpnFiles([FromRoute] GetAllOvpnFilesRequest request,
         CancellationToken cancellationToken)
     {
@@ -25,23 +25,33 @@ public class OpenVpnFilesController(IOvpnFileService ovpFileService) : Controlle
     }
 
     [HttpGet("GetAllByExternalIdOvpnFiles")]
-    public async Task<IActionResult> GetAllByExternalIdOvpnFiles([FromRoute] GetAllByExternalIdOvpnFilesRequest request,
+    public async Task<IActionResult> GetAllByExternalIdOvpnFiles(
+        [FromQuery] GetAllByExternalIdOvpnFilesRequest request,
         CancellationToken cancellationToken)
     {
         var files = await ovpFileService.GetAllOvpnFilesByExternalId(
             request.VpnServerId, request.ExternalId, cancellationToken);
 
-        return Ok(ApiResponse<List<OvpnFileResponse>>.SuccessResponse(files.Adapt<List<OvpnFileResponse>>()));
+        var response = files.Adapt<List<OvpnFileResponse>>();
+        return Ok(ApiResponse<List<OvpnFileResponse>>.SuccessResponse(response));
     }
 
     [HttpPost("AddOvpnFile")]
     public async Task<IActionResult> AddOvpnFile([FromBody] AddOvpnFileRequest request,
         CancellationToken cancellationToken = default)
     {
-        var file = await ovpFileService.AddOvpnFile(request.ExternalId, request.CommonName, request.VpnServerId,
+        var file = await ovpFileService.AddOvpnFile(
+            request.ExternalId, request.CommonName, request.VpnServerId,
             cancellationToken, request.IssuedTo);
-        return Ok(ApiResponse<OvpnFileResponse>.SuccessResponse(file.Adapt<OvpnFileResponse>(),
-            "Ovpn file added successfully."));
+
+        var response = new AddOvpnFileApiResponse
+        {
+            FileName = file.OvpnFile.Name,
+            Metadata = file.IssuedOvpnFile.Adapt<OvpnFileResponse>()
+        };
+
+        return Ok(ApiResponse<AddOvpnFileApiResponse>.SuccessResponse(
+            response, "Ovpn file added successfully."));
     }
 
     [HttpPost("RevokeOvpnFile")]
@@ -68,13 +78,17 @@ public class OpenVpnFilesController(IOvpnFileService ovpFileService) : Controlle
         [FromRoute] DownloadOvpnFileRequest request,
         CancellationToken cancellationToken)
     {
-        var issuedOvpnFileResult = await ovpFileService.GetOvpnFile(
+        var result = await ovpFileService.GetOvpnFile(
             request.IssuedOvpnFileId, request.VpnServerId, cancellationToken);
 
-        if (issuedOvpnFileResult.FileStream == null)
-            return NotFound(ApiResponse<string>.ErrorResponse($"File not found: {issuedOvpnFileResult.FileName}"));
+        if (result.FileStream == null)
+            return NotFound(ApiResponse<string>.ErrorResponse($"File not found: {result.FileName}"));
 
-        var response = issuedOvpnFileResult.Adapt<DownloadOvpnFileResponse>();
+        var response = new DownloadOvpnFileResponse
+        {
+            FileStream = result.FileStream,
+            FileName = result.FileName
+        };
 
         var safeFileName = Uri.EscapeDataString(response.FileName);
         Response.Headers["Content-Disposition"] = $"attachment; filename=\"{safeFileName}\"";

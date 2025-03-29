@@ -1,5 +1,6 @@
 ﻿using Mapster;
 using OpenVPNGateMonitor.Models;
+using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Requests;
 using OpenVPNGateMonitor.SharedModels.OpenVpnFiles.Responses;
 
@@ -9,6 +10,13 @@ public class OvpnFileMapping : IRegister
 {
     public void Register(TypeAdapterConfig config)
     {
+        config.NewConfig<OvpnFileResult, DownloadOvpnFileResponse>()
+            .MapWith(src => new DownloadOvpnFileResponse
+            {
+                FileStream = src.FileStream!,
+                FileName = src.FileName
+            });
+
         config.NewConfig<IssuedOvpnFile, OvpnFileResponse>()
             .Map(dest => dest.ServerId, src => src.ServerId)
             .Map(dest => dest.ExternalId, src => src.ExternalId)
