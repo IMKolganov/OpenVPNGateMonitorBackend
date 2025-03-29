@@ -1,6 +1,7 @@
 using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
@@ -41,5 +42,7 @@ public class OpenVpnServerCertConfigConfiguration : BaseEntityConfiguration<Open
         entity.Property(e => e.StatusFilePath)
             .IsRequired()
             .HasMaxLength(255);
+
+        entity.HasData(OpenVpnServerCertConfigSeedData.Data);
     }
 }
