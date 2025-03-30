@@ -21,30 +21,25 @@ RUN dotnet restore "OpenVPNGateMonitor.csproj"
 WORKDIR /src
 COPY . .
 
-# Build the application
-ARG BUILD_CONFIGURATION=Debug
-RUN dotnet build "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/build --runtime linux-${TARGETARCH} --self-contained false
-
-# Publish the application
+# Publish the application (framework-dependent)
 FROM build AS publish
-ARG BUILD_CONFIGURATION=Debug
+ARG BUILD_CONFIGURATION=Release
 RUN echo "Using build configuration: $BUILD_CONFIGURATION" && \
-    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" -c $BUILD_CONFIGURATION -o /app/publish --runtime linux-${TARGETARCH} --self-contained false
+    dotnet publish "OpenVPNGateMonitor/OpenVPNGateMonitor.csproj" \
+      -c $BUILD_CONFIGURATION \
+      -o /app/publish
 
-# Use the ASP.NET runtime for the final image
+# Use the ASP.NET runtime for the final image (framework-dependent)
 FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS final
 
-# Install curl (optional, if needed for debugging or HTTP requests)
-RUN apt-get update && apt-get install -y curl
-
-# Switch to the 'app' user
+# Switch to the default 'app' user (already exists in aspnet image)
 USER app
 
 # Set the working directory
 WORKDIR /app
 
-# Copy the published application from the build stage
+# Copy the published application from the previous stage
 COPY --from=publish /app/publish .
 
-# Specify the entry point for the application
+# Run via dotnet runtime
 ENTRYPOINT ["dotnet", "OpenVPNGateMonitor.dll"]
