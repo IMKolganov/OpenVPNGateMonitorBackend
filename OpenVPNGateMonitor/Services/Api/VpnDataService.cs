@@ -73,6 +73,15 @@ public class VpnDataService : IVpnDataService
 
         foreach (var openVpnServer in openVpnServers)
         {
+            var countConnectedClients = await _unitOfWork.GetQuery<OpenVpnServerClient>()
+                .AsQueryable()
+                .Where(x => x.IsConnected && x.VpnServerId == openVpnServer.Id)
+                .CountAsync(cancellationToken);
+            var countSessions = await _unitOfWork.GetQuery<OpenVpnServerClient>()
+                .AsQueryable()
+                .Where(x => x.VpnServerId == openVpnServer.Id)
+                .CountAsync(cancellationToken);
+            
             var openVpnServerStatusLog = await _unitOfWork.GetQuery<OpenVpnServerStatusLog>()
                 .AsQueryable()
                 .Where(x => x.VpnServerId == openVpnServer.Id)
@@ -86,10 +95,14 @@ public class VpnDataService : IVpnDataService
             {
                 OpenVpnServer = openVpnServer,
                 OpenVpnServerStatusLog = openVpnServerStatusLog,
+                CountConnectedClients = countConnectedClients,
+                CountSessions = countSessions,
                 TotalBytesIn = totalBytesIn,
                 TotalBytesOut = totalBytesOut
             });
         }
+
+
 
         return openVpnServerInfoResponses;
     }
