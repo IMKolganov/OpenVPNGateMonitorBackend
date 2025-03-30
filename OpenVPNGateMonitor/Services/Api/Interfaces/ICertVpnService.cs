@@ -11,9 +11,9 @@ public interface ICertVpnService
         CancellationToken cancellationToken);
     Task<List<CertificateCaInfo>> GetAllVpnServerCertificatesByStatus(int vpnServerId,
         CertificateStatus certificateStatus, CancellationToken cancellationToken);
-    Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string cnName,
+    Task<CertificateBuildResult> AddServerCertificate(int vpnServerId, string commonName,
         CancellationToken cancellationToken);
-    Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string cnName,
+    Task<CertificateRevokeResult> RevokeServerCertificate(int vpnServerId, string commonName,
         CancellationToken cancellationToken);
     Task<OpenVpnServerCertConfig> GetOpenVpnServerCertConf(int vpnServerId,
         CancellationToken cancellationToken);

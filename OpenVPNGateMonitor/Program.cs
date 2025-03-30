@@ -19,6 +19,7 @@ builder.Services.ConfigureJwt(builder.Configuration);
 builder.Services.ConfigureMapster();
 
 builder.ConfigureWebHost();
+builder.ConfigureExternalIpServices();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();

@@ -6,6 +6,7 @@ using OpenVPNGateMonitor.Models;
 using OpenVPNGateMonitor.Models.Helpers.Api;
 using OpenVPNGateMonitor.Models.Helpers.Services;
 using OpenVPNGateMonitor.Services.BackgroundServices.Interfaces;
+using OpenVPNGateMonitor.Services.Helpers;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using OpenVPNGateMonitor.Services.OpenVpnManagementInterfaces.OpenVpnTelnet;
 
@@ -18,24 +19,20 @@ public class OpenVpnServerService : IOpenVpnServerService
     private readonly IOpenVpnSummaryStatService _openVpnSummaryStatService;
     private readonly IOpenVpnVersionService _openVpnVersionService;
     private readonly IOpenVpnStateService _openVpnStateService;
-    private readonly ICommandQueueManager _commandQueueManager;
     private readonly IUnitOfWork _unitOfWork;
-    private readonly List<string>? _externalIpServices;
+    private readonly ExternalIpAddressService _externalIpAddressService;
     
-    public OpenVpnServerService(ILogger<IOpenVpnServerService> logger, IConfiguration configuration,
-        IOpenVpnClientService openVpnClientService, IOpenVpnSummaryStatService openVpnSummaryStatService, 
-        IOpenVpnVersionService openVpnVersionService, IOpenVpnStateService openVpnStateService, 
-        ICommandQueueManager commandQueueManager, IUnitOfWork unitOfWork)
+    public OpenVpnServerService(ILogger<IOpenVpnServerService> logger, IOpenVpnClientService openVpnClientService, 
+        IOpenVpnSummaryStatService openVpnSummaryStatService, IOpenVpnVersionService openVpnVersionService, 
+        IOpenVpnStateService openVpnStateService, IUnitOfWork unitOfWork, ExternalIpAddressService externalIpAddressService)
     {
         _logger = logger;
         _openVpnClientService = openVpnClientService;
         _openVpnSummaryStatService = openVpnSummaryStatService;
         _openVpnVersionService = openVpnVersionService;
         _openVpnStateService = openVpnStateService;
-        _commandQueueManager = commandQueueManager;
         _unitOfWork = unitOfWork;
-
-        _externalIpServices = configuration.GetSection("ExternalIpServices").Get<List<string>>();
+        _externalIpAddressService = externalIpAddressService;
 
         _logger.LogInformation("OpenVpnServerService initialized.");
     }
@@ -139,7 +136,7 @@ public class OpenVpnServerService : IOpenVpnServerService
             
             serverInfo.OpenVpnSummaryStats = await _openVpnSummaryStatService.GetSummaryStatsAsync(commandQueue, 
                 cancellationToken);
-            serverInfo.OpenVpnState.ServerRemoteIp = await GetRemoteIpAddress();
+            serverInfo.OpenVpnState.ServerRemoteIp = await _externalIpAddressService.GetRemoteIpAddress(cancellationToken);
 
             if (serverInfo.OpenVpnState != null)
             {
@@ -211,33 +208,6 @@ public class OpenVpnServerService : IOpenVpnServerService
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         _logger.LogInformation("SaveOpenVpnServerStatusLogAsync completed successfully.");
-    }
-
-    private async Task<string> GetRemoteIpAddress()
-    {
-        using HttpClient client = new HttpClient();
-        if (_externalIpServices is { Count: <= 0 })
-        {
-            _logger.LogError("No external IP configured.");
-            return "127.0.0.1";
-        }
-
-        if (_externalIpServices != null)
-            foreach (string externalIpService in _externalIpServices)
-            {
-                try
-                {
-                    string ip = await client.GetStringAsync(externalIpService);
-                    _logger.LogInformation("Retrieved external IP: {Ip} from {Service}", ip, externalIpService);
-                    return ip.Trim();
-                }
-                catch (Exception)
-                {
-                    _logger.LogError("Failed to get IP from: {Service}", externalIpService);
-                }
-            }
-
-        throw new Exception("Unable to retrieve external IP.");
     }
     
     private Guid GenerateSessionId(string commonName, string realAddress, DateTime connectedSince)

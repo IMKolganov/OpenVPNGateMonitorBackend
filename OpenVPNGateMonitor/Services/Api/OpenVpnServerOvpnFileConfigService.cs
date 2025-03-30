@@ -24,7 +24,7 @@ public class OpenVpnServerOvpnFileConfigService : IOpenVpnServerOvpnFileConfigSe
         
         return await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
             .AsQueryable()
-            .Where(x => x.ServerId == vpnServerId)
+            .Where(x => x.VpnServerId == vpnServerId)
             .FirstOrDefaultAsync(cancellationToken) ?? throw new InvalidOperationException("OvpnFileConfig not found");
     }
     
@@ -35,7 +35,7 @@ public class OpenVpnServerOvpnFileConfigService : IOpenVpnServerOvpnFileConfigSe
 
         var existingConfig = await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
             .AsQueryable()
-            .FirstOrDefaultAsync(x => x.ServerId == openVpnServerOvpnFileConfig.ServerId, 
+            .FirstOrDefaultAsync(x => x.VpnServerId == openVpnServerOvpnFileConfig.VpnServerId, 
                 cancellationToken);
 
         if (existingConfig != null)
@@ -59,10 +59,10 @@ public class OpenVpnServerOvpnFileConfigService : IOpenVpnServerOvpnFileConfigSe
 
         return await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
                    .AsQueryable()
-                   .FirstOrDefaultAsync(x => x.ServerId == openVpnServerOvpnFileConfig.ServerId,
+                   .FirstOrDefaultAsync(x => x.VpnServerId == openVpnServerOvpnFileConfig.VpnServerId,
                        cancellationToken)
                ?? throw new InvalidOperationException($"OpenVPN server OVPN file configuration not found for " +
-                                                      $"server ID {openVpnServerOvpnFileConfig.ServerId}.");
+                                                      $"server ID {openVpnServerOvpnFileConfig.VpnServerId}.");
     }
 
     

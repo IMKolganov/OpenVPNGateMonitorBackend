@@ -1,7 +1,9 @@
 ﻿using System.Reflection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.OpenApi.Writers;
 using OpenVPNGateMonitor.DataBase.Contexts;
 using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
+using Swashbuckle.AspNetCore.Swagger;
 
 namespace OpenVPNGateMonitor.Configurations;
 
@@ -15,7 +17,10 @@ public static class PipelineConfiguration
         {
             // app.MapOpenApi();
             app.UseSwagger();
-            app.UseSwaggerUI();
+            app.UseSwaggerUI(c =>
+            {
+                c.SwaggerEndpoint("/swagger/v1/swagger.json", "OpenVPN Gate Monitor API v1");
+            });
         }
 
         // app.UseHttpsRedirection();
@@ -44,6 +49,20 @@ public static class PipelineConfiguration
         app.MapGet("/error/404", () => Results.Problem(statusCode: 404, title: "Page Not Found", 
                 detail: "The requested resource was not found."))
             .ExcludeFromDescription();
+        
+        app.MapGet("/swaggerjson", async context =>
+        {
+            var provider = context.RequestServices.GetRequiredService<ISwaggerProvider>();
+            var swaggerDoc = provider.GetSwagger("v1");
+
+            context.Response.ContentType = "application/json";
+
+            var stringWriter = new StringWriter();
+            var jsonWriter = new OpenApiJsonWriter(stringWriter);
+            swaggerDoc.SerializeAsV3(jsonWriter);
+
+            await context.Response.WriteAsync(stringWriter.ToString());
+        });
 
         var version = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? "Unknown version";
         var environmentName = app.Environment.EnvironmentName;

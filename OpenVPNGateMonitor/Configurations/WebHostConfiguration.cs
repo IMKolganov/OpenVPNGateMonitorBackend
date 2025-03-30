@@ -8,5 +8,6 @@ public static class WebHostConfiguration
         {
             options.Configure(context.Configuration.GetSection("Kestrel"));
         });
+        
     }
 }

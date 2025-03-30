@@ -1,6 +1,7 @@
 using OpenVPNGateMonitor.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels;
 
@@ -9,7 +10,7 @@ public class OpenVpnServerOvpnFileConfigConfiguration : BaseEntityConfiguration<
     public override void Configure(EntityTypeBuilder<OpenVpnServerOvpnFileConfig> entity)
     {
         base.Configure(entity);
-        entity.Property(e => e.ServerId)
+        entity.Property(e => e.VpnServerId)
             .IsRequired();
         entity.Property(e => e.VpnServerIp)
             .IsRequired()
@@ -19,5 +20,7 @@ public class OpenVpnServerOvpnFileConfigConfiguration : BaseEntityConfiguration<
         entity.Property(e => e.ConfigTemplate)
             .IsRequired()
             .HasColumnType("TEXT");
+        
+        entity.HasData(OpenVpnServerOvpnFileConfigSeedData.Data);
     }
 }

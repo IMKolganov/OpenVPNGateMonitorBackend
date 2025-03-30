@@ -42,7 +42,7 @@ public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> 
         CancellationToken cancellationToken = default)
     {
         var certificate = await certVpnService.AddServerCertificate(
-            request.VpnServerId, request.CnName, cancellationToken);
+            request.VpnServerId, request.CommonName, cancellationToken);
 
         return Ok(ApiResponse<VpnServerCertificateResponse>.SuccessResponse(certificate.Adapt<VpnServerCertificateResponse>()));
     }

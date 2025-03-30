@@ -53,7 +53,7 @@ public class OvpnFileService : IOvpnFileService
             throw new InvalidOperationException("OpenVpnServerCertConfig not found");
        var openVpnServerOvpnFileConfig = await _unitOfWork.GetQuery<OpenVpnServerOvpnFileConfig>()
                                              .AsQueryable()
-                                             .Where(x => x.ServerId == vpnServerId)
+                                             .Where(x => x.VpnServerId == vpnServerId)
                                              .FirstOrDefaultAsync(cancellationToken) 
                                          ?? throw new InvalidOperationException($"OpenVPN server configuration " +
                                              $"is missing for server ID {vpnServerId}. " +
@@ -71,8 +71,13 @@ public class OvpnFileService : IOvpnFileService
         var clientKeyContent = await File.ReadAllTextAsync(certificateResult.KeyPath, cancellationToken);
 
         _logger.LogInformation("Step 3: Generating .ovpn configuration file...");
-        var ovpnContent = GenerateOvpnFile(openVpnServerOvpnFileConfig.VpnServerIp,
-            openVpnServerOvpnFileConfig.VpnServerPort, caCertContent, clientCertContent, clientKeyContent, 
+        var ovpnContent = GenerateOvpnFile(
+            openVpnServerOvpnFileConfig.ConfigTemplate,
+            openVpnServerOvpnFileConfig.VpnServerIp,
+            openVpnServerOvpnFileConfig.VpnServerPort,
+            caCertContent,
+            clientCertContent,
+            clientKeyContent,
             openVpnServerCertConfig.TlsAuthKey);
         
         _logger.LogInformation("Step 4: Writing .ovpn file...");
@@ -177,46 +182,36 @@ public class OvpnFileService : IOvpnFileService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
     }
 
-    private static string GenerateOvpnFile(string serverIp, int serverPort, string caCert, string clientCert, 
-        string clientKey, string tlsAuthKey)
+    private static string GenerateOvpnFile(
+        string configTemplate,
+        string serverIp,
+        int serverPort,
+        string caCert,
+        string clientCert,
+        string clientKey,
+        string tlsAuthKeyPath)
     {
-        if (string.IsNullOrEmpty(serverIp))
+        if (string.IsNullOrWhiteSpace(configTemplate))
+            throw new ArgumentNullException(nameof(configTemplate));
+        if (string.IsNullOrWhiteSpace(serverIp))
             throw new ArgumentNullException(nameof(serverIp));
-        if (string.IsNullOrEmpty(caCert))
+        if (string.IsNullOrWhiteSpace(caCert))
             throw new ArgumentNullException(nameof(caCert));
-        if (string.IsNullOrEmpty(clientCert))
+        if (string.IsNullOrWhiteSpace(clientCert))
             throw new ArgumentNullException(nameof(clientCert));
-        if (string.IsNullOrEmpty(clientKey))
+        if (string.IsNullOrWhiteSpace(clientKey))
             throw new ArgumentNullException(nameof(clientKey));
-        if (string.IsNullOrEmpty(tlsAuthKey))
-            throw new ArgumentNullException(nameof(tlsAuthKey));
-        
-        //todo: move it OpenVpnServerOvpnFileConfig
-        return $@"client
-dev tun
-proto udp
-remote {serverIp} {serverPort}
-resolv-retry infinite
-nobind
-remote-cert-tls server
-tls-version-min 1.2
-verify-x509-name raspberrypi_2e39d597-c642-4f69-a6c8-149e7c9ac064 name
-cipher AES-256-CBC
-auth SHA256
-auth-nocache
-verb 3
-<ca>
-{caCert}
-</ca>
-<cert>
-{clientCert}
-</cert>
-<key>
-{clientKey}
-</key>
-<tls-crypt>
-{File.ReadAllText(tlsAuthKey)}
-</tls-crypt>
-";
+        if (string.IsNullOrWhiteSpace(tlsAuthKeyPath))
+            throw new ArgumentNullException(nameof(tlsAuthKeyPath));
+
+        var tlsAuthKey = File.ReadAllText(tlsAuthKeyPath);
+
+        return configTemplate
+            .Replace("{{server_ip}}", serverIp)
+            .Replace("{{server_port}}", serverPort.ToString())
+            .Replace("{{ca_cert}}", caCert)
+            .Replace("{{client_cert}}", clientCert)
+            .Replace("{{client_key}}", clientKey)
+            .Replace("{{tls_auth_key}}", tlsAuthKey);
     }
 }

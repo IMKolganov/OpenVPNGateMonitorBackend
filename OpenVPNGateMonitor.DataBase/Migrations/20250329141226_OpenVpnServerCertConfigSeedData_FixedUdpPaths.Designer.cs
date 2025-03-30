@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using OpenVPNGateMonitor.DataBase.Contexts;
@@ -11,9 +12,11 @@ using OpenVPNGateMonitor.DataBase.Contexts;
 namespace OpenVPNGateMonitor.DataBase.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250329141226_OpenVpnServerCertConfigSeedData_FixedUdpPaths")]
+    partial class OpenVpnServerCertConfigSeedData_FixedUdpPaths
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -439,7 +442,7 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
-                    b.Property<int>("VpnServerId")
+                    b.Property<int>("ServerId")
                         .HasColumnType("integer");
 
                     b.Property<string>("VpnServerIp")
@@ -453,28 +456,6 @@ namespace OpenVPNGateMonitor.DataBase.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("OpenVpnServerOvpnFileConfigs", "xgb_dashopnvpn");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = 1,
-                            ConfigTemplate = "client\r\ndev tun\r\nproto udp\r\nremote {{server_ip}} {{server_port}}\r\nresolv-retry infinite\r\nnobind\r\nremote-cert-tls server\r\ntls-version-min 1.2\r\ncipher AES-256-CBC\r\nauth SHA256\r\nauth-nocache\r\nverb 3\r\n<ca>\r\n{{ca_cert}}\r\n</ca>\r\n<cert>\r\n{{client_cert}}\r\n</cert>\r\n<key>\r\n{{client_key}}\r\n</key>\r\n<tls-crypt>\r\n{{tls_auth_key}}\r\n</tls-crypt>",
-                            CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            VpnServerId = 1,
-                            VpnServerIp = "127.0.0.1",
-                            VpnServerPort = 1194
-                        },
-                        new
-                        {
-                            Id = 2,
-                            ConfigTemplate = "client\r\ndev tun\r\nproto tcp\r\nremote {{server_ip}} {{server_port}}\r\nresolv-retry infinite\r\nnobind\r\nremote-cert-tls server\r\ntls-version-min 1.2\r\ncipher AES-256-CBC\r\nauth SHA256\r\nauth-nocache\r\nverb 3\r\n<ca>\r\n{{ca_cert}}\r\n</ca>\r\n<cert>\r\n{{client_cert}}\r\n</cert>\r\n<key>\r\n{{client_key}}\r\n</key>\r\n<tls-crypt>\r\n{{tls_auth_key}}\r\n</tls-crypt>",
-                            CreateDate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            LastUpdate = new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified),
-                            VpnServerId = 2,
-                            VpnServerIp = "127.0.0.1",
-                            VpnServerPort = 1195
-                        });
                 });
 
             modelBuilder.Entity("OpenVPNGateMonitor.Models.OpenVpnServerStatusLog", b =>
