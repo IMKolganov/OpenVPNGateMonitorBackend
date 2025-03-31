@@ -5,18 +5,30 @@ using OpenVPNGateMonitor.DataBase.Repositories.Queries;
 using OpenVPNGateMonitor.DataBase.UnitOfWork;
 using OpenVPNGateMonitor.Models.Helpers;
 using Microsoft.EntityFrameworkCore;
+using ILogger = Serilog.ILogger;
 
 namespace OpenVPNGateMonitor.Configurations;
 
 public static class DataBaseConfigurations
 {
-    public static void DataBaseServices(this IServiceCollection services, IConfiguration configuration)
+    public static void DataBaseServices(this IServiceCollection services, IConfiguration configuration,
+        ILogger logger)
     {
         var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
                                ?? configuration.GetConnectionString("DefaultConnection");
 
         if (string.IsNullOrEmpty(connectionString))
             throw new InvalidOperationException("Database connection string is missing.");
+        try
+        {
+            var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
+            logger.Information("Using PostgreSQL Database. Host: {Host}, Port: {Port}, Database: {Database}", 
+                builder.Host, builder.Port, builder.Database);
+        }
+        catch (Exception ex)
+        {
+            logger.Warning(ex, "Failed to parse connection string for logging.");
+        }
 
         var dbSettings = new DataBaseSettings
         {

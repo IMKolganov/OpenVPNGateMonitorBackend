@@ -14,7 +14,7 @@ builder.Configuration["Jwt:Secret"] = jwtSecret;
 builder.Services.ConfigureServices(builder.Configuration);
 builder.Services.ConfigureGeoLiteServices();
 builder.Services.ConfigureAuthServices();
-builder.Services.DataBaseServices(builder.Configuration);
+builder.Services.DataBaseServices(builder.Configuration, logger);
 builder.Services.ConfigureJwt(builder.Configuration);
 builder.Services.ConfigureMapster();
 
