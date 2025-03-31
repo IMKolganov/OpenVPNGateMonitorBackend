@@ -1,4 +1,5 @@
-﻿using OpenVPNGateMonitor.Models;
+﻿using OpenVPNGateMonitor.DataBase.ConfigurationModels.Utils;
+using OpenVPNGateMonitor.Models;
 
 namespace OpenVPNGateMonitor.DataBase.ConfigurationModels.Seeds;
 
@@ -35,7 +36,7 @@ verb 3
 </key>
 <tls-crypt>
 {{tls_auth_key}}
-</tls-crypt>"
+</tls-crypt>".NormalizeUnixLineEndings()
         },
         new OpenVpnServerOvpnFileConfig
         {
@@ -66,7 +67,7 @@ verb 3
 </key>
 <tls-crypt>
 {{tls_auth_key}}
-</tls-crypt>"
+</tls-crypt>".NormalizeUnixLineEndings()
         },
     };
 }
