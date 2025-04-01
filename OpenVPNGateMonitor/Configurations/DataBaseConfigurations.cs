@@ -18,7 +18,10 @@ public static class DataBaseConfigurations
                                ?? configuration.GetConnectionString("DefaultConnection");
 
         if (string.IsNullOrEmpty(connectionString))
-            throw new InvalidOperationException("Database connection string is missing.");
+            throw new InvalidOperationException(
+                "Database connection string is missing. " +
+                "Attempted to read from environment variable 'DB_CONNECTION_STRING_DATAGATE' or " +
+                "configuration key 'ConnectionStrings:DefaultConnection'.");
         try
         {
             var builder = new Npgsql.NpgsqlConnectionStringBuilder(connectionString);
