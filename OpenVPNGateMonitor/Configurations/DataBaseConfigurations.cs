@@ -14,7 +14,7 @@ public static class DataBaseConfigurations
     public static void DataBaseServices(this IServiceCollection services, IConfiguration configuration,
         ILogger logger)
     {
-        var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING") 
+        var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING_DATAGATE") 
                                ?? configuration.GetConnectionString("DefaultConnection");
 
         if (string.IsNullOrEmpty(connectionString))
