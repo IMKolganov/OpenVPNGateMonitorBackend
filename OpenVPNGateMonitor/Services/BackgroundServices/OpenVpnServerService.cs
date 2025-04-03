@@ -236,7 +236,8 @@ public class OpenVpnServerService : IOpenVpnServerService
         {
             client.IsConnected = false;
         }
-        _logger.LogInformation($"Marked {existingAllOpenVpnServerClient.Count} existing clients as disconnected.");
+        _logger.LogInformation($"VpnServerId: {vpnServerId}. " +
+                               $"Marked {existingAllOpenVpnServerClient.Count} existing clients as disconnected.");
         return true;
     }
 }

@@ -67,8 +67,8 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
         await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
         {
-            _logger.LogInformation($"Processing server Id: {server.Id} Name: {server.ServerName} " +
-                                   $"- {server.ManagementIp}:{server.ManagementPort}");
+            _logger.LogInformation($"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
+                                   $"Processing server: {server.ManagementIp}:{server.ManagementPort}");
             try
             {
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Running, nextRunSeconds);
@@ -77,17 +77,20 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 await processor.ProcessServerAsync(server, ct);
                 
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle, nextRunSeconds);
-                _logger.LogInformation($"Completed processing for server Id: {server.Id} Name: {server.ServerName}");
+                _logger.LogInformation($"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
+                                       $"Completed processing for server Id: {server.Id} Name: {server.ServerName}");
             }
             catch (TimeoutException ex)
             {
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, "Timeout");
-                _logger.LogError(ex, $"Timeout while processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
+                _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
+                                     $"Timeout while processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
             }
             catch (Exception ex)
             {
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Error, nextRunSeconds, ex.Message);
-                _logger.LogError(ex, $"Error processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
+                _logger.LogError(ex, $"VpnServerId: {server.Id}. VpnServerName: {server.ServerName} " +
+                                     $"Error processing OpenVPN server {server.ManagementIp}:{server.ManagementPort}");
             }
         });
         _logger.LogInformation("OpenVPN task execution completed.");
@@ -95,7 +98,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
     protected override async Task ExecuteAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("OpenVPN Background Service execution started.");
+        _logger.LogInformation("OpenVPN Background Service: Execution started.");
         var nextRunSeconds = await GetPollingIntervalSecondsAsync(cancellationToken);
         await RunOpenVpnTask(nextRunSeconds, cancellationToken);
         while (!cancellationToken.IsCancellationRequested)
@@ -103,7 +106,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             nextRunSeconds = await GetPollingIntervalSecondsAsync(cancellationToken);
             if (nextRunSeconds == 0)
             {
-                _logger.LogWarning("Polling interval is 0. Pausing execution...");
+                _logger.LogWarning("OpenVPN Background Service: Polling interval is 0. Pausing execution...");
             
                 try
                 {
@@ -112,7 +115,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 }
                 catch (TaskCanceledException)
                 {
-                    _logger.LogInformation("Cancellation requested. Exiting service.");
+                    _logger.LogInformation("OpenVPN Background Service: Cancellation requested. Exiting service.");
                     return;
                 }
             }
@@ -126,22 +129,26 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             if (now < nextRunTime)
             {
                 var waitTime = (nextRunTime - now).TotalMilliseconds;
-                _logger.LogInformation($"Waiting {waitTime / 1000:F0} seconds until next run at {nextRunTime}");
-                _logger.LogInformation($"Delay token before waiting: {_delayTokenSource.GetHashCode()}");
+                _logger.LogInformation($"OpenVPN Background Service: " +
+                                       $"Waiting {waitTime / 1000:F0} seconds until next run at {nextRunTime}");
+                _logger.LogInformation($"OpenVPN Background Service: " +
+                                       $"Delay token before waiting: {_delayTokenSource.GetHashCode()}");
 
                 try
                 {
-                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _delayTokenSource.Token);
+                    using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, 
+                        _delayTokenSource.Token);
                     await Task.Delay(TimeSpan.FromMilliseconds(waitTime), linkedCts.Token);
                 }
                 catch (TaskCanceledException)
                 {
-                    _logger.LogInformation("Manual trigger received. Skipping wait.");
-                    _logger.LogInformation("Is cancellation requested: " + cancellationToken.IsCancellationRequested);
+                    _logger.LogInformation("OpenVPN Background Service: Manual trigger received. Skipping wait.");
+                    _logger.LogInformation("OpenVPN Background Service: " +
+                                           "Is cancellation requested: " + cancellationToken.IsCancellationRequested);
                 }
             }
 
-            _logger.LogInformation("Executing OpenVPN task.");
+            _logger.LogInformation("OpenVPN Background Service: Executing OpenVPN task.");
             await RunOpenVpnTask(nextRunSeconds, cancellationToken);
         }
     }
