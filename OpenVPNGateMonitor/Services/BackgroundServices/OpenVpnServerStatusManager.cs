@@ -27,6 +27,11 @@ public class OpenVpnServerStatusManager
                 return existing;
             });
     }
+    
+    public void ClearAllStatuses()
+    {
+        _serverStatuses.Clear();
+    }
 
     public BackgroundServerStatus GetStatus(int serverId)
     {

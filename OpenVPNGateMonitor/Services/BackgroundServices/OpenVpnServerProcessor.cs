@@ -23,7 +23,8 @@ public class OpenVpnServerProcessor
 
     public async Task ProcessServerAsync(OpenVpnServer openVpnServer, CancellationToken cancellationToken)
     {
-        _logger.LogInformation($"Processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+        _logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
+                               $"Processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
         using var scope = _serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var openVpnServerService = scope.ServiceProvider.GetRequiredService<IOpenVpnServerService>();
@@ -33,24 +34,29 @@ public class OpenVpnServerProcessor
             var commandQueue = await _commandQueueManager.GetOrCreateQueueAsync(
                 openVpnServer.ManagementIp, openVpnServer.ManagementPort, cancellationToken, 5);//todo: load from config
 
-            _logger.LogInformation($"Saving OpenVPN server status for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+            _logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
+                                   $"Saving OpenVPN server status for " +
+                                   $"{openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
             await openVpnServerService.SaveOpenVpnServerStatusLogAsync(openVpnServer.Id, commandQueue, cancellationToken);
 
-            _logger.LogInformation($"Saving connected clients for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+            _logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
+                                   $"Saving connected clients for {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
             await openVpnServerService.SaveConnectedClientsAsync(openVpnServer.Id, commandQueue, cancellationToken);
 
             openVpnServer.IsOnline = true;
             openVpnServerRepository.Update(openVpnServer);
             await unitOfWork.SaveChangesAsync(cancellationToken);
 
-            _logger.LogInformation($"Finished processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+            _logger.LogInformation($"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
+                                   $"Finished processing OpenVPN server: {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
         }
         catch (Exception ex)
         {
             openVpnServer.IsOnline = false;
             openVpnServerRepository.Update(openVpnServer);
             await unitOfWork.SaveChangesAsync(cancellationToken);
-            _logger.LogError(ex, $"OpenVpnServerProcessor: Error processing OpenVPN server {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
+            _logger.LogError(ex, $"VpnServerId: {openVpnServer.Id}. Vpn Server Name: {openVpnServer.ServerName}. " +
+                                 $"OpenVpnServerProcessor: Error processing OpenVPN server {openVpnServer.ManagementIp}:{openVpnServer.ManagementPort}");
             throw;
         }
     }

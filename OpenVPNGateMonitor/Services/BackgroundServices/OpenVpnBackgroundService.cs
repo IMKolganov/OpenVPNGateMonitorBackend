@@ -63,10 +63,12 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
         using var scope = _serviceProvider.CreateScope();
         var unitOfWork = scope.ServiceProvider.GetRequiredService<IUnitOfWork>();
         var openVpnServers = unitOfWork.GetQuery<OpenVpnServer>().AsQueryable().ToList();
+        _statusManager.ClearAllStatuses();
 
         await Parallel.ForEachAsync(openVpnServers, cancellationToken, async (server, ct) =>
         {
-            _logger.LogInformation($"Processing server {server.Id}: {server.ManagementIp}:{server.ManagementPort}");
+            _logger.LogInformation($"Processing server Id: {server.Id} Name: {server.ServerName} " +
+                                   $"- {server.ManagementIp}:{server.ManagementPort}");
             try
             {
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Running, nextRunSeconds);
@@ -75,7 +77,7 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 await processor.ProcessServerAsync(server, ct);
                 
                 _statusManager.UpdateStatus(server.Id, ServiceStatus.Idle, nextRunSeconds);
-                _logger.LogInformation($"Completed processing for server {server.Id}");
+                _logger.LogInformation($"Completed processing for server Id: {server.Id} Name: {server.ServerName}");
             }
             catch (TimeoutException ex)
             {

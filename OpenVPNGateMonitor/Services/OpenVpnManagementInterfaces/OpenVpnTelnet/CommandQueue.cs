@@ -38,7 +38,7 @@ public class CommandQueue : ICommandQueue
     {
         if (string.IsNullOrWhiteSpace(message)) return;
 
-        Console.WriteLine($"[CommandQueue] Received message: {message}");
+        // Console.WriteLine($"[CommandQueue] Received message: {message}");
 
         if (message.Contains("END") || message.Contains("SUCCESS:", StringComparison.OrdinalIgnoreCase) 
                                     || message.Contains("ERROR:", StringComparison.OrdinalIgnoreCase) 
