@@ -6,7 +6,7 @@ public class AddOrUpdateOvpnFileConfigRequest
 {
     [Required(ErrorMessage = "serverId is required.")]
     [Range(1, int.MaxValue, ErrorMessage = "serverId must be greater than 0.")]
-    public int ServerId { get; set; }
+    public int VpnServerId { get; set; }
 
     [Required(ErrorMessage = "vpnServerIp is required.")]
     public string VpnServerIp { get; set; } = string.Empty;

@@ -16,12 +16,12 @@ public class OpenVpnServerOvpnFileConfigController(
     IOpenVpnServerOvpnFileConfigService openVpnServerOvpnFileConfigService)
     : ControllerBase
 {
-    [HttpGet("GetOvpnFileConfig")]
+    [HttpGet("GetOvpnFileConfig/{vpnServerId:int}")]
     public async Task<IActionResult> GetOvpnFileConfig(
-        [FromBody] int vpnServerId, CancellationToken cancellationToken = default)
+        [FromRoute] GetOvpnFileConfigRequest request, CancellationToken cancellationToken = default)
     {
         var config = await openVpnServerOvpnFileConfigService
-            .GetOpenVpnServerOvpnFileConfigByServerId(vpnServerId, cancellationToken);
+            .GetOpenVpnServerOvpnFileConfigByServerId(request.VpnServerId, cancellationToken);
 
         return Ok(ApiResponse<OvpnFileConfigResponse>.SuccessResponse(config.Adapt<OvpnFileConfigResponse>()));
     }
