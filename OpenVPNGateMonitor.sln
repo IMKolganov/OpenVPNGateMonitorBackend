@@ -8,6 +8,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.gitignore = .gitignore
 		Dockerfile = Dockerfile
 		.dockerignore = .dockerignore
+		entrypoint.sh = entrypoint.sh
 	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OpenVPNGateMonitor.DataBase", "OpenVPNGateMonitor.DataBase\OpenVPNGateMonitor.DataBase.csproj", "{2C4B7D0F-3A04-4908-8952-FC0B73CFCFAD}"
