@@ -23,38 +23,38 @@ public class EasyRsaExecCommandService : IEasyRsaExecCommandService
 // # | EASYRSA_BATCH=1 ./easyrsa revoke client1          | Revokes the certificate without confirmation prompt |
 // # | EASYRSA_CRL_DAYS=3650 ./easyrsa revoke client1    | Sets the Certificate Revocation List (CRL) expiration to 10 years |
 // # | ./easyrsa gen-crl                                 | Generates or updates the Certificate Revocation List (CRL) |
-// # | EASYRSA_CRL_DAYS=7300 ./easyrsa gen-crl          | Generates a CRL valid for 20 years                |
+// # | EASYRSA_CRL_DAYS=7300 ./easyrsa gen-crl           | Generates a CRL valid for 20 years                |
 //
 // # ==============================================================================
-
     #endregion
-    public (bool IsSuccess, string Output, int ExitCode, string Error) ExecuteEasyRsaCommand(string arguments, 
-        string easyRsaPath, bool confirm = false)
+
+    public (bool IsSuccess, string Output, int ExitCode, string Error) ExecuteEasyRsaCommand(
+        string arguments,
+        string easyRsaPath,
+        bool confirm = false)
     {
         try
         {
-            var command = $"cd {easyRsaPath} && ./easyrsa {arguments}";
-            if (confirm)
-            {
-                _logger.LogInformation($"Confirming command with 'yes': {arguments}");
-                command = $"cd {easyRsaPath} && echo yes | ./easyrsa {arguments}";
-            }
+            var commandPrefix = $"cd {easyRsaPath} &&";
+            var fullArgs = confirm ? $"EASYRSA_BATCH=1 ./easyrsa {arguments}" : $"./easyrsa {arguments}";
+            var command = $"{commandPrefix} {fullArgs}";
 
             _logger.LogInformation($"Executing command: {command}");
             var result = RunCommand(command);
 
-            _logger.LogInformation($"Command Output: {result.Output}");
-            _logger.LogInformation($"Command Error: {result.Error}");
-            _logger.LogInformation($"Command Exit Code: {result.ExitCode}");
+            if (result.ExitCode == 0)
+            {
+                _logger.LogInformation($"Command executed successfully: {result.Output}");
+                return (true, result.Output, result.ExitCode, string.Empty);
+            }
 
-            return result.ExitCode == 0
-                ? (true, result.Output, result.ExitCode, string.Empty)
-                : (false, result.Output, result.ExitCode, result.Error);
+            _logger.LogWarning($"Command failed with exit code {result.ExitCode}: {result.Error}");
+            return (false, result.Output, result.ExitCode, result.Error);
         }
         catch (Exception ex)
         {
-            _logger.LogError($"Exception during command execution: {ex.Message}");
-            return (false, string.Empty, 404,ex.Message);
+            _logger.LogError($"Exception during Easy-RSA command execution: {ex.Message}");
+            return (false, string.Empty, 500, ex.Message);
         }
     }
 
@@ -72,14 +72,14 @@ public class EasyRsaExecCommandService : IEasyRsaExecCommandService
         using var process = Process.Start(processInfo);
         if (process == null)
         {
-            throw new InvalidOperationException("Failed to start command process.");
+            throw new InvalidOperationException("Failed to start process.");
         }
 
         string output = process.StandardOutput.ReadToEnd();
         string error = process.StandardError.ReadToEnd();
         process.WaitForExit();
 
-        _logger.LogInformation($"Process completed with ExitCode: {process.ExitCode}, Error: {error}, Output: {output}");
+        _logger.LogInformation($"Process completed with ExitCode={process.ExitCode}, Output={output}, Error={error}");
         return (output, error, process.ExitCode);
     }
 }

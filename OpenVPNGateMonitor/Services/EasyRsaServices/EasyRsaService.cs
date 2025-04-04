@@ -40,7 +40,7 @@ public class EasyRsaService : IEasyRsaService
     public CertificateBuildResult BuildCertificate(OpenVpnServerCertConfig openVpnServerCertConfig,
         string baseFileName = "client1")
     {
-        var command = $"cd {openVpnServerCertConfig.EasyRsaPath} && ./easyrsa build-client-full {baseFileName} nopass";
+        var command = $"cd {openVpnServerCertConfig.EasyRsaPath} && ./easyrsa --batch build-client-full {baseFileName} nopass";
         var (output, error, exitCode) = _easyRsaExecCommandService.RunCommand(command);
 
         if (exitCode != 0)
@@ -190,7 +190,7 @@ public class EasyRsaService : IEasyRsaService
         if (!Directory.Exists(openVpnServerCertConfig.PkiPath))
         {
             _logger.LogInformation("PKI directory does not exist. Initializing PKI...");
-            _easyRsaExecCommandService.RunCommand($"cd {openVpnServerCertConfig.EasyRsaPath} && ./easyrsa init-pki");
+            _easyRsaExecCommandService.RunCommand($"cd {openVpnServerCertConfig.EasyRsaPath} && EASYRSA_BATCH=1 ./easyrsa init-pki");
             throw new Exception("PKI directory does not exist.");
         }
         else
