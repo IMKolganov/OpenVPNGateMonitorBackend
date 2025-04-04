@@ -45,7 +45,7 @@ public class EasyRsaService : IEasyRsaService
 
         if (exitCode != 0)
         {
-            throw new Exception($"Error while building certificate: {error}");
+            throw new Exception($"Error while building certificate: {error}. Output: {output}");
         }
         _logger.LogInformation($"Certificate generated successfully:\n{output}");
 

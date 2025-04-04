@@ -82,6 +82,10 @@ public class OvpnFileService : IOvpnFileService
         
         _logger.LogInformation("Step 4: Writing .ovpn file...");
         
+        if (!Directory.Exists(openVpnServerCertConfig.OvpnFileDir))
+        {
+            Directory.CreateDirectory(openVpnServerCertConfig.OvpnFileDir);
+        }
         var ovpnFilePath = Path.Combine(openVpnServerCertConfig.OvpnFileDir, $"{commonName}.ovpn");
         await File.WriteAllTextAsync(ovpnFilePath, ovpnContent, cancellationToken);
 
