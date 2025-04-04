@@ -22,6 +22,56 @@ public class OpenVpnFilesControllerTests
         _fileServiceMock = new Mock<IOvpnFileService>();
         _controller = new OpenVpnFilesController(_fileServiceMock.Object);
     }
+    
+    [Fact]
+    public async Task GetAllOvpnFiles_ReturnsOvpnFilesSuccessfully()
+    {
+        // Arrange
+        var vpnServerId = 42;
+
+        var fakeFiles = new List<IssuedOvpnFile>
+        {
+            new IssuedOvpnFile
+            {
+                Id = 1,
+                ServerId = vpnServerId,
+                CommonName = "client1",
+                FileName = "client1.ovpn",
+                FilePath = "/path/client1.ovpn",
+                IssuedAt = DateTime.UtcNow,
+                IssuedTo = "user1",
+                PemFilePath = "/pem/client1.pem",
+                CertFilePath = "/cert/client1.crt",
+                KeyFilePath = "/key/client1.key",
+                ReqFilePath = "/req/client1.req",
+                IsRevoked = false
+            }
+        };
+
+        var mockService = new Mock<IOvpnFileService>();
+        mockService
+            .Setup(s => s.GetAllOvpnFiles(vpnServerId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(fakeFiles);
+
+        var controller = new OpenVpnFilesController(mockService.Object);
+        var request = new GetAllOvpnFilesRequest { VpnServerId = vpnServerId };
+
+        // Act
+        var result = await controller.GetAllOvpnFiles(request, CancellationToken.None);
+
+        // Assert
+        result.Should().BeOfType<OkObjectResult>();
+        var okResult = result as OkObjectResult;
+
+        okResult!.Value.Should().BeAssignableTo<ApiResponse<List<OvpnFileResponse>>>();
+        var apiResponse = okResult.Value as ApiResponse<List<OvpnFileResponse>>;
+
+        apiResponse!.Success.Should().BeTrue();
+        apiResponse.Data.Should().HaveCount(1);
+        apiResponse.Data![0].CommonName.Should().Be("client1");
+
+        mockService.Verify(s => s.GetAllOvpnFiles(vpnServerId, It.IsAny<CancellationToken>()), Times.Once);
+    }
 
     [Fact]
     public async Task GetAllOvpnFiles_ReturnsExpectedResult()

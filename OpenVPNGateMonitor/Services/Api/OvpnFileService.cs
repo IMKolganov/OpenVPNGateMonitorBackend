@@ -96,6 +96,7 @@ public class OvpnFileService : IOvpnFileService
 
         var issuedOvpnFile = new IssuedOvpnFile()
         {
+            ServerId = vpnServerId,
             ExternalId = externalId,
             CommonName = commonName,
             CertId = certificateResult.CertId,
