@@ -13,13 +13,14 @@ public class VpnServerCertificateMapping : IRegister
     public void Register(TypeAdapterConfig config)
     {
         config.NewConfig<CertificateCaInfo, VpnServerCertificateResponse>()
+            .Map(dest => dest.Id, src => src.Id)
+            .Map(dest => dest.VpnServerId, src => src.VpnServerId)
             .Map(dest => dest.CommonName, src => src.CommonName)
-            .Map(dest => dest.IsRevoked, src => src.Status == CertificateStatus.Revoked)
-            .Map(dest => dest.IssuedAt, src => src.RevokeDate ?? DateTime.MinValue)
-            .Map(dest => dest.CertificateData, src => src.SerialNumber)
-            .Map(dest => dest.Id, _ => 0)
-            .Map(dest => dest.VpnServerId, src => src.VpnServerId);
-
+            .Map(dest => dest.ExpiryDate, src => src.ExpiryDate)
+            .Map(dest => dest.RevokeDate, src => src.RevokeDate)
+            .Map(dest => dest.SerialNumber, src => src.SerialNumber)
+            .Map(dest => dest.UnknownField, src => src.UnknownField)
+            .Map(dest => dest.IsRevoked, src => src.Status == CertificateStatus.Revoked);
 
         config.NewConfig<CertificateBuildResult, VpnServerCertificateResponse>();
 

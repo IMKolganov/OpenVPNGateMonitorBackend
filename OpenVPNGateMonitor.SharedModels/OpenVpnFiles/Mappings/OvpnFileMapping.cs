@@ -18,12 +18,19 @@ public class OvpnFileMapping : IRegister
             });
 
         config.NewConfig<IssuedOvpnFile, OvpnFileResponse>()
+            .Map(dest => dest.Id, src => src.Id)
             .Map(dest => dest.ServerId, src => src.ServerId)
             .Map(dest => dest.ExternalId, src => src.ExternalId)
             .Map(dest => dest.CommonName, src => src.CommonName)
+            .Map(dest => dest.CertId, src => src.CertId)
             .Map(dest => dest.FileName, src => src.FileName)
+            .Map(dest => dest.FilePath, src => src.FilePath)
             .Map(dest => dest.IssuedAt, src => src.IssuedAt)
             .Map(dest => dest.IssuedTo, src => src.IssuedTo)
+            .Map(dest => dest.PemFilePath, src => src.PemFilePath)
+            .Map(dest => dest.CertFilePath, src => src.CertFilePath)
+            .Map(dest => dest.KeyFilePath, src => src.KeyFilePath)
+            .Map(dest => dest.ReqFilePath, src => src.ReqFilePath)
             .Map(dest => dest.IsRevoked, src => src.IsRevoked)
             .Map(dest => dest.Message, src => src.Message);
         
