@@ -42,6 +42,10 @@ COPY --from=publish /app/publish .
 
 # Copy entrypoint script
 COPY entrypoint.sh /entrypoint.sh
+
+# 🔧 Convert CRLF to LF just in case
+RUN sed -i 's/\r$//' /entrypoint.sh
+
 RUN chmod +x /entrypoint.sh
 
 # Don't switch to app here — entrypoint.sh will drop privileges
