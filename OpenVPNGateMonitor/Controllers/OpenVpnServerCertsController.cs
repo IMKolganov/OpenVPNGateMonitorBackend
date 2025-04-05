@@ -22,8 +22,10 @@ public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> 
         [FromRoute] GetAllVpnServerCertificatesRequest request,
         CancellationToken cancellationToken = default)
     {
-        var certificates = await certVpnService.GetAllVpnServerCertificates(request.VpnServerId, cancellationToken);
-        return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(certificates.Adapt<List<VpnServerCertificateResponse>>()));
+        var certificates = await certVpnService.GetAllVpnServerCertificates(
+            request.VpnServerId, cancellationToken);
+        return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(
+            certificates.Adapt<List<VpnServerCertificateResponse>>()));
     }
 
     [HttpGet("GetAllVpnServerCertificatesByStatus/{VpnServerId:int}")]
@@ -33,27 +35,30 @@ public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> 
     {
         var certificates = await certVpnService.GetAllVpnServerCertificatesByStatus(
             request.VpnServerId, request.CertificateStatus, cancellationToken);
-        return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(certificates.Adapt<List<VpnServerCertificateResponse>>()));
+        return Ok(ApiResponse<List<VpnServerCertificateResponse>>.SuccessResponse(
+            certificates.Adapt<List<VpnServerCertificateResponse>>()));
     }
 
     [HttpPost("AddServerCertificate")]
-    public async Task<IActionResult> AddServerCertificate(
-        [FromBody] AddServerCertificateRequest request,
+    public async Task<IActionResult> AddServerCertificate([FromBody] AddServerCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
         var certificate = await certVpnService.AddServerCertificate(
             request.VpnServerId, request.CommonName, cancellationToken);
 
-        return Ok(ApiResponse<VpnServerCertificateResponse>.SuccessResponse(certificate.Adapt<VpnServerCertificateResponse>()));
+        return Ok(ApiResponse<VpnServerCertificateResponse>.SuccessResponse(
+            certificate.Adapt<VpnServerCertificateResponse>()));
     }
-    
+
     [HttpPost("RevokeServerCertificate")]
     public async Task<IActionResult> RevokeServerCertificate(
         [FromBody] RevokeCertificateRequest request,
         CancellationToken cancellationToken = default)
     {
-        var result = await certVpnService.RevokeServerCertificate(request.VpnServerId, request.CommonName, cancellationToken);
-        return Ok(ApiResponse<RevokeCertificateResponse>.SuccessResponse(result.Adapt<RevokeCertificateResponse>()));
+        var result = await certVpnService.RevokeServerCertificate(request.VpnServerId, request.CommonName,
+            cancellationToken);
+        return Ok(ApiResponse<RevokeCertificateResponse>.SuccessResponse(
+            result.Adapt<RevokeCertificateResponse>()));
     }
 
     [HttpGet("GetOpenVpnServerCertConf/{vpnServerId:int}")]
@@ -70,8 +75,11 @@ public class OpenVpnServerCertsController(ILogger<OpenVpnServerCertsController> 
         [FromBody] UpdateServerCertConfigRequest request,
         CancellationToken cancellationToken = default)
     {
-        var updatedConfig = await certVpnService.UpdateServerCertConfig(request.Adapt<OpenVpnServerCertConfigInfo>(), cancellationToken);
+        var updatedConfig =
+            await certVpnService.UpdateServerCertConfig(request.Adapt<OpenVpnServerCertConfigInfo>(),
+                cancellationToken);
 
-        return Ok(ApiResponse<UpdateServerCertConfigResponse>.SuccessResponse(updatedConfig.Adapt<UpdateServerCertConfigResponse>()));
+        return Ok(ApiResponse<UpdateServerCertConfigResponse>.SuccessResponse(updatedConfig
+            .Adapt<UpdateServerCertConfigResponse>()));
     }
 }
