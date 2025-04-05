@@ -166,7 +166,7 @@ public class OpenVpnFilesControllerTests
         response.Data.Metadata.CommonName.Should().Be("client");
         response.Data.Metadata.ExternalId.Should().Be("user123");
     }
-
+    
     [Fact]
     public async Task RevokeOvpnFile_ReturnsSuccess_WhenNotAlreadyRevoked()
     {
@@ -176,16 +176,16 @@ public class OpenVpnFilesControllerTests
             CommonName = "client1",
         };
 
-        // result == null means success (as per controller logic)
         _fileServiceMock
-            .Setup(s => s.RevokeOvpnFile(It.IsAny<IssuedOvpnFile>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync((IssuedOvpnFile?)null);
+            .Setup(s => s.RevokeOvpnFile(request.VpnServerId, request.CommonName, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((IssuedOvpnFile?)null); // Файл успешно отозван
 
         var result = await _controller.RevokeOvpnFile(request, CancellationToken.None);
 
         var ok = result.Should().BeOfType<OkObjectResult>().Subject;
         var response = ok.Value.Should().BeAssignableTo<ApiResponse<RevokeOvpnFileResponse>>().Subject;
         response.Success.Should().BeTrue();
+        response.Data?.Message.Should().Be("Ovpn file revoked successfully.");
     }
 
     [Fact]
@@ -200,16 +200,17 @@ public class OpenVpnFilesControllerTests
         var alreadyRevoked = new IssuedOvpnFile { Id = 99 };
 
         _fileServiceMock
-            .Setup(s => s.RevokeOvpnFile(It.IsAny<IssuedOvpnFile>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(alreadyRevoked);
+            .Setup(s => s.RevokeOvpnFile(request.VpnServerId, request.CommonName, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(alreadyRevoked); // Уже отозван
 
         var result = await _controller.RevokeOvpnFile(request, CancellationToken.None);
 
         var notFound = result.Should().BeOfType<NotFoundObjectResult>().Subject;
         var response = notFound.Value.Should().BeAssignableTo<ApiResponse<RevokeOvpnFileResponse>>().Subject;
         response.Success.Should().BeFalse();
+        response.Message.Should().Be("File not found or already revoked.");
     }
-
+    
     [Fact]
     public async Task DownloadOvpnFile_ReturnsFile_WhenFound()
     {
