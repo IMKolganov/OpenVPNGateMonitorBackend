@@ -40,6 +40,9 @@ public static class ServiceConfiguration
         services.AddSingleton<CommandQueueManager>();
         services.AddSingleton<ICommandQueueManager>(provider => provider.GetRequiredService<CommandQueueManager>());
 
+        services.AddSingleton<BashCommandRunner>();
+        services.AddSingleton<ICommandRunner>(provider => provider.GetRequiredService<BashCommandRunner>());
+        
         services.AddSingleton<EasyRsaService>();
         services.AddSingleton<IEasyRsaService>(provider => provider.GetRequiredService<EasyRsaService>());
 
@@ -48,7 +51,6 @@ public static class ServiceConfiguration
 
         services.AddSingleton<EasyRsaExecCommandService>();
         services.AddSingleton<IEasyRsaExecCommandService>(provider => provider.GetRequiredService<EasyRsaExecCommandService>());
-
         
         services.AddScoped<IOpenVpnTelnetService, OpenVpnTelnetService>();
         
