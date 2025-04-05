@@ -32,7 +32,10 @@ public class OvpnFileMapping : IRegister
             .Map(dest => dest.KeyFilePath, src => src.KeyFilePath)
             .Map(dest => dest.ReqFilePath, src => src.ReqFilePath)
             .Map(dest => dest.IsRevoked, src => src.IsRevoked)
-            .Map(dest => dest.Message, src => src.Message);
+            .Map(dest => dest.Message, src => src.Message)
+            .Map(dest => dest.LastUpdate, src => src.LastUpdate)
+            .Map(dest => dest.CreateDate, src => src.CreateDate);
+
         
         config.NewConfig<RevokeOvpnFileRequest, IssuedOvpnFile>()
             .Map(dest => dest.ServerId, src => src.ServerId)

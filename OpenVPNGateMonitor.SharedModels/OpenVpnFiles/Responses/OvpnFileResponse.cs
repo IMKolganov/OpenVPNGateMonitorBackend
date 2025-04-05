@@ -17,4 +17,6 @@ public class OvpnFileResponse
     public string ReqFilePath { get; set; } = null!;
     public bool IsRevoked { get; set; } = false;
     public string Message { get; set; } = string.Empty;
+    public DateTime CreateDate { get; set; }
+    public DateTime LastUpdate { get; set; }
 }
