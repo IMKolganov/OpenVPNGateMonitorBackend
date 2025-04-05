@@ -61,14 +61,16 @@ public class OpenVpnFilesController(IOvpnFileService ovpFileService) : Controlle
         var result = await ovpFileService.RevokeOvpnFile(request.VpnServerId, request.CommonName, 
             cancellationToken);
 
-        if (result != null)
+        if (result == null)
             return NotFound(
-                ApiResponse<RevokeOvpnFileResponse>.ErrorResponse("File not found or already revoked."));
+                ApiResponse<RevokeOvpnFileResponse>.ErrorResponse($"Something went wrong," +
+                                                                  $" when trying to revoke an Ovpn file. " +
+                                                                  $"CommonName: {request.CommonName}"));
 
         return Ok(ApiResponse<RevokeOvpnFileResponse>.SuccessResponse(new RevokeOvpnFileResponse
         {
             Success = true,
-            Message = "Ovpn file revoked successfully."
+            Message = $"Ovpn file revoked successfully. FileName: {result.FileName} CommonName: {request.CommonName}"
         }));
     }
 
