@@ -3,7 +3,7 @@ using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.EasyRsaServices;
 
-public class BashCommandRunner : ICommandRunner
+public class BashCommandRunner : IBashCommandRunner
 {
     public (string Output, string Error, int ExitCode) RunCommand(string command)
     {

@@ -1,6 +1,6 @@
 ﻿namespace OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
-public interface ICommandRunner
+public interface IBashCommandRunner
 {
     (string Output, string Error, int ExitCode) RunCommand(string command);
 }

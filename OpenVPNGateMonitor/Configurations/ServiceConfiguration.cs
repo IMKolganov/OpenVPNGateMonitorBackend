@@ -41,7 +41,7 @@ public static class ServiceConfiguration
         services.AddSingleton<ICommandQueueManager>(provider => provider.GetRequiredService<CommandQueueManager>());
 
         services.AddSingleton<BashCommandRunner>();
-        services.AddSingleton<ICommandRunner>(provider => provider.GetRequiredService<BashCommandRunner>());
+        services.AddSingleton<IBashCommandRunner>(provider => provider.GetRequiredService<BashCommandRunner>());
         
         services.AddSingleton<EasyRsaService>();
         services.AddSingleton<IEasyRsaService>(provider => provider.GetRequiredService<EasyRsaService>());

@@ -8,7 +8,7 @@ namespace OpenVPNGateMonitor.Tests.Services;
 public class EasyRsaExecCommandServiceTests
 {
     private readonly Mock<ILogger<IEasyRsaExecCommandService>> _loggerMock = new();
-    private readonly Mock<ICommandRunner> _runnerMock = new();
+    private readonly Mock<IBashCommandRunner> _runnerMock = new();
 
     private EasyRsaExecCommandService CreateService() =>
         new EasyRsaExecCommandService(_loggerMock.Object, _runnerMock.Object);

@@ -5,14 +5,14 @@ namespace OpenVPNGateMonitor.Services.EasyRsaServices;
 public class EasyRsaExecCommandService : IEasyRsaExecCommandService
 {
     private readonly ILogger<IEasyRsaExecCommandService> _logger;
-    private readonly ICommandRunner _commandRunner;
+    private readonly IBashCommandRunner _bashCommandRunner;
 
     public EasyRsaExecCommandService(
         ILogger<IEasyRsaExecCommandService> logger,
-        ICommandRunner commandRunner)
+        IBashCommandRunner bashCommandRunner)
     {
         _logger = logger;
-        _commandRunner = commandRunner;
+        _bashCommandRunner = bashCommandRunner;
     }
     #region EasyRSA revoke command variations
 // # =========================================================================================================================
@@ -59,6 +59,6 @@ public class EasyRsaExecCommandService : IEasyRsaExecCommandService
 
     public (string Output, string Error, int ExitCode) RunCommand(string command)
     {
-        return _commandRunner.RunCommand(command);
+        return _bashCommandRunner.RunCommand(command);
     }
 }
