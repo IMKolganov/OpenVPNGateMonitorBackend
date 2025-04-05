@@ -1,33 +1,32 @@
-﻿using System.Diagnostics;
-using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
+﻿using OpenVPNGateMonitor.Services.EasyRsaServices.Interfaces;
 
 namespace OpenVPNGateMonitor.Services.EasyRsaServices;
 
 public class EasyRsaExecCommandService : IEasyRsaExecCommandService
 {
     private readonly ILogger<IEasyRsaExecCommandService> _logger;
+    private readonly ICommandRunner _commandRunner;
 
-    public EasyRsaExecCommandService(ILogger<IEasyRsaExecCommandService> logger)
+    public EasyRsaExecCommandService(
+        ILogger<IEasyRsaExecCommandService> logger,
+        ICommandRunner commandRunner)
     {
         _logger = logger;
+        _commandRunner = commandRunner;
     }
-
     #region EasyRSA revoke command variations
-// # ==============================================================================
-// # EasyRSA revoke command variations
-// # ==============================================================================
-//
-// # | Command Example                                    | Description                                        |
-// # |----------------------------------------------------|----------------------------------------------------|
-// # | ./easyrsa revoke client1                          | Revokes the client certificate (client1)          |
-// # | EASYRSA_BATCH=1 ./easyrsa revoke client1          | Revokes the certificate without confirmation prompt |
+// # =========================================================================================================================
+// # EasyRSA revoke command variations                                                                                       |
+// # =========================================================================================================================
+// # | Command Example                                   | Description                                                       |
+// # |---------------------------------------------------|-------------------------------------------------------------------|
+// # | ./easyrsa revoke client1                          | Revokes the client certificate (client1)                          |
+// # | EASYRSA_BATCH=1 ./easyrsa revoke client1          | Revokes the certificate without confirmation prompt               |
 // # | EASYRSA_CRL_DAYS=3650 ./easyrsa revoke client1    | Sets the Certificate Revocation List (CRL) expiration to 10 years |
-// # | ./easyrsa gen-crl                                 | Generates or updates the Certificate Revocation List (CRL) |
-// # | EASYRSA_CRL_DAYS=7300 ./easyrsa gen-crl           | Generates a CRL valid for 20 years                |
-//
-// # ==============================================================================
+// # | ./easyrsa gen-crl                                 | Generates or updates the Certificate Revocation List (CRL)        |
+// # | EASYRSA_CRL_DAYS=7300 ./easyrsa gen-crl           | Generates a CRL valid for 20 years                                |
+// # =========================================================================================================================
     #endregion
-
     public (bool IsSuccess, string Output, int ExitCode, string Error) ExecuteEasyRsaCommand(
         string arguments,
         string easyRsaPath,
@@ -60,26 +59,6 @@ public class EasyRsaExecCommandService : IEasyRsaExecCommandService
 
     public (string Output, string Error, int ExitCode) RunCommand(string command)
     {
-        var processInfo = new ProcessStartInfo("bash", $"-c \"{command}\"")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        _logger.LogInformation($"Starting process: {command}");
-        using var process = Process.Start(processInfo);
-        if (process == null)
-        {
-            throw new InvalidOperationException("Failed to start process.");
-        }
-
-        string output = process.StandardOutput.ReadToEnd();
-        string error = process.StandardError.ReadToEnd();
-        process.WaitForExit();
-
-        _logger.LogInformation($"Process completed with ExitCode={process.ExitCode}, Output={output}, Error={error}");
-        return (output, error, process.ExitCode);
+        return _commandRunner.RunCommand(command);
     }
 }

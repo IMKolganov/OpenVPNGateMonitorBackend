@@ -164,7 +164,7 @@ public class OvpnFileService : IOvpnFileService
     private string MoveRevokedOvpnFile(OpenVpnServerCertConfig openVpnServerCertConfig, IssuedOvpnFile issuedOvpnFile)
     {
         string ovpnFilePath = Path.Combine(openVpnServerCertConfig.OvpnFileDir, issuedOvpnFile.FileName);
-        
+
         var timestamp = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
         var uniqueFileName = 
             $"{Path.GetFileNameWithoutExtension(issuedOvpnFile.FileName)}" +
@@ -173,6 +173,9 @@ public class OvpnFileService : IOvpnFileService
             $"{Path.GetExtension(issuedOvpnFile.FileName)}";
 
         string revokedFilePath = Path.Combine(openVpnServerCertConfig.RevokedOvpnFilesDirPath, uniqueFileName);
+
+        Directory.CreateDirectory(openVpnServerCertConfig.OvpnFileDir);
+        Directory.CreateDirectory(openVpnServerCertConfig.RevokedOvpnFilesDirPath);
 
         if (File.Exists(ovpnFilePath))
         {
@@ -184,7 +187,7 @@ public class OvpnFileService : IOvpnFileService
             _logger.LogWarning($".ovpn file not found for moving: {ovpnFilePath}");
         }
 
-        return revokedFilePath; 
+        return revokedFilePath;
     }
     
     private async Task SaveInfoInDataBase(IssuedOvpnFile issuedOvpnFile, CancellationToken cancellationToken)

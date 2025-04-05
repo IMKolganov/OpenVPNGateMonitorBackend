@@ -178,7 +178,7 @@ public class OpenVpnFilesControllerTests
 
         _fileServiceMock
             .Setup(s => s.RevokeOvpnFile(request.VpnServerId, request.CommonName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((IssuedOvpnFile?)null); // Файл успешно отозван
+            .ReturnsAsync((IssuedOvpnFile?)null);
 
         var result = await _controller.RevokeOvpnFile(request, CancellationToken.None);
 
@@ -201,7 +201,7 @@ public class OpenVpnFilesControllerTests
 
         _fileServiceMock
             .Setup(s => s.RevokeOvpnFile(request.VpnServerId, request.CommonName, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(alreadyRevoked); // Уже отозван
+            .ReturnsAsync(alreadyRevoked);
 
         var result = await _controller.RevokeOvpnFile(request, CancellationToken.None);
 
