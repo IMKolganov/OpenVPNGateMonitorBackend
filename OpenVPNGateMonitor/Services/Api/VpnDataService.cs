@@ -63,11 +63,11 @@ public class VpnDataService : IVpnDataService
             .GroupBy(x => x.VpnServerId)
             .Select(g => new
             {
-                ServerId = g.Key,
+                VpnServerId = g.Key,
                 TotalBytesIn = g.Sum(x => x.BytesIn),
                 TotalBytesOut = g.Sum(x => x.BytesOut)
             })
-            .ToDictionaryAsync(x => x.ServerId, cancellationToken);
+            .ToDictionaryAsync(x => x.VpnServerId, cancellationToken);
 
         var openVpnServerInfoResponses = new List<OpenVpnServerWithStatus>();
 

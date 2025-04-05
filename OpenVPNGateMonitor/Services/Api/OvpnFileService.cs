@@ -29,7 +29,7 @@ public class OvpnFileService : IOvpnFileService
         CancellationToken cancellationToken)
     {
         return await _unitOfWork.GetQuery<IssuedOvpnFile>()
-            .AsQueryable().Where(x=> x.ServerId == vpnServerId)
+            .AsQueryable().Where(x=> x.VpnServerId == vpnServerId)
             .OrderBy(x=>x.Id)
             .ToListAsync(cancellationToken);
     }
@@ -38,7 +38,7 @@ public class OvpnFileService : IOvpnFileService
         CancellationToken cancellationToken)
     {
         return await _unitOfWork.GetQuery<IssuedOvpnFile>()
-            .AsQueryable().Where(x=> x.ServerId == vpnServerId && x.ExternalId == externalId)
+            .AsQueryable().Where(x=> x.VpnServerId == vpnServerId && x.ExternalId == externalId)
             .OrderBy(x=>x.Id)
             .ToListAsync(cancellationToken);
     }
@@ -96,7 +96,7 @@ public class OvpnFileService : IOvpnFileService
 
         var issuedOvpnFile = new IssuedOvpnFile()
         {
-            ServerId = vpnServerId,
+            VpnServerId = vpnServerId,
             ExternalId = externalId,
             CommonName = commonName,
             CertId = certificateResult.CertId,
@@ -118,7 +118,7 @@ public class OvpnFileService : IOvpnFileService
     {
         var openVpnServerCertConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
             .AsQueryable()
-            .Where(x => x.VpnServerId == issuedOvpnFile.ServerId)
+            .Where(x => x.VpnServerId == issuedOvpnFile.VpnServerId)
             .FirstOrDefaultAsync(cancellationToken) 
                                       ?? throw new InvalidOperationException("OpenVpnServerCertConfig not found");
         
@@ -147,7 +147,7 @@ public class OvpnFileService : IOvpnFileService
         var issuedOvpnFile = await _unitOfWork.GetQuery<IssuedOvpnFile>()
                                  .AsQueryable()
                                  .Where(x =>
-                                     x.Id == issuedOvpnFileId && x.ServerId == vpnServerId)
+                                     x.Id == issuedOvpnFileId && x.VpnServerId == vpnServerId)
                                  .FirstOrDefaultAsync(cancellationToken)
                              ?? throw new InvalidOperationException("OpenVpnServerCertConfig not found");
         var issuedOvpnFileStream = new FileStream(issuedOvpnFile.FilePath, FileMode.Open, FileAccess.Read);

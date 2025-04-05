@@ -28,14 +28,27 @@ public class OpenVpnServerCertsControllerTests
     [Fact]
     public async Task GetAllVpnServerCertificates_ReturnsExpectedData()
     {
+        
+    // public int Id { get; set; }
+    // public int VpnServerId { get; set; }
+    // public string CommonName { get; set; } = string.Empty;
+    // public DateTime ExpiryDate { get; set; } = DateTime.MinValue;
+    // public DateTime? RevokeDate { get; set; }
+    // public string SerialNumber { get; set; } = string.Empty;
+    // public string UnknownField { get; set; } = string.Empty;
+    // public bool IsRevoked { get; set; }
+        
         // Arrange
         TypeAdapterConfig.GlobalSettings.NewConfig<CertificateCaInfo, VpnServerCertificateResponse>()
+            .Map(dest => dest.Id, src => src.Id)
+            .Map(dest => dest.VpnServerId, src => src.VpnServerId)
             .Map(dest => dest.CommonName, src => src.CommonName)
-            .Map(dest => dest.IsRevoked, src => src.Status == CertificateStatus.Revoked)
-            .Map(dest => dest.IssuedAt, src => src.RevokeDate ?? DateTime.MinValue)
-            .Map(dest => dest.CertificateData, src => src.SerialNumber)
-            .Map(dest => dest.Id, _ => 0); // mock if necessary
-
+            .Map(dest => dest.ExpiryDate, src => src.ExpiryDate)
+            .Map(dest => dest.RevokeDate, src => src.RevokeDate)
+            .Map(dest => dest.SerialNumber, src => src.SerialNumber)
+            .Map(dest => dest.UnknownField, src => src.UnknownField)
+            .Map(dest => dest.IsRevoked, src => src.Status == CertificateStatus.Revoked);
+        
         var request = new GetAllVpnServerCertificatesRequest { VpnServerId = 1 };
 
         var certList = new List<CertificateCaInfo>
@@ -73,13 +86,13 @@ public class OpenVpnServerCertsControllerTests
         var cert2 = response.Data.FirstOrDefault(r => r.CommonName == "cert2");
 
         Assert.NotNull(cert1);
-        Assert.Equal("SN001", cert1!.CertificateData);
+        Assert.Equal("SN001", cert1!.SerialNumber);
         Assert.False(cert1.IsRevoked);
 
         Assert.NotNull(cert2);
         Assert.True(cert2!.IsRevoked);
-        Assert.Equal("SN002", cert2.CertificateData);
-        Assert.Equal(new DateTime(2024, 01, 01), cert2.IssuedAt);
+        Assert.Equal("SN002", cert2.SerialNumber);
+        Assert.Equal(new DateTime(2024, 01, 01), cert2.RevokeDate);
     }
 
 

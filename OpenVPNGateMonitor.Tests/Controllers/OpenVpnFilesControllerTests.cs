@@ -34,7 +34,7 @@ public class OpenVpnFilesControllerTests
             new IssuedOvpnFile
             {
                 Id = 1,
-                ServerId = vpnServerId,
+                VpnServerId = vpnServerId,
                 CommonName = "client1",
                 FileName = "client1.ovpn",
                 FilePath = "/path/client1.ovpn",
@@ -140,7 +140,7 @@ public class OpenVpnFilesControllerTests
                 Id = 1,
                 CommonName = "client",
                 ExternalId = request.ExternalId,
-                ServerId = request.VpnServerId,
+                VpnServerId = request.VpnServerId,
                 IssuedTo = request.IssuedTo,
                 FileName = "dummy.ovpn",
                 IssuedAt = DateTime.UtcNow
@@ -172,9 +172,8 @@ public class OpenVpnFilesControllerTests
     {
         var request = new RevokeOvpnFileRequest
         {
-            ServerId = 1,
+            VpnServerId = 1,
             CommonName = "client1",
-            ExternalId = "user1"
         };
 
         // result == null means success (as per controller logic)
@@ -194,9 +193,8 @@ public class OpenVpnFilesControllerTests
     {
         var request = new RevokeOvpnFileRequest
         {
-            ServerId = 1,
+            VpnServerId = 1,
             CommonName = "client1",
-            ExternalId = "user1"
         };
 
         var alreadyRevoked = new IssuedOvpnFile { Id = 99 };

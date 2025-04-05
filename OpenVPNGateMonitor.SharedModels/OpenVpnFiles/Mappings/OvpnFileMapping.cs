@@ -19,7 +19,7 @@ public class OvpnFileMapping : IRegister
 
         config.NewConfig<IssuedOvpnFile, OvpnFileResponse>()
             .Map(dest => dest.Id, src => src.Id)
-            .Map(dest => dest.ServerId, src => src.ServerId)
+            .Map(dest => dest.VpnServerId, src => src.VpnServerId)
             .Map(dest => dest.ExternalId, src => src.ExternalId)
             .Map(dest => dest.CommonName, src => src.CommonName)
             .Map(dest => dest.CertId, src => src.CertId)
@@ -36,10 +36,9 @@ public class OvpnFileMapping : IRegister
             .Map(dest => dest.LastUpdate, src => src.LastUpdate)
             .Map(dest => dest.CreateDate, src => src.CreateDate);
 
-        
+
         config.NewConfig<RevokeOvpnFileRequest, IssuedOvpnFile>()
-            .Map(dest => dest.ServerId, src => src.ServerId)
-            .Map(dest => dest.CommonName, src => src.CommonName)
-            .Map(dest => dest.ExternalId, src => src.ExternalId);
+            .Map(dest => dest.VpnServerId, src => src.VpnServerId)
+            .Map(dest => dest.CommonName, src => src.CommonName);
     }
 }

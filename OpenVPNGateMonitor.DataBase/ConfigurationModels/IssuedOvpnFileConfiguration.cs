@@ -9,7 +9,7 @@ public class IssuedOvpnFileConfiguration : BaseEntityConfiguration<IssuedOvpnFil
     public override void Configure(EntityTypeBuilder<IssuedOvpnFile> entity)
     {
         base.Configure(entity);
-        entity.Property(e => e.ServerId)
+        entity.Property(e => e.VpnServerId)
             .IsRequired();
         entity.Property(e => e.ExternalId)
             .IsRequired()

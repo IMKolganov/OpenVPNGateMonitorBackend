@@ -5,7 +5,7 @@ namespace OpenVPNGateMonitor.Models;
 public class IssuedOvpnFile : BaseEntity<int>
 {
     [Required]
-    public int ServerId { get; set; }
+    public int VpnServerId { get; set; }
     public string ExternalId { get; set; } = string.Empty;
     [Required]
     public string CommonName { get; set; } = null!;
