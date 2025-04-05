@@ -145,6 +145,12 @@ public class OvpnFileService : IOvpnFileService
         repositoryIssuedOvpnFile.Update(issuedOvpnFile);
         await _unitOfWork.SaveChangesAsync(cancellationToken);
         
+        issuedOvpnFile = await _unitOfWork.GetQuery<IssuedOvpnFile>()
+                                 .AsQueryable()
+                                 .Where(x => x.VpnServerId == vpnServerId && x.CommonName == commonName && x.IsRevoked)
+                                 .FirstOrDefaultAsync(cancellationToken) 
+                             ?? throw new InvalidOperationException("IssuedOvpnFile not found");
+        
         return issuedOvpnFile;
     }
 
