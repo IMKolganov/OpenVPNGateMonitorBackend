@@ -58,9 +58,8 @@ public class OpenVpnFilesController(IOvpnFileService ovpFileService) : Controlle
     public async Task<IActionResult> RevokeOvpnFile([FromBody] RevokeOvpnFileRequest request,
         CancellationToken cancellationToken = default)
     {
-        var issuedOvpnFile = request.Adapt<IssuedOvpnFile>();
-
-        var result = await ovpFileService.RevokeOvpnFile(issuedOvpnFile, cancellationToken);
+        var result = await ovpFileService.RevokeOvpnFile(request.VpnServerId, request.CommonName, 
+            cancellationToken);
 
         if (result != null)
             return NotFound(

@@ -12,7 +12,7 @@ public interface IOvpnFileService
         CancellationToken cancellationToken);
     Task<AddOvpnFileResponse> AddOvpnFile(string externalId, string commonName, int vpnServerId,
         CancellationToken cancellationToken, string issuedTo = "openVpnClient");
-    Task<IssuedOvpnFile?> RevokeOvpnFile(IssuedOvpnFile issuedOvpnFile,
+    Task<IssuedOvpnFile?> RevokeOvpnFile(int vpnServerId, string commonName,
         CancellationToken cancellationToken);
     Task<OvpnFileResult> GetOvpnFile(int issuedOvpnFileId, int vpnServerId,
         CancellationToken cancellationToken);

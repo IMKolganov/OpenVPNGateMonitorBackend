@@ -114,8 +114,15 @@ public class OvpnFileService : IOvpnFileService
         return new AddOvpnFileResponse { OvpnFile = fileInfo, IssuedOvpnFile  = issuedOvpnFile };
     }
 
-    public async Task<IssuedOvpnFile?> RevokeOvpnFile(IssuedOvpnFile issuedOvpnFile, CancellationToken cancellationToken)
+    public async Task<IssuedOvpnFile?> RevokeOvpnFile(int vpnServerId, string commonName,
+        CancellationToken cancellationToken)
     {
+        var issuedOvpnFile = await _unitOfWork.GetQuery<IssuedOvpnFile>()
+                                 .AsQueryable()
+                                 .Where(x => x.VpnServerId == vpnServerId && x.CommonName == commonName)
+                                 .FirstOrDefaultAsync(cancellationToken) 
+                             ?? throw new InvalidOperationException("IssuedOvpnFile not found");
+        
         var openVpnServerCertConfig = await _unitOfWork.GetQuery<OpenVpnServerCertConfig>()
             .AsQueryable()
             .Where(x => x.VpnServerId == issuedOvpnFile.VpnServerId)
