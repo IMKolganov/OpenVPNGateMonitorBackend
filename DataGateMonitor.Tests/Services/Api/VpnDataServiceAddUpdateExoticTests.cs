@@ -237,7 +237,10 @@ public class VpnDataServiceAddUpdateExoticTests
         var result = await svc.RunPostAddSetupAsync(90, CancellationToken.None);
 
         Assert.True(result.CreatedDefaultConfig);
-        Assert.Equal("198.51.100.10", Assert.Single(h.ConfigsAdded).VpnServerIp);
+        var config = Assert.Single(h.ConfigsAdded);
+        Assert.Equal("198.51.100.10", config.VpnServerIp);
+        Assert.Equal(1390, config.VpnServerPort);
+        Assert.Contains("proto tcp", config.ConfigTemplate);
         h.MicroserviceInfo.Verify(m => m.GetInfoAsync(90, It.IsAny<CancellationToken>()), Times.Once);
     }
 

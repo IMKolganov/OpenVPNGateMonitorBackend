@@ -341,8 +341,14 @@ public class VpnDataService(
         var root = JObject.FromObject(openVpnInfo, Newtonsoft.Json.JsonSerializer.Create(ProjectJson.WebSettings));
         if (TryGetPropertyIgnoreCase(root, "config", out var cfgToken) && cfgToken is JObject cfg)
         {
-            if (TryGetPropertyIgnoreCase(cfg, "port", out var portToken) && portToken is { Type: JTokenType.Integer })
-                port = portToken.Value<int>();
+            if (TryGetPropertyIgnoreCase(cfg, "port", out var portToken))
+            {
+                if (portToken is { Type: JTokenType.Integer })
+                    port = portToken.Value<int>();
+                else if (portToken is { Type: JTokenType.String } &&
+                         int.TryParse(portToken.Value<string>(), out var parsedPort))
+                    port = parsedPort;
+            }
 
             if (TryGetPropertyIgnoreCase(cfg, "proto", out var protoToken) && protoToken is { Type: JTokenType.String })
             {
