@@ -60,7 +60,6 @@ public class VpnServerOvpnFileConfigControllerTests
     public async Task AddOrUpdateOvpnFileConfig_ReturnsOkResult_WithExpectedData()
     {
         // Arrange
-        using var cts = new CancellationTokenSource();
         var request = new AddOrUpdateOvpnFileConfigRequest
         {
             VpnServerId = 1,
@@ -79,11 +78,11 @@ public class VpnServerOvpnFileConfigControllerTests
                     c.VpnServerPort == request.VpnServerPort &&
                     c.ConfigTemplate == request.ConfigTemplate),
                 request.AutoDetectServerSettings,
-                cts.Token))
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedConfig);
 
         // Act
-        var result = await _controller.AddOrUpdateOvpnFileConfig(request, cts.Token);
+        var result = await _controller.AddOrUpdateOvpnFileConfig(request, CancellationToken.None);
 
         // Assert
         var okResult = Assert.IsType<OkObjectResult>(result.Result);

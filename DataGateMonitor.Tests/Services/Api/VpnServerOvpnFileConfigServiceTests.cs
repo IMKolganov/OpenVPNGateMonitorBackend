@@ -22,13 +22,14 @@ public class VpnServerOvpnFileConfigServiceTests
         Mock<IVpnServerOvpnFileConfigQueryService> q,
         Mock<ICommandService<VpnServerOvpnFileConfig, int>> cmd,
         Mock<IMicroserviceInfoService> microserviceInfo)
-        CreateService()
+        CreateService(TimeSpan? openVpnAutoDetectTimeout = null)
     {
         var logger = new Mock<ILogger<VpnServerOvpnFileConfigService>>();
         var q = new Mock<IVpnServerOvpnFileConfigQueryService>(MockBehavior.Strict);
         var cmd = new Mock<ICommandService<VpnServerOvpnFileConfig, int>>(MockBehavior.Strict);
         var microserviceInfo = new Mock<IMicroserviceInfoService>(MockBehavior.Loose);
-        var svc = new VpnServerOvpnFileConfigService(logger.Object, q.Object, cmd.Object, microserviceInfo.Object);
+        var svc = new VpnServerOvpnFileConfigService(
+            logger.Object, q.Object, cmd.Object, microserviceInfo.Object, openVpnAutoDetectTimeout);
         return (svc, logger, q, cmd, microserviceInfo);
     }
 
@@ -306,7 +307,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_AutoDetect_TimesOut_And_Still_Updates_Config()
     {
-        var (svc, _, q, cmd, microserviceInfo) = CreateService();
+        var (svc, _, q, cmd, microserviceInfo) = CreateService(TimeSpan.FromMilliseconds(50));
         var serverId = 700;
         var existing = new VpnServerOvpnFileConfig
         {
@@ -347,9 +348,40 @@ public class VpnServerOvpnFileConfigServiceTests
         Assert.Equal("20.0.0.2", existing.VpnServerIp);
         Assert.Equal(1195, existing.VpnServerPort);
         Assert.Equal("proto udp", existing.ConfigTemplate);
-        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(10));
+        Assert.True(stopwatch.Elapsed < TimeSpan.FromSeconds(2));
         microserviceInfo.Verify(m => m.GetInfoAsync(serverId, It.IsAny<CancellationToken>()), Times.Once);
         q.VerifyAll();
         cmd.VerifyAll();
+    }
+
+    [Fact]
+    public async Task AddOrUpdate_AutoDetect_Propagates_Caller_Cancellation()
+    {
+        var (svc, _, q, cmd, microserviceInfo) = CreateService();
+        var serverId = 800;
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        microserviceInfo.Setup(m => m.GetInfoAsync(serverId, It.IsAny<CancellationToken>()))
+            .Returns<int, CancellationToken>((_, token) =>
+            {
+                token.ThrowIfCancellationRequested();
+                return Task.FromResult<VpnMicroserviceDiagnosticsDto?>(null)!;
+            });
+
+        var incoming = new VpnServerOvpnFileConfig
+        {
+            VpnServerId = serverId,
+            VpnServerIp = "20.0.0.2",
+            VpnServerPort = 1195,
+            ConfigTemplate = "proto udp"
+        };
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, true, cts.Token));
+
+        q.Verify(x => x.GetByVpnServerIdId(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        cmd.Verify(c => c.Update(It.IsAny<VpnServerOvpnFileConfig>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        cmd.Verify(c => c.Add(It.IsAny<VpnServerOvpnFileConfig>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }
