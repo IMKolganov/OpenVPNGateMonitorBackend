@@ -130,4 +130,38 @@ public class VpnDataServicePresenceAndPublicIpCacheTests
         h.Presence.Verify(p => p.MarkAllDisconnectedAsync(6, It.IsAny<CancellationToken>()), Times.Once);
         h.PublicIpLookup.Verify(p => p.Invalidate(6), Times.Once);
     }
+
+    [Fact]
+    public async Task UpdateVpnServer_WhenApiUrlDiffersOnlyByCaseOrWhitespace_DoesNotInvalidate()
+    {
+        var h = new VpnDataServiceTestHarness();
+        h.SetupUpdateServer(15, "srv15");
+        h.ServerQ.SetupSequence(q => q.GetById(15, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer { Id = 15, ServerName = "srv15", IsDisable = false, ApiUrl = "https://A.example/" })
+            .ReturnsAsync(new VpnServer { Id = 15, ServerName = "srv15", IsDisable = false, ApiUrl = "  HTTPS://a.example/  " });
+        h.CfgQ.Setup(q => q.AnyByVpnServerId(15, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        await h.Create().UpdateVpnServer(
+            new VpnServer { Id = 15, ServerName = "srv15", IsDisable = false, ApiUrl = "  HTTPS://a.example/  " },
+            [],
+            [],
+            CancellationToken.None);
+
+        h.PublicIpLookup.Verify(p => p.Invalidate(It.IsAny<int>()), Times.Never);
+        h.Presence.Verify(p => p.MarkAllDisconnectedAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeleteVpnServer_WhenNotFound_Throws_WithoutPresenceOrInvalidate()
+    {
+        var h = new VpnDataServiceTestHarness();
+        h.ServerQ.Setup(q => q.GetById(404, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServer?)null);
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            h.Create().DeleteVpnServer(404, CancellationToken.None));
+
+        h.Presence.Verify(p => p.MarkAllDisconnectedAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+        h.PublicIpLookup.Verify(p => p.Invalidate(It.IsAny<int>()), Times.Never);
+    }
 }

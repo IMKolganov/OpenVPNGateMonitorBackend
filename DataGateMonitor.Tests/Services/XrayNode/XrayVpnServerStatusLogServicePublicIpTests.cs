@@ -139,4 +139,35 @@ public class XrayVpnServerStatusLogServicePublicIpTests
         Assert.Equal("198.51.100.1", existing.ServerRemoteIp);
         _statusCmd.Verify(c => c.Update(existing, true, It.IsAny<CancellationToken>()), Times.Once);
     }
+
+    [Fact]
+    public async Task TryAppendOrUpdateAsync_WhenAllSourcesUnusable_UsesDash()
+    {
+        _statusQuery
+            .Setup(q => q.GetBySessionIdAndVpnServerId(It.IsAny<Guid>(), 11, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServerStatusLog?)null);
+        _config.Setup(c => c.GetByVpnServerIdId(11, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServerOvpnFileConfig { VpnServerId = 11, VpnServerIp = "127.0.0.1" });
+        _publicIp.Setup(p => p.GetAsync(11, VpnServerType.Xray, It.IsAny<CancellationToken>()))
+            .ReturnsAsync("0.0.0.0");
+
+        VpnServerStatusLog? saved = null;
+        _statusCmd
+            .Setup(c => c.Add(It.IsAny<VpnServerStatusLog>(), true, It.IsAny<CancellationToken>()))
+            .Callback<VpnServerStatusLog, bool, CancellationToken>((e, _, _) => saved = e)
+            .ReturnsAsync((VpnServerStatusLog e, bool _, CancellationToken _) => e);
+
+        await CreateSut().TryAppendOrUpdateAsync(
+            new VpnServer
+            {
+                Id = 11,
+                ServerName = "Xray-1",
+                ApiUrl = "not-a-url",
+                ServerType = VpnServerType.Xray
+            },
+            Payload(),
+            CancellationToken.None);
+
+        Assert.Equal("-", saved!.ServerRemoteIp);
+    }
 }

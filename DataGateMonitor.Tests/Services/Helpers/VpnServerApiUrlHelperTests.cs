@@ -82,6 +82,17 @@ public class VpnServerApiUrlHelperTests
     }
 
     [Fact]
+    public void ResolveReportedRemoteIp_AcceptsPublicIpv6()
+    {
+        var result = VpnServerApiUrlHelper.ResolveReportedRemoteIp(
+            nodePublicIp: "2001:db8::1",
+            configVpnServerIp: "1.2.3.4",
+            apiUrl: "https://s5.datagateapp.com/");
+
+        Assert.Equal("2001:db8::1", result);
+    }
+
+    [Fact]
     public void ResolveReportedRemoteIp_WhenNothingUsable_ReturnsEmpty()
     {
         var result = VpnServerApiUrlHelper.ResolveReportedRemoteIp(null, null, "not-a-url");
