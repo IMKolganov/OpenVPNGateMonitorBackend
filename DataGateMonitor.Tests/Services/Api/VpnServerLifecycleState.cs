@@ -12,6 +12,7 @@ using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using Microsoft.Extensions.Logging;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
@@ -264,6 +265,8 @@ internal sealed class VpnServerLifecycleEnvironment
             Mock.Of<IStatusCacheGenerationService>(),
             Mock.Of<IMicroserviceInfoService>(),
             Mock.Of<IOpenVpnMicroserviceClientFactory>(),
-            Mock.Of<IOpenVpnEventClientFactory>());
+            Mock.Of<IOpenVpnEventClientFactory>(),
+            Mock.Of<IVpnNodePublicIpLookup>(),
+            Mock.Of<IVpnServerClientPresenceService>());
     }
 }

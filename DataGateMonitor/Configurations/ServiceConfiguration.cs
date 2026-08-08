@@ -126,7 +126,12 @@ public static class ServiceConfiguration
         services.AddScoped<IVpnServerPiHoleConfigService, VpnServerPiHoleConfigService>();
         services.AddScoped<ISettingsService, SettingsService>();
         
-        services.AddScoped<IExternalIpAddressService, ExternalIpAddressService>();
+        services.AddHttpClient<IExternalIpAddressService, ExternalIpAddressService>(client =>
+        {
+            client.Timeout = TimeSpan.FromSeconds(10);
+        });
+        services.AddScoped<IVpnNodePublicIpLookup, VpnNodePublicIpLookup>();
+        services.AddScoped<IVpnServerClientPresenceService, VpnServerClientPresenceService>();
 
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IUserPasswordHistoryService, UserPasswordHistoryService>();

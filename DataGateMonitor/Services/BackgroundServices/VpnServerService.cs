@@ -2,17 +2,18 @@ using DataGateMonitor.DataBase.Services.Command;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Command.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerStatusLogTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Models.Helpers.Services;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Helpers;
-using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
+using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.BackgroundServices;
 
@@ -24,7 +25,8 @@ public class VpnServerService(
     IOpenVpnStateService openVpnStateService,
     IIssuedOvpnFileQueryService openVpnFileQueryService,
     IVpnServerStatusLogQueryService openVpnServerStatusLogQueryService,
-    IExternalIpAddressService externalIpAddressService,
+    IVpnServerOvpnFileConfigQueryService openVpnServerOvpnFileConfigQueryService,
+    IVpnNodePublicIpLookup vpnNodePublicIpLookup,
     ITransactionRunner transactionRunner,
     IUserQueryService userQueryService,
     ICommandService<VpnServer, int> openVpnServerCommandService,
@@ -166,10 +168,17 @@ public class VpnServerService(
                     $"Check the OpenVPN management 'state' payload format or server configuration.");
             }
 
-            serverInfo.OpenVpnState.ServerRemoteIp = await externalIpAddressService.GetRemoteIpAddress(ct);
-
             if (serverInfo.OpenVpnState != null)
             {
+                var ovpnConfig = await openVpnServerOvpnFileConfigQueryService.GetByVpnServerIdId(
+                    openVpnServer.Id, ct);
+                var nodePublicIp = await vpnNodePublicIpLookup.GetAsync(
+                    openVpnServer.Id, VpnServerType.OpenVpn, ct);
+                serverInfo.OpenVpnState.ServerRemoteIp = VpnServerApiUrlHelper.ResolveReportedRemoteIp(
+                    nodePublicIp,
+                    ovpnConfig?.VpnServerIp,
+                    openVpnServer.ApiUrl);
+
                 serverInfo.Version = await openVpnVersionService.GetVersionAsync(openVpnServer, ct);
             }
 
@@ -241,5 +250,4 @@ public class VpnServerService(
         logger.LogInformation($"VpnServerId: {openVpnServer.Id}. " +
                               $"SaveVpnServerStatusLogAsync completed successfully.");
     }
-
 }

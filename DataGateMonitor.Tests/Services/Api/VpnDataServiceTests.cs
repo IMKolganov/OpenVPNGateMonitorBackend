@@ -14,6 +14,7 @@ using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using Xunit;
@@ -77,7 +78,9 @@ public class VpnDataServiceTests
             statusCacheGeneration.Object,
             microserviceInfo.Object,
             microserviceFactory.Object,
-            eventFactory.Object);
+            eventFactory.Object,
+            Mock.Of<IVpnNodePublicIpLookup>(),
+            Mock.Of<IVpnServerClientPresenceService>());
 
         return (svc, log, ip, quotaPlanQ, serverQ, cfgQ, trx, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, notification, statusCacheGeneration, microserviceInfo, microserviceFactory, eventFactory);
     }

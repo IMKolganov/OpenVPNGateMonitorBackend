@@ -92,6 +92,8 @@ public class VpnDataServiceAddUpdateExoticTests
     public async Task UpdateVpnServer_Throws_When_NameTakenByAnotherServer()
     {
         var h = new VpnDataServiceTestHarness();
+        h.ServerQ.Setup(q => q.GetById(55, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer { Id = 55, ServerName = "old", ApiUrl = "https://a/" });
         h.ServerQ.Setup(q => q.AnyByServerNameExceptId("taken", 55, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var svc = h.Create();
 

@@ -1,6 +1,7 @@
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.XrayNode;
 
 namespace DataGateMonitor.Services.BackgroundServices;
@@ -24,6 +25,7 @@ public sealed class XrayServerProcessor(
         var xrayApi = scope.ServiceProvider.GetRequiredService<IXrayNodeApiClient>();
         var sync = scope.ServiceProvider.GetRequiredService<IXrayVpnClientSyncService>();
         var serverCmd = scope.ServiceProvider.GetRequiredService<ICommandService<VpnServer, int>>();
+        var presence = scope.ServiceProvider.GetRequiredService<IVpnServerClientPresenceService>();
 
         var now = DateTimeOffset.UtcNow;
         try
@@ -66,6 +68,7 @@ public sealed class XrayServerProcessor(
                     .SetProperty(x => x.XrayClientsPolledAt, now)
                     .SetProperty(x => x.XrayClientsPollError, err),
                 ct);
+            await presence.MarkAllDisconnectedAsync(server.Id, ct);
 
             logger.LogError(ex,
                 "XrayServerProcessor error. VpnServerId: {Id}. Name: {Name}. Url: {Url}",

@@ -6,6 +6,7 @@ using Npgsql;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using DataGateMonitor.Services.StatusStreamLogs;
@@ -109,8 +110,13 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
             // Disabled rows are never polled — still publish Idle so the status stream is not empty and
             // clients do not treat "missing server" as Pending for the whole fleet.
+            // Also clear hanging IsConnected sessions (disable may have been set outside UpdateVpnServer).
+            var presence = scope.ServiceProvider.GetRequiredService<IVpnServerClientPresenceService>();
             foreach (var skipped in openVpnServers.Where(s => s.IsDisable))
+            {
                 _statusManager.UpdateStatus(skipped.Id, ServiceStatus.Idle, nextRunSeconds);
+                await presence.MarkAllDisconnectedAsync(skipped.Id, cancellationToken);
+            }
 
             var serversToPoll = openVpnServers.Where(x => x.IsDisable != true).ToList();
             _logger.LogInformation(

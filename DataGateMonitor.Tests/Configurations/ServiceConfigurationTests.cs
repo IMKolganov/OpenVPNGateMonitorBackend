@@ -4,6 +4,7 @@ using DataGateMonitor.Configurations;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using DataGateMonitor.Services.QuotaPlans;
@@ -43,6 +44,8 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IOpenVpnBackgroundService));
         AssertRegistered(services, typeof(IVpnServerOvpnFileConfigService));
         AssertRegistered(services, typeof(IExternalIpAddressService));
+        AssertRegistered(services, typeof(IVpnNodePublicIpLookup));
+        AssertRegistered(services, typeof(IVpnServerClientPresenceService));
         AssertRegistered(services, typeof(IUserService));
         AssertRegistered(services, typeof(IQuotaPlanService));
         AssertRegistered(services, typeof(IUserRoleManagementService));

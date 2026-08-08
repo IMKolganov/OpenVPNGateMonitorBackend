@@ -13,6 +13,7 @@ using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 
@@ -35,6 +36,8 @@ internal sealed class VpnDataServiceTestHarness
     public Mock<IMicroserviceInfoService> MicroserviceInfo { get; } = new(MockBehavior.Loose);
     public Mock<IOpenVpnMicroserviceClientFactory> MicroserviceFactory { get; } = new(MockBehavior.Loose);
     public Mock<IOpenVpnEventClientFactory> EventFactory { get; } = new(MockBehavior.Loose);
+    public Mock<IVpnNodePublicIpLookup> PublicIpLookup { get; } = new(MockBehavior.Loose);
+    public Mock<IVpnServerClientPresenceService> Presence { get; } = new(MockBehavior.Loose);
 
     public List<QuotaPlanAllowedServer> QuotaLinksAdded { get; } = [];
     public List<VpnServerTag> TagsAdded { get; } = [];
@@ -81,7 +84,9 @@ internal sealed class VpnDataServiceTestHarness
         StatusCache.Object,
         MicroserviceInfo.Object,
         MicroserviceFactory.Object,
-        EventFactory.Object);
+        EventFactory.Object,
+        PublicIpLookup.Object,
+        Presence.Object);
 
     public void SetupInsertServer(string name, int assignedId, VpnServer? returnEntity = null)
     {

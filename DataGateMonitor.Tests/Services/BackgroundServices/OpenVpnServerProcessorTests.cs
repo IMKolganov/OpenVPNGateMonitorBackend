@@ -3,6 +3,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -27,10 +28,15 @@ public class OpenVpnServerProcessorTests
         conflog.Setup(x => x.FetchAndSaveIfChangedByServerIdAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((VpnServerConflog?)null);
 
+        var presence = new Mock<IVpnServerClientPresenceService>();
+        presence.Setup(p => p.MarkAllDisconnectedAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         var services = new ServiceCollection();
         services.AddSingleton(vpnService.Object);
         services.AddSingleton(serverCmd.Object);
         services.AddSingleton(conflog.Object);
+        services.AddSingleton(presence.Object);
         var sp = services.BuildServiceProvider();
 
         return (new OpenVpnServerProcessor(NullLogger<OpenVpnServerProcessor>.Instance, sp), vpnService, serverCmd);

@@ -31,7 +31,9 @@ public class VpnDataService(
     IStatusCacheGenerationService statusCacheGenerationService,
     IMicroserviceInfoService microserviceInfoService,
     IOpenVpnMicroserviceClientFactory microserviceClientFactory,
-    IOpenVpnEventClientFactory eventClientFactory) : IVpnDataService
+    IOpenVpnEventClientFactory eventClientFactory,
+    IVpnNodePublicIpLookup vpnNodePublicIpLookup,
+    IVpnServerClientPresenceService vpnServerClientPresenceService) : IVpnDataService
 {
     private static readonly TimeSpan ExternalIpResolveTimeout = TimeSpan.FromSeconds(5);
 
@@ -84,6 +86,12 @@ public class VpnDataService(
 
     public async Task<VpnServer> UpdateVpnServer(VpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
+        var previous = await openVpnServerQueryService.GetById(server.Id, ct)
+                       ?? throw new InvalidOperationException("OpenVPN server not found");
+        var becameDisabled = server.IsDisable && !previous.IsDisable;
+        var apiUrlChanged = !string.Equals(
+            previous.ApiUrl?.Trim(), server.ApiUrl?.Trim(), StringComparison.OrdinalIgnoreCase);
+
         var result = await transactionRunner.RunAsync(async _ =>
         {
             var now = DateTimeOffset.UtcNow;
@@ -123,6 +131,10 @@ public class VpnDataService(
         statusCacheGenerationService.Bump();
         microserviceClientFactory.Invalidate(result.Id);
         eventClientFactory.Remove(result.Id);
+        if (apiUrlChanged)
+            vpnNodePublicIpLookup.Invalidate(result.Id);
+        if (becameDisabled)
+            await vpnServerClientPresenceService.MarkAllDisconnectedAsync(result.Id, ct);
         return result;
     }
 
@@ -136,10 +148,12 @@ public class VpnDataService(
             x => x.Id == vpnServerId,
             u => u.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.LastUpdate, now),
             ct);
+        await vpnServerClientPresenceService.MarkAllDisconnectedAsync(vpnServerId, ct);
         await serverOpenVpnNotificationService.NotifyDeleted(openVpnServer.Id, openVpnServer.ServerName, ct);
         statusCacheGenerationService.Bump();
         microserviceClientFactory.Invalidate(openVpnServer.Id);
         eventClientFactory.Remove(openVpnServer.Id);
+        vpnNodePublicIpLookup.Invalidate(openVpnServer.Id);
         return true;
     }
 
