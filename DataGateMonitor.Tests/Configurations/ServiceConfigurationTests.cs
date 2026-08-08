@@ -56,6 +56,8 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IOpenVpnProxyTrafficFlowSupportChecker));
         AssertRegistered(services, typeof(IOpenVpnProxyTrafficFlowClientFactory));
         AssertRegistered(services, typeof(IStatusCacheGenerationService));
+        AssertRegistered(services, typeof(IRedisDatabaseProvider));
+        AssertRegistered(services, typeof(IConnectedClientsCounterStore));
         AssertRegistered(services, typeof(IStatusStreamLogStore));
     }
 

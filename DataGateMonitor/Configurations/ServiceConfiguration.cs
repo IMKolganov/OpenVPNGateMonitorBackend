@@ -79,6 +79,8 @@ public static class ServiceConfiguration
         services.AddMemoryCache();
         services.AddSingleton<IApiMemoryCacheService, ApiMemoryCacheService>();
         services.AddSingleton<IStatusCacheGenerationService, StatusCacheGenerationService>();
+        services.AddSingleton<IRedisMultiplexerConnector, StackExchangeRedisMultiplexerConnector>();
+        services.AddSingleton<IRedisDatabaseProvider, ConfigurationRedisDatabaseProvider>();
         services.AddSingleton<IConnectedClientsCounterStore, RedisConnectedClientsCounterStore>();
         services.AddSingleton<IStatusStreamLogStore, StatusStreamLogStore>();
         
