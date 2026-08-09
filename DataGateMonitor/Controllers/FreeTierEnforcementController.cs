@@ -43,6 +43,9 @@ public class FreeTierEnforcementController(
         CancellationToken ct)
     {
         var result = await unsubscribedVpnDigestService.BuildDigestAsync(ct);
+        // Live /unsubscribed_vpn_users fetch counts as today's digest so the hourly job
+        // does not re-DM the same list right after a deploy (IMemoryCache was empty).
+        unsubscribedVpnDigestService.MarkDailyDigestSatisfiedForToday();
         return Ok(ApiResponse<FreeTierUnsubscribedVpnDigestResponse>.SuccessResponse(result));
     }
 

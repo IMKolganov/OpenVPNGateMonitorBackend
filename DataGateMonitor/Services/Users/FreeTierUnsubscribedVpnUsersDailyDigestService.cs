@@ -30,7 +30,7 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
             }
 
             var todayUtc = DateOnly.FromDateTime(DateTime.UtcNow);
-            if (memoryCache.TryGetValue(LastSentUtcDateCacheKey, out DateOnly lastSent) && lastSent == todayUtc)
+            if (WasDailyDigestAlreadySent(todayUtc))
                 return;
 
             var digest = await BuildDigestAsync(ct);
@@ -56,11 +56,7 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
                 return;
             }
 
-            var untilTomorrow = todayUtc.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc) - DateTime.UtcNow;
-            if (untilTomorrow < TimeSpan.FromMinutes(1))
-                untilTomorrow = TimeSpan.FromMinutes(1);
-
-            memoryCache.Set(LastSentUtcDateCacheKey, todayUtc, untilTomorrow);
+            MarkDailyDigestSent(todayUtc);
             logger.LogInformation("Sent daily unsubscribed VPN digest to admins.");
         }
         catch (Exception ex)
@@ -85,6 +81,25 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
             Text = BuildDigestMessage(todayUtc, candidates),
             Candidates = candidates,
         };
+    }
+
+    /// <summary>
+    /// Treat a live admin digest fetch as the once-per-UTC-day delivery so the background job
+    /// does not re-send the same list after a deploy / process restart.
+    /// </summary>
+    public void MarkDailyDigestSatisfiedForToday()
+        => MarkDailyDigestSent(DateOnly.FromDateTime(DateTime.UtcNow));
+
+    private bool WasDailyDigestAlreadySent(DateOnly todayUtc)
+        => memoryCache.TryGetValue(LastSentUtcDateCacheKey, out DateOnly lastSent) && lastSent == todayUtc;
+
+    private void MarkDailyDigestSent(DateOnly todayUtc)
+    {
+        var untilTomorrow = todayUtc.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc) - DateTime.UtcNow;
+        if (untilTomorrow < TimeSpan.FromMinutes(1))
+            untilTomorrow = TimeSpan.FromMinutes(1);
+
+        memoryCache.Set(LastSentUtcDateCacheKey, todayUtc, untilTomorrow);
     }
 
     internal static string BuildDigestMessage(
@@ -114,8 +129,7 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
         AppendUserSection(sb, "👤 Not merged", notMerged);
 
         sb.AppendLine();
-        sb.AppendLine("Remind TG: /remind_channel_subscribe <userId|telegramId>");
-        sb.AppendLine("Remind email: tap Email #id below or /remind_channel_email <userId>");
+        sb.AppendLine("Remind: tap TG #id / Email #id below, or /remind_channel_subscribe|/remind_channel_email");
 
         return sb.ToString();
     }

@@ -203,6 +203,41 @@ public class FreeTierUnsubscribedNotificationsTests
         Assert.Contains("#150 Татьяна Еленина | google | tatyana@example.com | TG:— | Helsinki 3", text);
         Assert.Contains("#7 Alice | google+telegram | alice@gmail.com | TG:111 | eu1", text);
         Assert.Contains("/remind_channel_email", text);
+        Assert.Contains("TG #id", text);
+    }
+
+    [Fact]
+    public async Task Digest_LiveFetch_MarksDailySatisfied_SoBackgroundSkips()
+    {
+        var overview = new Mock<IFreeTierEnforcementOverviewService>();
+        overview.Setup(o => o.GetUnsubscribedConnectedAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GetFreeTierEnforcementCandidatesResponse { Candidates = [] });
+
+        var sender = new Mock<ITelegramDirectMessageSender>(MockBehavior.Strict);
+        var telegramUsers = new Mock<ITelegramUserService>();
+        telegramUsers.Setup(t => t.GetAdminsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new DataGateMonitor.Models.TelegramBotUser { TelegramId = 1 }]);
+
+        var settings = new Mock<ISettingsService>();
+        settings.Setup(s => s.GetValueAsync<string>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync("bool");
+        settings.Setup(s => s.GetValueAsync<bool>(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var cache = new MemoryCache(new MemoryCacheOptions());
+        var sut = new FreeTierUnsubscribedVpnUsersDailyDigestService(
+            settings.Object,
+            overview.Object,
+            telegramUsers.Object,
+            sender.Object,
+            cache,
+            Mock.Of<ILogger<FreeTierUnsubscribedVpnUsersDailyDigestService>>());
+
+        _ = await sut.BuildDigestAsync(CancellationToken.None);
+        sut.MarkDailyDigestSatisfiedForToday();
+        await sut.TrySendDailyDigestAsync(CancellationToken.None);
+
+        sender.VerifyNoOtherCalls();
     }
 
     [Fact]

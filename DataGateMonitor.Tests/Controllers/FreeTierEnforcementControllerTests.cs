@@ -75,6 +75,7 @@ public class FreeTierEnforcementControllerTests
         Assert.True(payload.Success);
         Assert.Equal("digest-body", payload.Data!.Text);
         Assert.Equal(9, Assert.Single(payload.Data.Candidates).UserId);
+        digest.Verify(s => s.MarkDailyDigestSatisfiedForToday(), Times.Once);
     }
 
     [Fact]
