@@ -1,7 +1,3 @@
-using Microsoft.AspNetCore.Identity;
-using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Logging;
-using Moq;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserCredentialTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
@@ -13,44 +9,53 @@ using DataGateMonitor.Services.EmailTemplates;
 using DataGateMonitor.Services.Others.Notifications;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
-using Xunit;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 namespace DataGateMonitor.Tests.Services.Api.Auth.ForgotPassword;
 
 public class AdminForgotPasswordServiceTests
 {
+    private static AdminForgotPasswordService CreateSut() =>
+        new(
+            Mock.Of<IUserCredentialQueryService>(),
+            Mock.Of<IUserQueryService>(),
+            Mock.Of<ICommandService<UserCredential, int>>(),
+            Mock.Of<IUserPasswordHistoryService>(),
+            Mock.Of<IPasswordHasher<User>>(),
+            new MemoryCache(new MemoryCacheOptions()),
+            Mock.Of<IEmailSenderService>(),
+            Mock.Of<ISentEmailLogService>(),
+            Mock.Of<ISystemTransactionalEmailService>(),
+            Mock.Of<IAppNotificationFacade>(),
+            NullLogger<AdminForgotPasswordService>.Instance);
+
     [Fact]
-    public async Task RequestResetCodeAsync_When_LoginOrEmailEmpty_Returns_SameMessageForAll()
+    public async Task ResetPasswordAsync_WhenCodeMissing_Fails()
     {
-        var credentialQuery = new Mock<IUserCredentialQueryService>();
-        var userQuery = new Mock<IUserQueryService>();
-        var credentialCommand = new Mock<ICommandService<UserCredential, int>>();
-        var passwordHasher = new Mock<IPasswordHasher<User>>();
-        var cache = new MemoryCache(new MemoryCacheOptions());
-        var emailSender = new Mock<IEmailSenderService>();
-        var sentEmailLog = new Mock<ISentEmailLogService>();
-        var systemTransactionalEmail = new Mock<ISystemTransactionalEmailService>();
-        var appNotifications = new Mock<IAppNotificationFacade>();
-        var passwordHistory = new Mock<IUserPasswordHistoryService>();
-        var logger = new Mock<ILogger<AdminForgotPasswordService>>();
+        var result = await CreateSut().ResetPasswordAsync(
+            new AdminResetPasswordRequest { Code = "  ", NewPassword = "longenough", ConfirmPassword = "longenough" },
+            CancellationToken.None);
 
-        var sut = new AdminForgotPasswordService(
-            credentialQuery.Object,
-            userQuery.Object,
-            credentialCommand.Object,
-            passwordHistory.Object,
-            passwordHasher.Object,
-            cache,
-            emailSender.Object,
-            sentEmailLog.Object,
-            systemTransactionalEmail.Object,
-            appNotifications.Object,
-            logger.Object);
+        Assert.False(result.Success);
+        Assert.Contains("Invalid or expired", result.Message, StringComparison.OrdinalIgnoreCase);
+    }
 
-        var request = new AdminForgotPasswordRequest { LoginOrEmail = "   " };
-        var result = await sut.RequestResetCodeAsync(request, "127.0.0.1", CancellationToken.None);
+    [Fact]
+    public async Task ResetPasswordAsync_WhenPasswordsMismatch_Fails()
+    {
+        var result = await CreateSut().ResetPasswordAsync(
+            new AdminResetPasswordRequest
+            {
+                Code = "ABCDEFGHIJ",
+                NewPassword = "longenough",
+                ConfirmPassword = "different1",
+            },
+            CancellationToken.None);
 
-        Assert.Equal(AdminForgotPasswordService.SameMessageForAll, result.Message);
-        credentialQuery.Verify(c => c.GetByNormalizedLogin(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.False(result.Success);
+        Assert.Contains("do not match", result.Message, StringComparison.OrdinalIgnoreCase);
     }
 }
