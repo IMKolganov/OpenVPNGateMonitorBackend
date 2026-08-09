@@ -97,11 +97,18 @@ public sealed class OverviewTrafficAggregator(
         string? externalId)
         => OverviewTrafficPostgresSql.BuildFilterParams(fromUtc, toUtc, offset, vpnServerId, externalId);
 
-    private static string BuildFilteredTrafficCte(string table)
-        => OverviewTrafficPostgresSql.BuildFilteredTrafficCte(table);
+    private static string BuildFilteredTrafficCte(string table, int? vpnServerId, string? externalId)
+        => OverviewTrafficPostgresSql.BuildFilteredTrafficCte(table, vpnServerId, externalId);
+
+    private static string BuildBaselinesCte(string table, int? vpnServerId, string? externalId)
+        => OverviewTrafficPostgresSql.BuildBaselinesCte(table, vpnServerId, externalId);
 
     private static string BucketStartSql(OverviewGrouping grouping)
         => OverviewTrafficPostgresSql.BucketStartSql(grouping);
+
+    private static void NormalizeTrafficRange(ref DateTimeOffset fromUtc, ref DateTimeOffset toUtc)
+        => (fromUtc, toUtc) = OverviewTrafficPostgresSql.NormalizeTrafficRange(
+            fromUtc, toUtc, DateTimeOffset.UtcNow);
 
     private async Task<IReadOnlyList<OverviewTrafficBucketRow>> QueryTrafficSeriesHybridAsync(
         ApplicationDbContext ctx,
@@ -112,6 +119,8 @@ public sealed class OverviewTrafficAggregator(
         string? externalId,
         CancellationToken ct)
     {
+        NormalizeTrafficRange(ref fromUtc, ref toUtc);
+
         if (!OverviewTrafficDailyQueries.SupportsDailyGrouping(grouping))
             return await QueryTrafficSeriesBucketsPostgresAsync(ctx, fromUtc, toUtc, grouping, vpnServerId, externalId, ct);
 
@@ -142,6 +151,8 @@ public sealed class OverviewTrafficAggregator(
         string? externalId,
         CancellationToken ct)
     {
+        NormalizeTrafficRange(ref fromUtc, ref toUtc);
+
         if (!OverviewTrafficDailyQueries.SupportsDailyGrouping(grouping))
             return await QueryUsersSeriesBucketsPostgresAsync(ctx, fromUtc, toUtc, grouping, vpnServerId, externalId, ct);
 
@@ -171,6 +182,8 @@ public sealed class OverviewTrafficAggregator(
         string? externalId,
         CancellationToken ct)
     {
+        NormalizeTrafficRange(ref fromUtc, ref toUtc);
+
         var split = OverviewTrafficDailyQueries.SplitRange(fromUtc, toUtc);
         var hasDaily = await OverviewTrafficDailyQueries.HasDailyRowsAsync(ctx, split.DailyFrom, split.DailyToExclusive, ct);
         if (!hasDaily)
@@ -203,6 +216,8 @@ public sealed class OverviewTrafficAggregator(
         string? externalId,
         CancellationToken ct)
     {
+        NormalizeTrafficRange(ref fromUtc, ref toUtc);
+
         var split = OverviewTrafficDailyQueries.SplitRange(fromUtc, toUtc);
         var hasDaily = await OverviewTrafficDailyQueries.HasDailyRowsAsync(ctx, split.DailyFrom, split.DailyToExclusive, ct);
         if (!hasDaily)
@@ -236,7 +251,7 @@ public sealed class OverviewTrafficAggregator(
         var table = ResolveTrafficTable(ctx);
         var bucketExpr = BucketStartSql(grouping);
         var sql = $"""
-                   WITH {BuildFilteredTrafficCte(table)},
+                   WITH {BuildFilteredTrafficCte(table, vpnServerId, externalId)},
                    with_prev AS (
                        SELECT
                            f."SessionId",
@@ -297,7 +312,7 @@ public sealed class OverviewTrafficAggregator(
         var table = ResolveTrafficTable(ctx);
         var bucketExpr = BucketStartSql(grouping);
         var sql = $"""
-                   WITH {BuildFilteredTrafficCte(table)},
+                   WITH {BuildFilteredTrafficCte(table, vpnServerId, externalId)},
                    bucketed AS (
                        SELECT
                            {bucketExpr.Replace("\"MeasuredAt\"", "f.\"MeasuredAt\"")} AS bucket_ts,
@@ -333,18 +348,8 @@ public sealed class OverviewTrafficAggregator(
 
         var table = ResolveTrafficTable(ctx);
         var sql = $"""
-                   WITH {BuildFilteredTrafficCte(table)},
-                   baselines AS (
-                       SELECT DISTINCT ON (t."SessionId")
-                           t."SessionId",
-                           t."BytesReceived" AS baseline_in,
-                           t."BytesSent" AS baseline_out
-                       FROM {table} t
-                       WHERE t."MeasuredAt" < @from
-                         AND {OverviewTrafficPostgresSql.VpnServerFilterSql}
-                         AND {OverviewTrafficPostgresSql.ExternalIdFilterSql}
-                       ORDER BY t."SessionId", t."MeasuredAt" DESC
-                   ),
+                   WITH {BuildFilteredTrafficCte(table, vpnServerId, externalId)},
+                   {BuildBaselinesCte(table, vpnServerId, externalId)},
                    with_prev AS (
                        SELECT
                            f."SessionId",
@@ -412,7 +417,7 @@ public sealed class OverviewTrafficAggregator(
 
         var table = ResolveTrafficTable(ctx);
         var sql = $"""
-                   WITH {BuildFilteredTrafficCte(table)},
+                   WITH {BuildFilteredTrafficCte(table, vpnServerId, externalId)},
                    with_prev AS (
                        SELECT
                            f."ExternalId",

@@ -10,6 +10,12 @@ public interface IUserIdentityLinkQueryService
     Task<UserIdentityLink?> GetByProviderAndExternalId(string provider, string externalId, CancellationToken ct);
     public Task<UserIdentityLink?> GetByExternalId(string externalId, CancellationToken ct);
     Task<UserIdentityLink?> GetByUserId(int userId, CancellationToken ct);
+    /// <summary>
+    /// First identity link per user (lowest <see cref="UserIdentityLink.Id"/>), matching <see cref="GetByUserId"/>.
+    /// </summary>
+    Task<IReadOnlyDictionary<int, UserIdentityLink>> GetFirstByUserIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct);
     Task<List<UserIdentityLink>> GetListByUserId(int userId, CancellationToken ct);
     Task<bool> AnyByUserId(int userId, CancellationToken ct);
 

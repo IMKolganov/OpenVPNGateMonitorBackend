@@ -23,7 +23,26 @@ public class UserIdentityLinkQueryService(IQueryService<UserIdentityLink, int> q
 
     public Task<UserIdentityLink?> GetByUserId(int userId, CancellationToken ct)
         => q.Query()
-            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
+            .Where(x => x.UserId == userId)
+            .OrderBy(x => x.Id)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyDictionary<int, UserIdentityLink>> GetFirstByUserIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<int, UserIdentityLink>();
+
+        var links = await q.Query()
+            .Where(x => userIds.Contains(x.UserId))
+            .OrderBy(x => x.Id)
+            .ToListAsync(ct);
+
+        return links
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.First());
+    }
 
     public Task<List<UserIdentityLink>> GetListByUserId(int userId, CancellationToken ct)
         => q.Query()

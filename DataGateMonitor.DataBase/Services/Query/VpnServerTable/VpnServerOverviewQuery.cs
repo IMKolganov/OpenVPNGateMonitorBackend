@@ -9,7 +9,7 @@ namespace DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 
 public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
 {
-    // Single roundtrip with correlated subqueries
+    // Set-based aggregates (same fields/semantics as former correlated subqueries)
     public async Task<List<VpnServerWithStatusDto>> GetAllVpnServersWithStatusAsync(
         bool includeDeleted = false,
         bool requireQuotaPlanAssignment = false,
@@ -28,87 +28,25 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
             var allowed = uow.GetQuery<QuotaPlanAllowedServer>().AsQueryable();
             servers = servers.Where(s => allowed.Any(a => a.VpnServerId == s.Id));
         }
-        var clients = uow.GetQuery<VpnServerClient>().AsQueryable();
-        var logs = uow.GetQuery<VpnServerStatusLog>().AsQueryable();
 
-        var query =
-            from s in servers
-            orderby s.Id
-            select new VpnServerWithStatusDto
-            {
-                VpnServerResponses = new VpnServerResponse
-                {
-                    VpnServer = s.Adapt<VpnServerDto>(),
-                },
+        var serverList = await servers.AsNoTracking().OrderBy(s => s.Id).ToListAsync(ct);
+        if (serverList.Count == 0)
+            return [];
 
-                CountConnectedClients = clients.Count(c => c.VpnServerId == s.Id && c.IsConnected),
-                CountSessions = clients.Count(c => c.VpnServerId == s.Id),
-
-                VpnServerStatusLogResponse =
-                    logs.Where(l => l.VpnServerId == s.Id)
-                        .OrderByDescending(l => l.Id) // or by CreateDate
-                        .Select(l => new VpnServerStatusLogResponse
-                        {
-                            VpnServerId = l.VpnServerId,
-                            SessionId = l.SessionId,
-                            UpSince = l.UpSince,
-                            ServerLocalIp = l.ServerLocalIp,
-                            ServerRemoteIp = l.ServerRemoteIp,
-                            BytesIn = l.BytesIn,
-                            BytesOut = l.BytesOut,
-                            Version = l.Version
-                        })
-                        .FirstOrDefault(),
-
-                TotalBytesIn = logs.Where(l => l.VpnServerId == s.Id).Sum(l => (long?)l.BytesIn) ?? 0L,
-                TotalBytesOut = logs.Where(l => l.VpnServerId == s.Id).Sum(l => (long?)l.BytesOut) ?? 0L
-            };
-
-        return await query.AsNoTracking().ToListAsync(ct);
+        return await ComposeWithStatusAsync(serverList, ct);
     }
 
     // Single server variant; throws if not found
     public async Task<VpnServerWithStatusDto> GetVpnServerWithStatusAsync(int vpnServerId, CancellationToken ct)
     {
-        var servers = uow.GetQuery<VpnServer>().AsQueryable();
-        var clients = uow.GetQuery<VpnServerClient>().AsQueryable();
-        var logs = uow.GetQuery<VpnServerStatusLog>().AsQueryable();
+        var server = await uow.GetQuery<VpnServer>().AsQueryable()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(s => s.Id == vpnServerId, ct);
+        if (server is null)
+            throw new NullReferenceException("OpenVPN Server not found");
 
-        var query =
-            from s in servers
-            where s.Id == vpnServerId
-            select new VpnServerWithStatusDto
-            {
-                VpnServerResponses = new VpnServerResponse
-                {
-                    VpnServer = s.Adapt<VpnServerDto>(),
-                },
-                CountConnectedClients = clients.Count(c => c.VpnServerId == s.Id && c.IsConnected),
-                CountSessions = clients.Count(c => c.VpnServerId == s.Id),
-
-                VpnServerStatusLogResponse =
-                    logs.Where(l => l.VpnServerId == s.Id)
-                        .OrderByDescending(l => l.Id)
-                        .Select(l => new VpnServerStatusLogResponse
-                        {
-                            VpnServerId = l.VpnServerId,
-                            SessionId = l.SessionId,
-                            UpSince = l.UpSince,
-                            ServerLocalIp = l.ServerLocalIp,
-                            ServerRemoteIp = l.ServerRemoteIp,
-                            BytesIn = l.BytesIn,
-                            BytesOut = l.BytesOut,
-                            Version = l.Version
-                        })
-                        .FirstOrDefault(),
-
-                TotalBytesIn = logs.Where(l => l.VpnServerId == s.Id).Sum(l => (long?)l.BytesIn) ?? 0L,
-                TotalBytesOut = logs.Where(l => l.VpnServerId == s.Id).Sum(l => (long?)l.BytesOut) ?? 0L
-            };
-
-        var result = await query.AsNoTracking().FirstOrDefaultAsync(ct);
-        if (result is null) throw new NullReferenceException("OpenVPN Server not found");
-        return result;
+        var list = await ComposeWithStatusAsync([server], ct);
+        return list[0];
     }
 
     public async Task<(int CountConnectedClients, int CountSessions)> GetClientCountersAsync(
@@ -130,5 +68,91 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
         return counters is null
             ? (0, 0)
             : (counters.CountConnectedClients, counters.CountSessions);
+    }
+
+    private async Task<List<VpnServerWithStatusDto>> ComposeWithStatusAsync(
+        List<VpnServer> serverList,
+        CancellationToken ct)
+    {
+        var serverIds = serverList.Select(s => s.Id).ToList();
+        var clients = uow.GetQuery<VpnServerClient>().AsQueryable();
+        var logs = uow.GetQuery<VpnServerStatusLog>().AsQueryable();
+
+        var clientAggs = await clients
+            .AsNoTracking()
+            .Where(c => serverIds.Contains(c.VpnServerId))
+            .GroupBy(c => c.VpnServerId)
+            .Select(g => new
+            {
+                VpnServerId = g.Key,
+                CountConnectedClients = g.Count(c => c.IsConnected),
+                CountSessions = g.Count()
+            })
+            .ToListAsync(ct);
+
+        var logTotals = await logs
+            .AsNoTracking()
+            .Where(l => serverIds.Contains(l.VpnServerId))
+            .GroupBy(l => l.VpnServerId)
+            .Select(g => new
+            {
+                VpnServerId = g.Key,
+                TotalBytesIn = g.Sum(l => (long?)l.BytesIn) ?? 0L,
+                TotalBytesOut = g.Sum(l => (long?)l.BytesOut) ?? 0L
+            })
+            .ToListAsync(ct);
+
+        var latestLogIds = await logs
+            .AsNoTracking()
+            .Where(l => serverIds.Contains(l.VpnServerId))
+            .GroupBy(l => l.VpnServerId)
+            .Select(g => g.Max(l => l.Id))
+            .ToListAsync(ct);
+
+        var latestLogs = latestLogIds.Count == 0
+            ? []
+            : await logs
+                .AsNoTracking()
+                .Where(l => latestLogIds.Contains(l.Id))
+                .ToListAsync(ct);
+
+        var clientsByServer = clientAggs.ToDictionary(x => x.VpnServerId);
+        var totalsByServer = logTotals.ToDictionary(x => x.VpnServerId);
+        var latestByServer = latestLogs.ToDictionary(l => l.VpnServerId);
+
+        var result = new List<VpnServerWithStatusDto>(serverList.Count);
+        foreach (var s in serverList)
+        {
+            clientsByServer.TryGetValue(s.Id, out var clientAgg);
+            totalsByServer.TryGetValue(s.Id, out var totals);
+            latestByServer.TryGetValue(s.Id, out var latest);
+
+            result.Add(new VpnServerWithStatusDto
+            {
+                VpnServerResponses = new VpnServerResponse
+                {
+                    VpnServer = s.Adapt<VpnServerDto>(),
+                },
+                CountConnectedClients = clientAgg?.CountConnectedClients ?? 0,
+                CountSessions = clientAgg?.CountSessions ?? 0,
+                TotalBytesIn = totals?.TotalBytesIn ?? 0L,
+                TotalBytesOut = totals?.TotalBytesOut ?? 0L,
+                VpnServerStatusLogResponse = latest is null
+                    ? null
+                    : new VpnServerStatusLogResponse
+                    {
+                        VpnServerId = latest.VpnServerId,
+                        SessionId = latest.SessionId,
+                        UpSince = latest.UpSince,
+                        ServerLocalIp = latest.ServerLocalIp,
+                        ServerRemoteIp = latest.ServerRemoteIp,
+                        BytesIn = latest.BytesIn,
+                        BytesOut = latest.BytesOut,
+                        Version = latest.Version
+                    }
+            });
+        }
+
+        return result;
     }
 }
