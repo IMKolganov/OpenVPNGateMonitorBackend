@@ -24,6 +24,8 @@ using DataGateMonitor.Services.Api.MobileCrashIngest;
 using DataGateMonitor.Services.Api.WindowsCrashIngest;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.StatusStreamLogs;
+using DataGateMonitor.Services.Performance;
+using DataGateMonitor.Data.Interceptors;
 using DataGateMonitor.Services.XrayNode;
 using System.Net;
 using System.Net.Http;
@@ -83,6 +85,9 @@ public static class ServiceConfiguration
         services.AddSingleton<IRedisDatabaseProvider, ConfigurationRedisDatabaseProvider>();
         services.AddSingleton<IConnectedClientsCounterStore, RedisConnectedClientsCounterStore>();
         services.AddSingleton<IStatusStreamLogStore, StatusStreamLogStore>();
+        services.Configure<PerformanceMonitoringOptions>(configuration.GetSection(PerformanceMonitoringOptions.SectionName));
+        services.AddSingleton<IPerformanceSampleStore, PerformanceSampleStore>();
+        services.AddSingleton<SlowDbCommandInterceptor>();
         
         services.AddScoped<IOpenVpnClientService, OpenVpnClientService>();
         services.AddScoped<IOpenVpnStateService, OpenVpnStateService>();

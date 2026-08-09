@@ -15,6 +15,8 @@ using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.StatusStreamLogs;
+using DataGateMonitor.Services.Performance;
+using DataGateMonitor.Data.Interceptors;
 using DataGateMonitor.Services.XrayNode;
 using Xunit;
 
@@ -59,6 +61,8 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IRedisDatabaseProvider));
         AssertRegistered(services, typeof(IConnectedClientsCounterStore));
         AssertRegistered(services, typeof(IStatusStreamLogStore));
+        AssertRegistered(services, typeof(IPerformanceSampleStore));
+        AssertRegistered(services, typeof(SlowDbCommandInterceptor));
     }
 
     private static void AssertRegistered(IServiceCollection services, Type serviceType)

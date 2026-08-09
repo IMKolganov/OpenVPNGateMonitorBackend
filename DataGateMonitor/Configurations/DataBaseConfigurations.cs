@@ -3,6 +3,7 @@ using DataGateMonitor.DataBase.Repositories;
 using DataGateMonitor.DataBase.Repositories.Interfaces;
 using DataGateMonitor.DataBase.Repositories.Queries;
 using DataGateMonitor.DataBase.UnitOfWork;
+using DataGateMonitor.Data.Interceptors;
 using DataGateMonitor.Models.Helpers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -20,10 +21,18 @@ public static class DataBaseConfigurations
         {
             logger.Information("Using EF Core in-memory database for integration tests: {DatabaseName}", inMemoryDatabaseName);
             services.AddDbContext<ApplicationDbContext>(
-                options => options.UseInMemoryDatabase(inMemoryDatabaseName),
+                (sp, options) =>
+                {
+                    options.UseInMemoryDatabase(inMemoryDatabaseName);
+                    ApplyEfDiagnostics(options, sp);
+                },
                 ServiceLifetime.Scoped);
             services.AddDbContextFactory<ApplicationDbContext>(
-                options => options.UseInMemoryDatabase(inMemoryDatabaseName),
+                (sp, options) =>
+                {
+                    options.UseInMemoryDatabase(inMemoryDatabaseName);
+                    ApplyEfDiagnostics(options, sp);
+                },
                 ServiceLifetime.Scoped);
             services.AddScoped<IRepositoryFactory, RepositoryFactory>();
             services.AddScoped<IQueryFactory, QueryFactory>();
@@ -73,7 +82,7 @@ public static class DataBaseConfigurations
         };
 
         // Scoped ApplicationDbContext
-        services.AddDbContext<ApplicationDbContext>((options) =>
+        services.AddDbContext<ApplicationDbContext>((sp, options) =>
         {
             options.UseNpgsql(
                 connectionString,
@@ -83,11 +92,11 @@ public static class DataBaseConfigurations
                 )
             );
 
-            ApplyEfDiagnostics(options);
+            ApplyEfDiagnostics(options, sp);
         }, ServiceLifetime.Scoped);
 
         // Scoped DbContextFactory
-        services.AddDbContextFactory<ApplicationDbContext>((options) =>
+        services.AddDbContextFactory<ApplicationDbContext>((sp, options) =>
         {
             options.UseNpgsql(
                 connectionString,
@@ -97,7 +106,7 @@ public static class DataBaseConfigurations
                 )
             );
 
-            ApplyEfDiagnostics(options);
+            ApplyEfDiagnostics(options, sp);
         }, ServiceLifetime.Scoped);
         
         services.AddScoped<IRepositoryFactory, RepositoryFactory>();
@@ -114,12 +123,17 @@ public static class DataBaseConfigurations
 
     /// <summary>
     /// EF query-shape advisory (e.g. First without OrderBy in projections) — Debug only to avoid Wazuh WRN noise.
+    /// Registers slow-command interceptor when available from DI.
     /// </summary>
-    private static void ApplyEfDiagnostics(DbContextOptionsBuilder options)
+    private static void ApplyEfDiagnostics(DbContextOptionsBuilder options, IServiceProvider sp)
     {
         options.ConfigureWarnings(w =>
             w.Log((CoreEventId.FirstWithoutOrderByAndFilterWarning, LogLevel.Debug)));
         options.LogTo(_ => { }, LogLevel.Warning);
+
+        var interceptor = sp.GetService<SlowDbCommandInterceptor>();
+        if (interceptor is not null)
+            options.AddInterceptors(interceptor);
     }
 }
 
