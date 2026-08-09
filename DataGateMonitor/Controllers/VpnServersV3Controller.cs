@@ -31,7 +31,8 @@ public class VpnServersV3Controller(
     IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService,
     IQuotaPlanQueryService quotaPlanQueryService,
     IApiMemoryCacheService apiMemoryCacheService,
-    IStatusCacheGenerationService statusCacheGenerationService) : BaseController
+    IStatusCacheGenerationService statusCacheGenerationService,
+    IConnectedClientsCounterStore connectedClientsCounterStore) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
 
@@ -113,6 +114,7 @@ public class VpnServersV3Controller(
                 requireQuotaPlanAssignment: false,
                 restrictToQuotaPlanId: null,
                 token);
+            await VpnServerConnectedCountOverlay.ApplyAsync(result, connectedClientsCounterStore, token);
             var response = new VpnServerWithStatusesV3Response { UserQuotaPlan = access.Context };
             if (result.Count == 0)
                 return ApiResponse<VpnServerWithStatusesV3Response>.SuccessResponse(response);
@@ -146,7 +148,10 @@ public class VpnServersV3Controller(
             return ApiResponse<VpnServerWithStatusesV3Response>.SuccessResponse(response);
         }
 
-        return Ok(await GetOrCreateCachedAsync(cacheKey, stampKey, BuildResponse, withoutCache, ct));
+        var cached = await GetOrCreateCachedAsync(cacheKey, stampKey, BuildResponse, withoutCache, ct);
+        if (cached.Data?.VpnServerWithStatuses is { Count: > 0 } statuses)
+            await VpnServerConnectedCountOverlay.ApplyAsync(statuses, connectedClientsCounterStore, ct);
+        return Ok(cached);
     }
 
     private async Task<ApiResponse<T>> GetOrCreateCachedAsync<T>(

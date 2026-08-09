@@ -34,13 +34,22 @@ public sealed class OpenVpnOverviewTotalsQuery(
             .Where(x => x.ConnectedSince >= fromUtc && x.ConnectedSince < toUtc)
             .AsNoTracking();
 
-        var sessionsCount = await sessionsQ.LongCountAsync(ct);
+        // One round-trip: sessions + distinct users (same filters as before).
+        var sessionAgg = await sessionsQ
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                SessionsCount = g.LongCount(),
+                UsersCount = g
+                    .Where(x => x.ExternalId != null && x.ExternalId != "")
+                    .Select(x => x.ExternalId)
+                    .Distinct()
+                    .LongCount()
+            })
+            .FirstOrDefaultAsync(ct);
 
-        var usersCount = await sessionsQ
-            .Select(x => x.ExternalId)
-            .Where(x => x != null && x != "")
-            .Distinct()
-            .LongCountAsync(ct);
+        var sessionsCount = sessionAgg?.SessionsCount ?? 0L;
+        var usersCount = sessionAgg?.UsersCount ?? 0L;
 
         var trafficTotals = await trafficAggregator.GetTrafficTotalsAsync(
             fromUtc, toUtc, vpnServerId, externalId, ct);

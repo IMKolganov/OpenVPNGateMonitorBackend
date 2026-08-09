@@ -63,7 +63,8 @@ public class VpnServersControllerTests
             _cache,
             _statusCacheGeneration.Object,
             _statusStreamLogStore.Object,
-            _vpnServerPostSetupService.Object);
+            _vpnServerPostSetupService.Object,
+            Mock.Of<IConnectedClientsCounterStore>());
         SetUserAsAdmin(_controller);
     }
 

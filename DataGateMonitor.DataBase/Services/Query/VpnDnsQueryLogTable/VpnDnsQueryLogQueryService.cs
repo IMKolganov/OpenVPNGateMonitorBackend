@@ -105,13 +105,20 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
         if (vpnServerId <= 0)
             return (0, null);
 
-        var query = q.Query().Where(x => x.VpnServerId == vpnServerId);
-        var totalCount = await query.CountAsync(ct);
-        if (totalCount == 0)
+        var summary = await q.Query()
+            .Where(x => x.VpnServerId == vpnServerId)
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                TotalCount = g.Count(),
+                LastQueriedAtUtc = (DateTimeOffset?)g.Max(x => x.QueriedAtUtc)
+            })
+            .FirstOrDefaultAsync(ct);
+
+        if (summary is null || summary.TotalCount == 0)
             return (0, null);
 
-        var lastAt = await query.MaxAsync(x => x.QueriedAtUtc, ct);
-        return (totalCount, lastAt);
+        return (summary.TotalCount, summary.LastQueriedAtUtc);
     }
 
     public async Task<IReadOnlyList<VpnDnsTopDomainDto>> GetTopDomainsAsync(

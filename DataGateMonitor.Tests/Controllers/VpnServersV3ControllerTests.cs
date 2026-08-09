@@ -40,7 +40,8 @@ public class VpnServersV3ControllerTests
             _quotaAllowed.Object,
             _quotaPlanQuery.Object,
             _cache,
-            _statusCacheGeneration.Object)
+            _statusCacheGeneration.Object,
+            Mock.Of<IConnectedClientsCounterStore>())
         {
             ControllerContext = new ControllerContext
             {

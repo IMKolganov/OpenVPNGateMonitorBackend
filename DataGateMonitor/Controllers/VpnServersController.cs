@@ -36,7 +36,8 @@ public class VpnServersController(IVpnDataService vpnDataService,
     IApiMemoryCacheService apiMemoryCacheService,
     IStatusCacheGenerationService statusCacheGenerationService,
     IStatusStreamLogStore statusStreamLogStore,
-    IVpnServerPostSetupService vpnServerPostSetupService) : BaseController
+    IVpnServerPostSetupService vpnServerPostSetupService,
+    IConnectedClientsCounterStore connectedClientsCounterStore) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
 
@@ -72,6 +73,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
         {
             var result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
                 includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId, token);
+            await VpnServerConnectedCountOverlay.ApplyAsync(result, connectedClientsCounterStore, token);
 
             var baseResponse = new VpnServerWithStatusesResponse
             {
