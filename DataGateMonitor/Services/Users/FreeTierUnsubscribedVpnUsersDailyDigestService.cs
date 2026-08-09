@@ -3,6 +3,7 @@ using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.FreeTierEnforcement.Dto;
+using DataGateMonitor.SharedModels.DataGateMonitor.FreeTierEnforcement.Responses;
 using Microsoft.Extensions.Caching.Memory;
 
 namespace DataGateMonitor.Services.Users;
@@ -32,7 +33,8 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
             if (memoryCache.TryGetValue(LastSentUtcDateCacheKey, out DateOnly lastSent) && lastSent == todayUtc)
                 return;
 
-            var message = await BuildDigestTextAsync(ct);
+            var digest = await BuildDigestAsync(ct);
+            var message = digest.Text;
 
             var admins = await telegramUserService.GetAdminsAsync(ct);
             if (admins.Count == 0)
@@ -68,25 +70,38 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
     }
 
     public async Task<string> BuildDigestTextAsync(CancellationToken ct = default)
+        => (await BuildDigestAsync(ct)).Text;
+
+    public async Task<FreeTierUnsubscribedVpnDigestResponse> BuildDigestAsync(CancellationToken ct = default)
     {
         var todayUtc = DateOnly.FromDateTime(DateTime.UtcNow);
         var overview = await overviewService.GetUnsubscribedConnectedAsync(ct);
-        var connectedUnsubscribed = overview.Candidates
+        var candidates = overview.Candidates
             .OrderBy(c => c.DisplayName)
             .ToList();
 
-        return BuildDigestMessage(todayUtc, connectedUnsubscribed.Count, connectedUnsubscribed);
+        return new FreeTierUnsubscribedVpnDigestResponse
+        {
+            Text = BuildDigestMessage(todayUtc, candidates),
+            Candidates = candidates,
+        };
     }
 
     internal static string BuildDigestMessage(
         DateOnly dayUtc,
-        int totalConnected,
         IReadOnlyList<FreeTierEnforcementCandidateDto> users)
     {
+        var merged = users.Where(u => u.IsMergedAccount).OrderBy(u => u.DisplayName).ToList();
+        var notMerged = users.Where(u => !u.IsMergedAccount).OrderBy(u => u.DisplayName).ToList();
+        var totalConnected = users.Count;
+
         var sb = new StringBuilder();
+        sb.AppendLine("📅 Daily digest");
         sb.AppendLine("📋 Free/Default VPN without Telegram channel subscription");
         sb.AppendLine($"Date (UTC): {dayUtc:yyyy-MM-dd}");
         sb.AppendLine($"Currently online: {totalConnected}");
+        sb.AppendLine($"Merged (linked): {merged.Count}");
+        sb.AppendLine($"Not merged: {notMerged.Count}");
 
         if (totalConnected == 0)
         {
@@ -95,25 +110,61 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
             return sb.ToString();
         }
 
+        AppendUserSection(sb, "🔗 Merged (linked accounts)", merged);
+        AppendUserSection(sb, "👤 Not merged", notMerged);
+
         sb.AppendLine();
+        sb.AppendLine("Remind TG: /remind_channel_subscribe <userId|telegramId>");
+        sb.AppendLine("Remind email: tap Email #id below or /remind_channel_email <userId>");
+
+        return sb.ToString();
+    }
+
+    internal static string FormatUserLine(FreeTierEnforcementCandidateDto user)
+    {
+        var tg = user.TelegramId is > 0 ? user.TelegramId.ToString() : "—";
+        var server = string.IsNullOrWhiteSpace(user.VpnServerName) ? "?" : user.VpnServerName;
+        var accountType = user.IdentityProviders is { Count: > 0 }
+            ? string.Join("+", user.IdentityProviders)
+            : "unknown";
+        var parts = new List<string>
+        {
+            $"#{user.UserId} {user.DisplayName}",
+            accountType,
+        };
+        if (!string.IsNullOrWhiteSpace(user.Email))
+            parts.Add(user.Email.Trim());
+        parts.Add($"TG:{tg}");
+        parts.Add(server);
+        return "• " + string.Join(" | ", parts);
+    }
+
+    private static void AppendUserSection(
+        StringBuilder sb,
+        string title,
+        IReadOnlyList<FreeTierEnforcementCandidateDto> users)
+    {
+        sb.AppendLine();
+        sb.AppendLine(title);
+        if (users.Count == 0)
+        {
+            sb.AppendLine("— none —");
+            return;
+        }
+
         const int maxLines = 40;
         var shown = 0;
         foreach (var user in users)
         {
             if (shown >= maxLines)
             {
-                sb.AppendLine($"… and {totalConnected - maxLines} more");
+                sb.AppendLine($"… and {users.Count - maxLines} more");
                 break;
             }
 
-            var tg = user.TelegramId is > 0 ? user.TelegramId.ToString() : "—";
-            var server = string.IsNullOrWhiteSpace(user.VpnServerName) ? "?" : user.VpnServerName;
-            var merged = user.IsMergedAccount ? "merged" : "not-merged";
-            sb.AppendLine($"• #{user.UserId} {user.DisplayName} | TG:{tg} | {server} | {merged}");
+            sb.AppendLine(FormatUserLine(user));
             shown++;
         }
-
-        return sb.ToString();
     }
 
     private async Task<bool> IsEnabledAsync(CancellationToken ct)

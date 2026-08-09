@@ -95,18 +95,20 @@ public sealed class FreeTierEnforcementOverviewService(
                 continue;
 
             var user = await userQueryService.GetById(userId, ct);
+            var links = await userIdentityLinkQueryService.GetListByUserId(userId, ct);
             var dto = new FreeTierEnforcementCandidateDto
             {
                 UserId = userId,
                 DisplayName = user?.DisplayName ?? user?.Email ?? $"User #{userId}",
-                Email = user?.Email,
+                Email = string.IsNullOrWhiteSpace(user?.Email) ? null : user!.Email.Trim(),
                 TelegramId = result.TelegramId,
                 ActivePlanName = result.ActivePlanName,
                 IsMergedAccount = result.IsMergedAccount,
                 IsChannelSubscribed = result.IsChannelSubscribed,
+                IdentityProviders = FormatIdentityProviders(links),
             };
 
-            await TryAttachConnectionAsync(dto, userId, connectedByServerAndCn, serverNameById, ct);
+            await TryAttachConnectionAsync(dto, links, connectedByServerAndCn, serverNameById, ct);
             if (connectedOnly && !dto.IsConnected)
                 continue;
 
@@ -121,14 +123,31 @@ public sealed class FreeTierEnforcementOverviewService(
         };
     }
 
+    internal static List<string> FormatIdentityProviders(IEnumerable<UserIdentityLink> links)
+        => links
+            .Select(l => l.Provider?.Trim().ToLowerInvariant())
+            .Where(p => !string.IsNullOrWhiteSpace(p))
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(ProviderSortKey)
+            .Cast<string>()
+            .ToList();
+
+    private static int ProviderSortKey(string? provider)
+        => provider switch
+        {
+            "google" => 0,
+            "local" => 1,
+            "telegram" => 2,
+            _ => 9,
+        };
+
     private async Task TryAttachConnectionAsync(
         FreeTierEnforcementCandidateDto dto,
-        int userId,
+        IReadOnlyList<UserIdentityLink> links,
         IReadOnlyDictionary<(int VpnServerId, string CommonName), VpnServerClient> connectedByServerAndCn,
         IReadOnlyDictionary<int, string> serverNameById,
         CancellationToken ct)
     {
-        var links = await userIdentityLinkQueryService.GetListByUserId(userId, ct);
         var externalIds = links
             .Select(l => l.ExternalId?.Trim())
             .Where(id => !string.IsNullOrWhiteSpace(id))
@@ -139,6 +158,9 @@ public sealed class FreeTierEnforcementOverviewService(
         foreach (var externalId in externalIds)
         {
             var issuedFiles = await issuedOvpnFileQueryService.GetAllByExternalId(externalId, ct);
+            if (issuedFiles is null)
+                continue;
+
             foreach (var file in issuedFiles)
             {
                 if (string.IsNullOrWhiteSpace(file.CommonName))

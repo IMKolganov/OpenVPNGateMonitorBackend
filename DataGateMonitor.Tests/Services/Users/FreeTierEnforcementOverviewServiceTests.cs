@@ -132,6 +132,8 @@ public class FreeTierEnforcementOverviewServiceTests
         var candidate = result.Candidates[0];
         Assert.Equal(42, candidate.UserId);
         Assert.Equal("Bob", candidate.DisplayName);
+        Assert.Equal("bob@example.com", candidate.Email);
+        Assert.Equal(["telegram"], candidate.IdentityProviders);
         Assert.True(candidate.IsConnected);
         Assert.Equal(100, candidate.VpnServerId);
         Assert.Equal("cn-42", candidate.CommonName);
@@ -139,6 +141,89 @@ public class FreeTierEnforcementOverviewServiceTests
         Assert.Equal(connectedSince, candidate.ConnectedSince);
         Assert.Equal(1, result.ConnectedCount);
         Assert.Equal(1, result.TotalCount);
+        _userIdentityLinkQueryService.Verify(
+            x => x.GetListByUserId(42, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetCandidatesAsync_GoogleOnly_SetsIdentityProvidersAndEmail()
+    {
+        SetupCommonPlans();
+        _userQuotaPlanQueryService.Setup(x => x.GetAllActive(It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new UserQuotaPlan { UserId = 150, QuotaPlanId = 1 },
+        ]);
+        _complianceService
+            .Setup(x => x.EvaluateAccessForEnforcementAsync(150, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult
+            {
+                IsApplicable = true,
+                IsCompliant = false,
+                ActivePlanName = QuotaPlanNames.Free,
+                IsMergedAccount = false,
+            });
+        _userQueryService
+            .Setup(x => x.GetById(150, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 150, DisplayName = "Tatyana", Email = "t@example.com" });
+        _userIdentityLinkQueryService
+            .Setup(x => x.GetListByUserId(150, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new UserIdentityLink { UserId = 150, Provider = "google", ExternalId = "g-sub" }]);
+        _issuedOvpnFileQueryService
+            .Setup(x => x.GetAllByExternalId("g-sub", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var sut = CreateSut();
+        var result = await sut.GetCandidatesAsync(CancellationToken.None);
+
+        var candidate = Assert.Single(result.Candidates);
+        Assert.Equal(["google"], candidate.IdentityProviders);
+        Assert.Equal("t@example.com", candidate.Email);
+        Assert.Null(candidate.TelegramId);
+        Assert.False(candidate.IsMergedAccount);
+    }
+
+    [Fact]
+    public async Task GetCandidatesAsync_MergedGoogleAndTelegram_ListsBothProviders()
+    {
+        SetupCommonPlans();
+        _userQuotaPlanQueryService.Setup(x => x.GetAllActive(It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new UserQuotaPlan { UserId = 7, QuotaPlanId = 1 },
+        ]);
+        _complianceService
+            .Setup(x => x.EvaluateAccessForEnforcementAsync(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult
+            {
+                IsApplicable = true,
+                IsCompliant = false,
+                ActivePlanName = QuotaPlanNames.Free,
+                TelegramId = 111,
+                IsMergedAccount = true,
+            });
+        _userQueryService
+            .Setup(x => x.GetById(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 7, DisplayName = "Alice", Email = "alice@gmail.com" });
+        _userIdentityLinkQueryService
+            .Setup(x => x.GetListByUserId(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new UserIdentityLink { UserId = 7, Provider = "telegram", ExternalId = "111" },
+                new UserIdentityLink { UserId = 7, Provider = "google", ExternalId = "g" },
+            ]);
+        _issuedOvpnFileQueryService
+            .Setup(x => x.GetAllByExternalId(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var sut = CreateSut();
+        var result = await sut.GetCandidatesAsync(CancellationToken.None);
+
+        var candidate = Assert.Single(result.Candidates);
+        Assert.Equal(["google", "telegram"], candidate.IdentityProviders);
+        Assert.True(candidate.IsMergedAccount);
+        _userIdentityLinkQueryService.Verify(
+            x => x.GetListByUserId(7, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]

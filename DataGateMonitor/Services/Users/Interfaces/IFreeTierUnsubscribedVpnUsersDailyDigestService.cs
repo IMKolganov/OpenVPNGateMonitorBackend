@@ -1,3 +1,5 @@
+using DataGateMonitor.SharedModels.DataGateMonitor.FreeTierEnforcement.Responses;
+
 namespace DataGateMonitor.Services.Users.Interfaces;
 
 public interface IFreeTierUnsubscribedVpnUsersDailyDigestService
@@ -10,7 +12,11 @@ public interface IFreeTierUnsubscribedVpnUsersDailyDigestService
 
     /// <summary>
     /// Builds the current digest text (online Free/Default users without channel subscription).
-    /// Used by the daily job and by on-demand admin requests. Always evaluates live candidates.
     /// </summary>
     Task<string> BuildDigestTextAsync(CancellationToken ct = default);
+
+    /// <summary>
+    /// Live digest text plus structured candidates (for admin bot inline buttons).
+    /// </summary>
+    Task<FreeTierUnsubscribedVpnDigestResponse> BuildDigestAsync(CancellationToken ct = default);
 }
