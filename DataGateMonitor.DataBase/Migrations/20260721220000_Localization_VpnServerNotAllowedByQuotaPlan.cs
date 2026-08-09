@@ -8,6 +8,10 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 namespace DataGateMonitor.DataBase.Migrations
 {
+    /// <summary>
+    /// Designer-less data migration: columnTypes are required so EF can generate SQL
+    /// without a BuildTargetModel that maps LocalizationTexts.
+    /// </summary>
     [DbContext(typeof(ApplicationDbContext))]
     [Migration("20260721220000_Localization_VpnServerNotAllowedByQuotaPlan")]
     public partial class Localization_VpnServerNotAllowedByQuotaPlan : Migration
@@ -39,7 +43,8 @@ namespace DataGateMonitor.DataBase.Migrations
                         3,
                         "Этот VPN-сервер недоступен на вашем текущем тарифе. Выберите другой сервер или обновите план."
                     }
-                });
+                },
+                columnTypes: new[] { "integer", "character varying(255)", "integer", "text" });
         }
 
         /// <inheritdoc />
@@ -49,19 +54,22 @@ namespace DataGateMonitor.DataBase.Migrations
                 schema: "xgb_dashopnvpn",
                 table: "LocalizationTexts",
                 keyColumn: "Id",
-                keyValue: 100);
+                keyValue: 100,
+                keyColumnType: "integer");
 
             migrationBuilder.DeleteData(
                 schema: "xgb_dashopnvpn",
                 table: "LocalizationTexts",
                 keyColumn: "Id",
-                keyValue: 101);
+                keyValue: 101,
+                keyColumnType: "integer");
 
             migrationBuilder.DeleteData(
                 schema: "xgb_dashopnvpn",
                 table: "LocalizationTexts",
                 keyColumn: "Id",
-                keyValue: 102);
+                keyValue: 102,
+                keyColumnType: "integer");
         }
     }
 }
