@@ -8,6 +8,7 @@ using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.TelegramLogin;
 using DataGateMonitor.Services.Api.Auth.Totp;
+using DataGateMonitor.Services.Api.Auth.TvLogin;
 using DataGateMonitor.Services.Api.CurrentUser.Interfaces;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
@@ -33,6 +34,7 @@ public class AuthControllerTests
     private readonly Mock<ITokenService> _tokenService = new();
     private readonly Mock<IAdminForgotPasswordService> _adminForgotPasswordService = new();
     private readonly Mock<ITelegramLoginCodeService> _telegramLoginCodeService = new();
+    private readonly Mock<ITvLoginSessionService> _tvLoginSessionService = new();
     private readonly Mock<IAdminTotpService> _adminTotpService = new();
     private readonly Mock<ICurrentUserService> _currentUserService = new();
     private readonly Mock<IAdminIdleSessionTracker> _adminIdleSessionTracker = new();
@@ -62,6 +64,7 @@ public class AuthControllerTests
             _tokenService.Object,
             _adminForgotPasswordService.Object,
             _telegramLoginCodeService.Object,
+            _tvLoginSessionService.Object,
             _adminTotpService.Object,
             _currentUserService.Object,
             _adminIdleSessionTracker.Object,

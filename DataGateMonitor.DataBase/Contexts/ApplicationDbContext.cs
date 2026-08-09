@@ -63,6 +63,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<MobileCrashReport> MobileCrashReports { get; set; } = null!;
     public DbSet<WindowsCrashReport> WindowsCrashReports { get; set; } = null!;
     public DbSet<FreeTierDisconnectLog> FreeTierDisconnectLogs { get; set; } = null!;
+    public DbSet<TvLoginSession> TvLoginSessions { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -112,6 +113,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new UserRefreshTokenConfiguration());
         modelBuilder.ApplyConfiguration(new UserPasswordHistoryConfiguration());
         modelBuilder.ApplyConfiguration(new FreeTierDisconnectLogConfiguration());
+        modelBuilder.ApplyConfiguration(new TvLoginSessionConfiguration());
     }
     
     private void UpdateTimestamps()

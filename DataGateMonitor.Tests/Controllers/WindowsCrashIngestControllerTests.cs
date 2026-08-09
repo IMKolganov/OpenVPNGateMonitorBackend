@@ -120,4 +120,68 @@ public class WindowsCrashIngestControllerTests
         var status = Assert.IsType<ObjectResult>(second);
         Assert.Equal(StatusCodes.Status429TooManyRequests, status.StatusCode);
     }
+
+    [Fact]
+    public async Task Ingest_WhenPayloadTooLarge_ReturnsPayloadTooLarge()
+    {
+        var controller = CreateController(new WindowsCrashIngestOptions { MaxPayloadBytes = 32 }, out _);
+        AttachHttpsRequest(controller, new string('A', 64));
+
+        var result = await controller.Ingest(CancellationToken.None);
+
+        var status = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status413PayloadTooLarge, status.StatusCode);
+    }
+
+    [Fact]
+    public async Task Recent_WhenLimitNonPositive_ReturnsBadRequest()
+    {
+        var controller = CreateController(new WindowsCrashIngestOptions { RecentMaxLimit = 100 }, out _);
+        var result = await controller.Recent(0, CancellationToken.None);
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task Recent_ClampsLimitAndReturnsServiceResult()
+    {
+        var controller = CreateController(new WindowsCrashIngestOptions { RecentMaxLimit = 10 }, out var ingest);
+        ingest.Setup(s => s.GetRecentAsync(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new DataGateMonitor.SharedModels.DataGateMonitor.WindowsCrashIngest.Dto.RecentWindowsCrashReportDto
+                {
+                    Id = 2,
+                    AppProcess = "com.example.win",
+                    FileName = "w.txt"
+                }
+            ]);
+
+        var result = await controller.Recent(500, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var list = Assert.IsAssignableFrom<IReadOnlyList<DataGateMonitor.SharedModels.DataGateMonitor.WindowsCrashIngest.Dto.RecentWindowsCrashReportDto>>(ok.Value);
+        Assert.Single(list);
+        ingest.Verify(s => s.GetRecentAsync(10, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Ingest_WhenHttpsRequiredOverHttp_ReturnsBadRequest()
+    {
+        var controller = CreateController(new WindowsCrashIngestOptions { RequireHttps = true }, out _);
+        var context = new DefaultHttpContext
+        {
+            Request =
+            {
+                Scheme = "http",
+                ContentType = "text/plain; charset=utf-8",
+                Body = new MemoryStream(Encoding.UTF8.GetBytes("x")),
+            },
+        };
+        context.Request.Headers["X-Crash-Filename"] = "f.txt";
+        context.Request.Headers["X-Crash-Process"] = "com.imkolganov.datagate.win";
+        controller.ControllerContext = new ControllerContext { HttpContext = context };
+
+        var result = await controller.Ingest(CancellationToken.None);
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
 }

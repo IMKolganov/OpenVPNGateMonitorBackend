@@ -68,4 +68,31 @@ public class TransactionalEmailHtmlTests
         Assert.Contains("Default", result);
         Assert.Contains("@DataGateVPNBot", result);
     }
+
+    [Fact]
+    public void BuildFreeTierChannelSubscribeReminder_IncludesNameChannelAndUrl()
+    {
+        var html = TransactionalEmailHtml.BuildFreeTierChannelSubscribeReminder(
+            "Tatyana", "@datagateapp", "https://t.me/datagateapp");
+
+        Assert.Contains("Tatyana", html);
+        Assert.Contains("@datagateapp", html);
+        Assert.Contains("https://t.me/datagateapp", html);
+    }
+
+    [Fact]
+    public void ApplyFreeTierChannelSubscribeReminderPlaceholders_ReplacesTokens()
+    {
+        var template = TransactionalEmailHtml.BuildFreeTierChannelSubscribeReminderWithPlaceholders();
+
+        var result = TransactionalEmailHtml.ApplyFreeTierChannelSubscribeReminderPlaceholders(
+            template, "Alice", "@chan", "https://t.me/chan");
+
+        Assert.DoesNotContain("{{DISPLAY_NAME}}", result);
+        Assert.DoesNotContain("{{REQUIRED_CHANNEL}}", result);
+        Assert.DoesNotContain("{{CHANNEL_URL}}", result);
+        Assert.Contains("Alice", result);
+        Assert.Contains("@chan", result);
+        Assert.Contains("https://t.me/chan", result);
+    }
 }

@@ -16,6 +16,9 @@ public sealed class FreeTierEnforcementCandidateDto
     public bool IsMergedAccount { get; set; }
     public bool IsChannelSubscribed { get; set; }
 
+    /// <summary>Identity link providers for this user (e.g. google, local, telegram), lower-case.</summary>
+    public List<string> IdentityProviders { get; set; } = [];
+
     public bool IsConnected { get; set; }
     public int? VpnServerId { get; set; }
     public string? VpnServerName { get; set; }

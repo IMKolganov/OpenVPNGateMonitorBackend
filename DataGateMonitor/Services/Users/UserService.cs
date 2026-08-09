@@ -223,11 +223,14 @@ public class UserService(
 
         var paged = await userQueryService.GetPage(request, cancellationToken);
 
+        var userIds = paged.Items.Select(u => u.Id).ToList();
+        var linksByUserId = await userIdentityLinkQueryService.GetFirstByUserIds(userIds, cancellationToken);
+
         var dtos = new List<UserDto>(paged.Items.Count);
         foreach (var u in paged.Items)
         {
-            var dto = await BuildUserDtoAsync(u, cancellationToken);
-            dtos.Add(dto);
+            linksByUserId.TryGetValue(u.Id, out var link);
+            dtos.Add(BuildUserDto(u, link));
         }
 
         return new GetAllUsersResponse
@@ -318,12 +321,13 @@ public class UserService(
 
     private async Task<UserDto> BuildUserDtoAsync(User user, CancellationToken ct)
     {
-        // Map base fields
-        var dto = user.Adapt<UserDto>();
-
-        // Try enrich with identity link (first link if multiple)
-        // Requires IUserIdentityLinkQueryService.GetByUserIdAsync(int userId, CancellationToken ct)
         var link = await userIdentityLinkQueryService.GetByUserId(user.Id, ct);
+        return BuildUserDto(user, link);
+    }
+
+    private static UserDto BuildUserDto(User user, UserIdentityLink? link)
+    {
+        var dto = user.Adapt<UserDto>();
 
         if (link != null)
         {
@@ -333,7 +337,6 @@ public class UserService(
         }
         else
         {
-            // No link found — keep provider-related fields empty/neutral
             dto.Provider = string.Empty;
             dto.ExternalId = string.Empty;
             dto.ProviderRowId = null;

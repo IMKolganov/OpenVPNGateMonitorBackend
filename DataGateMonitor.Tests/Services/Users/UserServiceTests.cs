@@ -128,8 +128,11 @@ public class UserServiceTests
             Items = users
         };
         _userQuery.Setup(q => q.GetPage(It.Is<GetAllUsersRequest>(r => r.Page == 1 && r.PageSize == 20), It.IsAny<CancellationToken>())).ReturnsAsync(paged);
-        _userIdentityLinkQuery.Setup(q => q.GetByUserId(1, It.IsAny<CancellationToken>())).ReturnsAsync((UserIdentityLink?)null);
-        _userIdentityLinkQuery.Setup(q => q.GetByUserId(2, It.IsAny<CancellationToken>())).ReturnsAsync((UserIdentityLink?)null);
+        _userIdentityLinkQuery
+            .Setup(q => q.GetFirstByUserIds(
+                It.Is<IReadOnlyCollection<int>>(ids => ids.SequenceEqual(new[] { 1, 2 })),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, UserIdentityLink>());
 
         var result = await _sut.GetUsersPage(new GetAllUsersRequest { Page = 1, PageSize = 20 }, CancellationToken.None);
 
@@ -140,10 +143,64 @@ public class UserServiceTests
         result.Users.Should().HaveCount(2);
         result.Users![0].Id.Should().Be(1);
         result.Users[0].DisplayName.Should().Be("U1");
+        result.Users[0].Provider.Should().BeEmpty();
+        result.Users[0].ExternalId.Should().BeEmpty();
+        result.Users[0].ProviderRowId.Should().BeNull();
         result.Users[1].Id.Should().Be(2);
         result.Users[1].DisplayName.Should().Be("U2");
         _userQuery.VerifyAll();
-        _userIdentityLinkQuery.Verify(q => q.GetByUserId(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Exactly(2));
+        _userIdentityLinkQuery.Verify(
+            q => q.GetFirstByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+        _userIdentityLinkQuery.Verify(
+            q => q.GetByUserId(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetUsersPage_EnrichesDtosFromBatchedIdentityLinks()
+    {
+        var users = new List<User>
+        {
+            new() { Id = 1, DisplayName = "U1", CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow },
+            new() { Id = 2, DisplayName = "U2", CreateDate = DateTimeOffset.UtcNow, LastUpdate = DateTimeOffset.UtcNow }
+        };
+        var paged = new PagedResponse<User>
+        {
+            Page = 1,
+            PageSize = 20,
+            TotalCount = 2,
+            Items = users
+        };
+        var links = new Dictionary<int, UserIdentityLink>
+        {
+            [1] = new()
+            {
+                Id = 10,
+                UserId = 1,
+                Provider = "google",
+                ExternalId = "g-1",
+                ProviderRowId = 55,
+                CreateDate = DateTimeOffset.UtcNow,
+                LastUpdate = DateTimeOffset.UtcNow
+            }
+        };
+        _userQuery.Setup(q => q.GetPage(It.IsAny<GetAllUsersRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(paged);
+        _userIdentityLinkQuery
+            .Setup(q => q.GetFirstByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(links);
+
+        var result = await _sut.GetUsersPage(new GetAllUsersRequest { Page = 1, PageSize = 20 }, CancellationToken.None);
+
+        result.Users![0].Provider.Should().Be("google");
+        result.Users[0].ExternalId.Should().Be("g-1");
+        result.Users[0].ProviderRowId.Should().Be(55);
+        result.Users[1].Provider.Should().BeEmpty();
+        result.Users[1].ExternalId.Should().BeEmpty();
+        result.Users[1].ProviderRowId.Should().BeNull();
+        _userIdentityLinkQuery.Verify(
+            q => q.GetFirstByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -349,6 +406,11 @@ public class UserServiceTests
             Items = [],
         };
         _userQuery.Setup(q => q.GetPage(It.Is<GetAllUsersRequest>(r => r.Page == 1 && r.PageSize == 500), It.IsAny<CancellationToken>())).ReturnsAsync(paged);
+        _userIdentityLinkQuery
+            .Setup(q => q.GetFirstByUserIds(
+                It.Is<IReadOnlyCollection<int>>(ids => ids.Count == 0),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, UserIdentityLink>());
 
         var result = await _sut.GetUsersPage(new GetAllUsersRequest { Page = 0, PageSize = 9999 }, CancellationToken.None);
 

@@ -651,6 +651,25 @@ public static class LocalizationTextSeedData
             Id = 99, Key = "AccountLinkFailed", Language = Language.Russian,
             Text = "Не удалось связать аккаунты. Проверьте код и попробуйте снова."
         },
+
+        new LocalizationText
+        {
+            Id = 100, Key = "VpnServerNotAllowedByQuotaPlan", Language = Language.English,
+            Text =
+                "This VPN server is not available on your current plan. Please choose another server or upgrade your plan."
+        },
+        new LocalizationText
+        {
+            Id = 101, Key = "VpnServerNotAllowedByQuotaPlan", Language = Language.Greek,
+            Text =
+                "Αυτός ο διακομιστής VPN δεν είναι διαθέσιμος στο τρέχον πρόγραμμά σας. Επιλέξτε άλλον διακομιστή ή αναβαθμίστε το πρόγραμμα."
+        },
+        new LocalizationText
+        {
+            Id = 102, Key = "VpnServerNotAllowedByQuotaPlan", Language = Language.Russian,
+            Text =
+                "Этот VPN-сервер недоступен на вашем текущем тарифе. Выберите другой сервер или обновите план."
+        },
     };
 
 }

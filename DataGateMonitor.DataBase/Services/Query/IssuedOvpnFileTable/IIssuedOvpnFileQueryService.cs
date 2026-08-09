@@ -9,6 +9,16 @@ public interface IIssuedOvpnFileQueryService
     Task<List<IssuedOvpnFile>> GetAllByVpnServerId(int vpnServerId, CancellationToken ct);
     Task<List<IssuedOvpnFile>> GetAllByExternalId(string externalId, CancellationToken ct);
 
+    /// <summary>Batch lookup by external id (ordinal, trimmed non-empty keys).</summary>
+    Task<IReadOnlyDictionary<string, List<IssuedOvpnFile>>> GetAllByExternalIds(
+        IReadOnlyCollection<string> externalIds,
+        CancellationToken ct);
+
+    /// <summary>Active (non-revoked) files matching any of the server/common-name pairs.</summary>
+    Task<List<IssuedOvpnFile>> GetActiveByServerAndCommonNames(
+        IReadOnlyCollection<(int VpnServerId, string CommonName)> pairs,
+        CancellationToken ct);
+
     Task<List<IssuedOvpnFile>> GetAllByVpnServerIdAndIsRevoked(int vpnServerId, bool isRevoked, CancellationToken ct);
     Task<List<IssuedOvpnFile>> GetAllByVpnServerIdAndExternalIdAndIsRevoked(int vpnServerId, string externalId,
         bool isRevoked, CancellationToken ct);

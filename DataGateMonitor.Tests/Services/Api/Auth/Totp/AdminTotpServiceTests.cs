@@ -9,6 +9,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.Api.Auth.Totp;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 using Xunit;
 
@@ -172,5 +173,15 @@ public class AdminTotpServiceTests
 
         Assert.True(sut.IsTotpEnabled(credential));
         Assert.False(sut.IsTotpEnabled(null));
+    }
+
+    [Fact]
+    public async Task VerifyLoginChallengeAsync_WhenBlankChallengeOrCode_ThrowsUnauthorized()
+    {
+        var sut = CreateSut();
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            sut.VerifyLoginChallengeAsync(
+                new TotpVerifyLoginRequest { LoginChallengeId = " ", Code = "" },
+                CancellationToken.None));
     }
 }

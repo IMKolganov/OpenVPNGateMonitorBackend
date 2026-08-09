@@ -69,4 +69,26 @@ public sealed class SystemTransactionalEmailService(IQueryService<EmailBroadcast
         return (TransactionalEmailHtml.DefaultFreeTierGraceDisconnectedSubject,
             TransactionalEmailHtml.BuildFreeTierGraceDisconnected(planName, requiredChannel));
     }
+
+    public async Task<(string Subject, string BodyHtml)> GetFreeTierChannelSubscribeReminderAsync(
+        string displayName, string requiredChannel, string channelUrl, CancellationToken ct)
+    {
+        var entity = await templateQuery.FirstOrDefault(
+            t => t.Name == SystemEmailTemplateNames.FreeTierChannelSubscribeReminder,
+            orderBy: q => q.OrderBy(t => t.Id),
+            asNoTracking: true,
+            ct: ct);
+
+        if (entity is { BodyHtml: { Length: > 0 } body })
+        {
+            var subject = string.IsNullOrWhiteSpace(entity.Subject)
+                ? TransactionalEmailHtml.DefaultFreeTierChannelSubscribeReminderSubject
+                : entity.Subject.Trim();
+            return (subject, TransactionalEmailHtml.ApplyFreeTierChannelSubscribeReminderPlaceholders(
+                body, displayName, requiredChannel, channelUrl));
+        }
+
+        return (TransactionalEmailHtml.DefaultFreeTierChannelSubscribeReminderSubject,
+            TransactionalEmailHtml.BuildFreeTierChannelSubscribeReminder(displayName, requiredChannel, channelUrl));
+    }
 }

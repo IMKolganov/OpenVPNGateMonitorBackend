@@ -1,15 +1,17 @@
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerStatusLogTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Models.XrayNode;
 using DataGateMonitor.Services.Helpers;
-using DataGateMonitor.Services.Helpers.Interfaces;
+using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.XrayNode;
 
 public sealed class XrayVpnServerStatusLogService(
     ILogger<XrayVpnServerStatusLogService> logger,
-    IExternalIpAddressService externalIpAddressService,
+    IVpnServerOvpnFileConfigQueryService vpnServerOvpnFileConfigQueryService,
+    IVpnNodePublicIpLookup vpnNodePublicIpLookup,
     IVpnServerStatusLogQueryService vpnServerStatusLogQueryService,
     ICommandService<VpnServerStatusLog, int> vpnServerStatusLogCommandService) : IXrayVpnServerStatusLogService
 {
@@ -59,9 +61,16 @@ public sealed class XrayVpnServerStatusLogService(
         if (localIp.Length > 255)
             localIp = localIp[..255];
 
-        var remoteIp = await externalIpAddressService.GetRemoteIpAddress(cancellationToken);
-        if (remoteIp.Length > 255)
-            remoteIp = remoteIp[..255];
+        var ovpnConfig = await vpnServerOvpnFileConfigQueryService.GetByVpnServerIdId(
+            server.Id, cancellationToken);
+        var nodePublicIp = await vpnNodePublicIpLookup.GetAsync(
+            server.Id, VpnServerType.Xray, cancellationToken);
+        var remoteIp = VpnServerApiUrlHelper.ResolveReportedRemoteIp(
+            nodePublicIp,
+            ovpnConfig?.VpnServerIp,
+            server.ApiUrl);
+        if (string.IsNullOrEmpty(remoteIp))
+            remoteIp = "-";
 
         var sessionId = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince(
             $"{server.Id}", "xray-node-status", StatusLogAnchorTime);

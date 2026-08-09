@@ -66,13 +66,19 @@ public class VpnServerOvpnFileConfigControllerTests
             VpnServerIp = "5.6.7.8",
             VpnServerPort = 443,
             ConfigTemplate = "custom-template",
-            AutoDetectServerSettings = true
+            AutoDetectServerSettings = false
         };
 
         var expectedConfig = request.Adapt<VpnServerOvpnFileConfig>();
 
         _serviceMock.Setup(s => s.AddOrUpdateVpnServerOvpnFileConfigByServerId(
-                It.Is<VpnServerOvpnFileConfig>(c => c.VpnServerId == request.VpnServerId), true, It.IsAny<CancellationToken>()))
+                It.Is<VpnServerOvpnFileConfig>(c =>
+                    c.VpnServerId == request.VpnServerId &&
+                    c.VpnServerIp == request.VpnServerIp &&
+                    c.VpnServerPort == request.VpnServerPort &&
+                    c.ConfigTemplate == request.ConfigTemplate),
+                request.AutoDetectServerSettings,
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(expectedConfig);
 
         // Act
@@ -90,5 +96,70 @@ public class VpnServerOvpnFileConfigControllerTests
         Assert.Equal(request.VpnServerPort, data.VpnServerPort);
         Assert.Equal(request.ConfigTemplate, data.ConfigTemplate);
 
+        _statusCacheGenerationServiceMock.Verify(s => s.Bump(), Times.Once);
+        _serviceMock.VerifyAll();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task AddOrUpdateOvpnFileConfig_ReturnsBadRequest_WhenVpnServerIdIsNotPositive(int vpnServerId)
+    {
+        // Arrange
+        var request = new AddOrUpdateOvpnFileConfigRequest
+        {
+            VpnServerId = vpnServerId,
+            VpnServerIp = "5.6.7.8",
+            VpnServerPort = 443,
+            ConfigTemplate = "custom-template"
+        };
+
+        // Act
+        var result = await _controller.AddOrUpdateOvpnFileConfig(request, CancellationToken.None);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<OvpnFileConfigResponse>>(badRequest.Value);
+
+        Assert.False(response.Success);
+        Assert.Equal("VpnServerId must be greater than 0.", response.Message);
+        Assert.Null(response.Data);
+        _serviceMock.Verify(s => s.AddOrUpdateVpnServerOvpnFileConfigByServerId(
+            It.IsAny<VpnServerOvpnFileConfig>(),
+            It.IsAny<bool>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        _statusCacheGenerationServiceMock.Verify(s => s.Bump(), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData(null)]
+    public async Task AddOrUpdateOvpnFileConfig_ReturnsBadRequest_WhenVpnServerIpIsMissing(string? vpnServerIp)
+    {
+        // Arrange
+        var request = new AddOrUpdateOvpnFileConfigRequest
+        {
+            VpnServerId = 1,
+            VpnServerIp = vpnServerIp!,
+            VpnServerPort = 443,
+            ConfigTemplate = "custom-template"
+        };
+
+        // Act
+        var result = await _controller.AddOrUpdateOvpnFileConfig(request, CancellationToken.None);
+
+        // Assert
+        var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<OvpnFileConfigResponse>>(badRequest.Value);
+
+        Assert.False(response.Success);
+        Assert.Equal("VpnServerIp is required.", response.Message);
+        Assert.Null(response.Data);
+        _serviceMock.Verify(s => s.AddOrUpdateVpnServerOvpnFileConfigByServerId(
+            It.IsAny<VpnServerOvpnFileConfig>(),
+            It.IsAny<bool>(),
+            It.IsAny<CancellationToken>()), Times.Never);
+        _statusCacheGenerationServiceMock.Verify(s => s.Bump(), Times.Never);
     }
 }

@@ -2,6 +2,7 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.Helpers;
 
 namespace DataGateMonitor.Services.BackgroundServices;
 
@@ -18,6 +19,7 @@ public class OpenVpnServerProcessor(
         using var scope = serviceProvider.CreateScope();
         var openVpnServerService = scope.ServiceProvider.GetRequiredService<IVpnServerService>();
         var serverCmd = scope.ServiceProvider.GetRequiredService<ICommandService<VpnServer, int>>();
+        var presence = scope.ServiceProvider.GetRequiredService<IVpnServerClientPresenceService>();
 
         try
         {
@@ -44,13 +46,14 @@ public class OpenVpnServerProcessor(
         }
         catch (Exception ex)
         {
-            // Mark server offline on failure
+            // Mark server offline and clear hanging "online" sessions — we can no longer observe the node.
             var now = DateTimeOffset.UtcNow;
             await serverCmd.UpdateWhere(
                 s => s.Id == openVpnServer.Id,
                 u => u.SetProperty(x => x.IsOnline, false)
                     .SetProperty(x => x.LastUpdate, now),
                 ct);
+            await presence.MarkAllDisconnectedAsync(openVpnServer.Id, ct);
 
             logger.LogError(ex,
                 "OpenVpnServerProcessor error. VpnServerId: {Id}. Name: {Name}. Url: {Url}",

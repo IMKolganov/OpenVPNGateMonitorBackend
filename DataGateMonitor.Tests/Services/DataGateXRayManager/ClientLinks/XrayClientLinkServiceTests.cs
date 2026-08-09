@@ -13,6 +13,8 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
+using DataGateMonitor.DataBase.Services.Query.UserTable;
+using DataGateMonitor.Services.VpnAccess;
 using DataGateMonitor.SharedModels.Auth;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
 using DataGateMonitor.SharedModels.Enums;
@@ -276,7 +278,7 @@ public class XrayClientLinkServiceTests
         }, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not allowed*active quota plan*");
+            .WithMessage("VpnServerNotAllowedByQuotaPlan");
         microserviceClient.Verify(c => c.AddClientLink(It.IsAny<int>(), It.IsAny<GenerateClientLinkMicroserviceRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         linkCommand.Verify(c => c.Add(It.IsAny<IssuedXrayClientLink>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -319,7 +321,8 @@ public class XrayClientLinkServiceTests
         Mock<IOvpnFileNotificationService>? notification = null,
         Mock<IUserIdentityLinkQueryService>? identityLinkQuery = null,
         Mock<IUserQuotaPlanQueryService>? userQuotaPlanQuery = null,
-        Mock<IQuotaPlanAllowedServerQueryService>? quotaPlanAllowedServerQuery = null)
+        Mock<IQuotaPlanAllowedServerQueryService>? quotaPlanAllowedServerQuery = null,
+        Mock<IUserQueryService>? userQuery = null)
     {
         microserviceClient ??= new Mock<IXrayClientLinkMicroserviceClient>(MockBehavior.Loose);
         var logger = Mock.Of<ILogger<XrayClientLinkService>>();
@@ -334,6 +337,13 @@ public class XrayClientLinkServiceTests
         identityLinkQuery ??= new Mock<IUserIdentityLinkQueryService>(MockBehavior.Loose);
         userQuotaPlanQuery ??= new Mock<IUserQuotaPlanQueryService>(MockBehavior.Loose);
         quotaPlanAllowedServerQuery ??= new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Loose);
+        userQuery ??= new Mock<IUserQueryService>(MockBehavior.Loose);
+
+        IVpnServerQuotaPlanAccessGuard accessGuard = new VpnServerQuotaPlanAccessGuard(
+            identityLinkQuery.Object,
+            userQuotaPlanQuery.Object,
+            quotaPlanAllowedServerQuery.Object,
+            userQuery.Object);
 
         return new XrayClientLinkService(
             microserviceClient.Object,
@@ -343,8 +353,7 @@ public class XrayClientLinkServiceTests
             linkQuery.Object,
             tokenQuery.Object,
             identityLinkQuery.Object,
-            userQuotaPlanQuery.Object,
-            quotaPlanAllowedServerQuery.Object,
+            accessGuard,
             linkCommand.Object,
             tokenCommand.Object,
             serverQuery.Object,

@@ -13,6 +13,7 @@ public static class TransactionalEmailHtml
     public const string DefaultConfirmationSubject = "Confirm your email — DataGate";
     public const string DefaultAdminPasswordResetSubject = "Administrator password reset — DataGate";
     public const string DefaultFreeTierGraceDisconnectedSubject = "You were disconnected from the VPN — DataGate";
+    public const string DefaultFreeTierChannelSubscribeReminderSubject = "Please subscribe to our Telegram channel — DataGate";
     public const string DefaultConfirmEmailPageUrl = "https://datagateapp.com/confirm-email";
 
     private const string MailVersionLabel = "1.0.3";
@@ -131,6 +132,53 @@ public static class TransactionalEmailHtml
         => bodyHtml
             .Replace("{{PLAN_NAME}}", Escape(planName), StringComparison.Ordinal)
             .Replace("{{REQUIRED_CHANNEL}}", Escape(requiredChannel), StringComparison.Ordinal);
+
+    public static string BuildFreeTierChannelSubscribeReminder(string displayName, string requiredChannel, string channelUrl)
+        => BuildDocument(
+            pageTitle: "DataGate — subscribe to Telegram channel",
+            emailTitle: "Please subscribe to our channel",
+            emailTagline: "Free/Default VPN access requires an active Telegram channel subscription.",
+            includeDownloadButton: false,
+            emailLead: string.IsNullOrWhiteSpace(displayName) ? "Hello," : $"Hello {Escape(displayName)},",
+            bodyParagraphs:
+            [
+                "To keep using Free/Default VPN access, please subscribe to our official Telegram channel.",
+                $"Channel: <strong>{Escape(requiredChannel)}</strong><br/><a href=\"{Escape(channelUrl)}\" target=\"_blank\" rel=\"noopener noreferrer\">{Escape(channelUrl)}</a>",
+                "After you subscribe, reconnect to the VPN if you were disconnected.",
+                "If you need help: <a href=\"https://t.me/KolganovIvan\" target=\"_blank\" rel=\"noopener noreferrer\"><b>@KolganovIvan</b></a>",
+            ],
+            codeLabel: "Required channel",
+            codeValueHtml: Escape(requiredChannel),
+            signoff: "— The DataGate team",
+            actionButtonHref: channelUrl,
+            actionButtonLabel: "Open Telegram channel");
+
+    public static string BuildFreeTierChannelSubscribeReminderWithPlaceholders()
+        => BuildDocument(
+            pageTitle: "DataGate — subscribe to Telegram channel",
+            emailTitle: "Please subscribe to our channel",
+            emailTagline: "Free/Default VPN access requires an active Telegram channel subscription.",
+            includeDownloadButton: false,
+            emailLead: "Hello {{DISPLAY_NAME}},",
+            bodyParagraphs:
+            [
+                "To keep using Free/Default VPN access, please subscribe to our official Telegram channel.",
+                "Channel: <strong>{{REQUIRED_CHANNEL}}</strong><br/><a href=\"{{CHANNEL_URL}}\" target=\"_blank\" rel=\"noopener noreferrer\">{{CHANNEL_URL}}</a>",
+                "After you subscribe, reconnect to the VPN if you were disconnected.",
+                "If you need help: <a href=\"https://t.me/KolganovIvan\" target=\"_blank\" rel=\"noopener noreferrer\"><b>@KolganovIvan</b></a>",
+            ],
+            codeLabel: "Required channel",
+            codeValueHtml: "{{REQUIRED_CHANNEL}}",
+            signoff: "— The DataGate team",
+            actionButtonHref: "{{CHANNEL_URL}}",
+            actionButtonLabel: "Open Telegram channel");
+
+    public static string ApplyFreeTierChannelSubscribeReminderPlaceholders(
+        string bodyHtml, string displayName, string requiredChannel, string channelUrl)
+        => bodyHtml
+            .Replace("{{DISPLAY_NAME}}", Escape(displayName), StringComparison.Ordinal)
+            .Replace("{{REQUIRED_CHANNEL}}", Escape(requiredChannel), StringComparison.Ordinal)
+            .Replace("{{CHANNEL_URL}}", Escape(channelUrl), StringComparison.Ordinal);
 
     public static string ApplyConfirmationPlaceholders(string bodyHtml, string code, int ttlMinutes)
     {

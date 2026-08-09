@@ -4,6 +4,7 @@ using DataGateMonitor.Configurations;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using DataGateMonitor.Services.QuotaPlans;
@@ -14,6 +15,8 @@ using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.StatusStreamLogs;
+using DataGateMonitor.Services.Performance;
+using DataGateMonitor.Data.Interceptors;
 using DataGateMonitor.Services.XrayNode;
 using Xunit;
 
@@ -43,6 +46,8 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IOpenVpnBackgroundService));
         AssertRegistered(services, typeof(IVpnServerOvpnFileConfigService));
         AssertRegistered(services, typeof(IExternalIpAddressService));
+        AssertRegistered(services, typeof(IVpnNodePublicIpLookup));
+        AssertRegistered(services, typeof(IVpnServerClientPresenceService));
         AssertRegistered(services, typeof(IUserService));
         AssertRegistered(services, typeof(IQuotaPlanService));
         AssertRegistered(services, typeof(IUserRoleManagementService));
@@ -53,7 +58,11 @@ public class ServiceConfigurationTests
         AssertRegistered(services, typeof(IOpenVpnProxyTrafficFlowSupportChecker));
         AssertRegistered(services, typeof(IOpenVpnProxyTrafficFlowClientFactory));
         AssertRegistered(services, typeof(IStatusCacheGenerationService));
+        AssertRegistered(services, typeof(IRedisDatabaseProvider));
+        AssertRegistered(services, typeof(IConnectedClientsCounterStore));
         AssertRegistered(services, typeof(IStatusStreamLogStore));
+        AssertRegistered(services, typeof(IPerformanceSampleStore));
+        AssertRegistered(services, typeof(SlowDbCommandInterceptor));
     }
 
     private static void AssertRegistered(IServiceCollection services, Type serviceType)

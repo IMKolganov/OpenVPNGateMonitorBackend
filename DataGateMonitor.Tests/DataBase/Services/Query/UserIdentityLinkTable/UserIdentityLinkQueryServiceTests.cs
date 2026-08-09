@@ -115,6 +115,36 @@ public class UserIdentityLinkQueryServiceTests
 
         Assert.NotNull(result);
         Assert.Equal(100, result!.UserId);
+        Assert.Equal(1, result.Id); // lowest Id when multiple links
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetFirstByUserIds_ReturnsLowestIdLinkPerUser()
+    {
+        var data = CreateSample();
+        var (q, ctx) = CreateEfBackedQuery(data);
+        var sut = new UserIdentityLinkQueryService(q.Object);
+
+        var result = await sut.GetFirstByUserIds([100, 200, 404], CancellationToken.None);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(1, result[100].Id);
+        Assert.Equal("ext-1", result[100].ExternalId);
+        Assert.Equal(2, result[200].Id);
+        Assert.False(result.ContainsKey(404));
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetFirstByUserIds_EmptyInput_ReturnsEmpty()
+    {
+        var (q, ctx) = CreateEfBackedQuery(CreateSample());
+        var sut = new UserIdentityLinkQueryService(q.Object);
+
+        var result = await sut.GetFirstByUserIds([], CancellationToken.None);
+
+        Assert.Empty(result);
         await ctx.DisposeAsync();
     }
 
