@@ -176,19 +176,34 @@ public sealed class OverviewTrafficDailyRollupService(
         var trafficTable = ResolveTable<VpnServerClientTraffic>(ctx);
         var dailyTable = ResolveTable<VpnServerClientTrafficDaily>(ctx);
 
+        // Same set as DISTINCT date_trunc(MeasuredAt) anti-join dailies, without scanning all traffic rows:
+        // calendar days from first sample through @throughDay that have traffic but no daily rollup
+        // (including gaps in the middle). Uses IX_ClientTraffic_At + IX_ClientTrafficDaily_Day_*.
         var sql = $"""
-                   SELECT r.day_utc AS "Value"
-                   FROM (
-                       SELECT DISTINCT (date_trunc('day', t."MeasuredAt" AT TIME ZONE 'UTC'))::date AS day_utc
+                   WITH bounds AS (
+                       SELECT ("MeasuredAt" AT TIME ZONE 'UTC')::date AS mn
+                       FROM {trafficTable}
+                       ORDER BY "MeasuredAt"
+                       LIMIT 1
+                   ),
+                   cand AS (
+                       SELECT gs::date AS day_utc
+                       FROM bounds b
+                       CROSS JOIN LATERAL generate_series(b.mn, @throughDay, interval '1 day') AS gs
+                       WHERE b.mn <= @throughDay
+                   )
+                   SELECT c.day_utc AS "Value"
+                   FROM cand c
+                   WHERE NOT EXISTS (
+                       SELECT 1 FROM {dailyTable} d WHERE d."DayUtc" = c.day_utc
+                   )
+                     AND EXISTS (
+                       SELECT 1
                        FROM {trafficTable} t
-                   ) r
-                   LEFT JOIN (
-                       SELECT DISTINCT d."DayUtc" AS day_utc
-                       FROM {dailyTable} d
-                   ) d ON d.day_utc = r.day_utc
-                   WHERE r.day_utc <= @throughDay
-                     AND d.day_utc IS NULL
-                   ORDER BY r.day_utc
+                       WHERE t."MeasuredAt" >= (c.day_utc::timestamp AT TIME ZONE 'UTC')
+                         AND t."MeasuredAt" <  ((c.day_utc + 1)::timestamp AT TIME ZONE 'UTC')
+                   )
+                   ORDER BY c.day_utc
                    """;
 
         return await ctx.Database
