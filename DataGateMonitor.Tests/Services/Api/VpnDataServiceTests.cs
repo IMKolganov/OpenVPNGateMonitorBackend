@@ -14,8 +14,11 @@ using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Cache;
-using DataGateMonitor.Services.Helpers.Interfaces;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using DataGateMonitor.SharedModels.Enums;
 using Xunit;
 
 namespace DataGateMonitor.Tests.Services.Api;
@@ -24,7 +27,6 @@ public class VpnDataServiceTests
 {
     private static (VpnDataService svc,
         Mock<ILogger<IVpnDataService>> log,
-        Mock<IExternalIpAddressService> ip,
         Mock<IQuotaPlanQueryService> quotaPlanQ,
         Mock<IVpnServerQueryService> serverQ,
         Mock<IVpnServerOvpnFileConfigQueryService> cfgQ,
@@ -41,7 +43,6 @@ public class VpnDataServiceTests
         CreateService()
     {
         var log = new Mock<ILogger<IVpnDataService>>();
-        var ip = new Mock<IExternalIpAddressService>(MockBehavior.Strict);
         var serverQ = new Mock<IVpnServerQueryService>(MockBehavior.Strict);
         var cfgQ = new Mock<IVpnServerOvpnFileConfigQueryService>(MockBehavior.Strict);
         var trx = new Mock<ITransactionRunner>(MockBehavior.Strict);
@@ -64,7 +65,6 @@ public class VpnDataServiceTests
 
         var svc = new VpnDataService(
             log.Object,
-            ip.Object,
             quotaPlanQ.Object,
             serverQ.Object,
             cfgQ.Object,
@@ -77,15 +77,17 @@ public class VpnDataServiceTests
             statusCacheGeneration.Object,
             microserviceInfo.Object,
             microserviceFactory.Object,
-            eventFactory.Object);
+            eventFactory.Object,
+            Mock.Of<IVpnNodePublicIpLookup>(),
+            Mock.Of<IVpnServerClientPresenceService>());
 
-        return (svc, log, ip, quotaPlanQ, serverQ, cfgQ, trx, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, notification, statusCacheGeneration, microserviceInfo, microserviceFactory, eventFactory);
+        return (svc, log, quotaPlanQ, serverQ, cfgQ, trx, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, notification, statusCacheGeneration, microserviceInfo, microserviceFactory, eventFactory);
     }
 
     [Fact]
     public async Task AddVpnServer_DoesNotCreateDefaultConfig_DuringInitialInsert()
     {
-        var (svc, _, ip, _, serverQ, cfgQ, _, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
+        var (svc, _, _, serverQ, cfgQ, _, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
         var server = new VpnServer { Id = 0, IsDefault = false, ServerName = "Srv" };
 
         var before = DateTimeOffset.UtcNow;
@@ -111,14 +113,13 @@ public class VpnDataServiceTests
         cfgCmd.Verify(c => c.Add(It.IsAny<VpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Never);
         serverCmd.Verify(c => c.Add(It.IsAny<VpnServer>(), true, It.IsAny<CancellationToken>()), Times.Once);
         serverQ.Verify(q => q.GetById(101, It.IsAny<CancellationToken>()), Times.Once);
-        ip.Verify(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>()), Times.Never);
         cfgQ.Verify(q => q.AnyByVpnServerId(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task AddVpnServer_Links_DefaultQuotaPlan_When_List_Empty_And_Default_Exists()
     {
-        var (svc, _, ip, quotaPlanQ, serverQ, cfgQ, _, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
+        var (svc, _, quotaPlanQ, serverQ, cfgQ, _, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
         quotaPlanQ.Setup(q => q.GetDefault(It.IsAny<CancellationToken>()))
             .ReturnsAsync(new QuotaPlan { Id = 42, Name = "Default" });
 
@@ -145,14 +146,13 @@ public class VpnDataServiceTests
             true,
             It.IsAny<CancellationToken>()), Times.Once);
         cfgCmd.Verify(c => c.Add(It.IsAny<VpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Never);
-        ip.Verify(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>()), Times.Never);
         cfgQ.Verify(q => q.AnyByVpnServerId(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task AddVpnServer_Unsets_Previous_Default_When_IsDefault_True()
     {
-        var (svc, _, ip, _, serverQ, cfgQ, _, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
+        var (svc, _, _, serverQ, cfgQ, _, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
         var server = new VpnServer { Id = 0, IsDefault = true, ServerName = "DefaultSrv" };
 
         serverQ.Setup(q => q.AnyByServerName("DefaultSrv", It.IsAny<CancellationToken>())).ReturnsAsync(false);
@@ -179,18 +179,16 @@ public class VpnDataServiceTests
                 It.IsAny<Action<UpdateSettersBuilder<VpnServer>>>(),
                 It.IsAny<CancellationToken>()), Times.Once);
         cfgCmd.Verify(c => c.Add(It.IsAny<VpnServerOvpnFileConfig>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
-        ip.Verify(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>()), Times.Never);
         cfgQ.Verify(q => q.AnyByVpnServerId(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task UpdateVpnServer_Updates_Entity_And_Adds_Config_When_Missing()
     {
-        var (svc, _, ip, _, serverQ, cfgQ, _, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
+        var (svc, _, _, serverQ, cfgQ, _, serverCmd, cfgCmd, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
         var server = new VpnServer { Id = 51, IsDefault = false, ServerName = "Srv" };
 
         cfgQ.Setup(q => q.AnyByVpnServerId(51, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("198.51.100.5");
         serverQ.Setup(q => q.AnyByServerNameExceptId("Srv", 51, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         cfgCmd.Setup(c => c.Add(It.IsAny<VpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync((VpnServerOvpnFileConfig e, bool _, CancellationToken _) => e);
@@ -213,11 +211,10 @@ public class VpnDataServiceTests
     [Fact]
     public async Task UpdateVpnServer_Unsets_Other_Defaults_When_IsDefault_True()
     {
-        var (svc, _, ip, _, serverQ, cfgQ, _, serverCmd, _, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
+        var (svc, _, _, serverQ, cfgQ, _, serverCmd, _, quotaPlanCmd, tagCmd, _, _, _, _, _) = CreateService();
         var server = new VpnServer { Id = 9, IsDefault = true, ServerName = "Srv" };
 
         cfgQ.Setup(q => q.AnyByVpnServerId(9, It.IsAny<CancellationToken>())).ReturnsAsync(true);
-        ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("ignored");
         serverQ.Setup(q => q.AnyByServerNameExceptId("Srv", 9, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         serverCmd.Setup(c => c.UpdateWhere(
@@ -243,7 +240,7 @@ public class VpnDataServiceTests
     [Fact]
     public async Task DeleteVpnServer_Performs_SoftDelete_WithUpdateWhere()
     {
-        var (svc, _, _, _, serverQ, _, _, serverCmd, _, _, _, _, _, _, _, _) = CreateService();
+        var (svc, _, _, serverQ, _, _, serverCmd, _, _, _, _, _, _, _, _) = CreateService();
         var entity = new VpnServer { Id = 77, ServerName = "Srv" };
         serverQ.Setup(q => q.GetById(77, It.IsAny<CancellationToken>())).ReturnsAsync(entity);
         serverCmd.Setup(c => c.UpdateWhere(
@@ -264,7 +261,7 @@ public class VpnDataServiceTests
     [Fact]
     public async Task DeleteVpnServer_Throws_When_NotFound()
     {
-        var (svc, _, _, _, serverQ, _, _, _, _, _, _, _, _, _, _, _) = CreateService();
+        var (svc, _, _, serverQ, _, _, _, _, _, _, _, _, _, _, _) = CreateService();
         serverQ.Setup(q => q.GetById(555, It.IsAny<CancellationToken>())).ReturnsAsync((VpnServer?)null);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => svc.DeleteVpnServer(555, CancellationToken.None));
@@ -274,13 +271,21 @@ public class VpnDataServiceTests
     [Fact]
     public async Task RunPostAddSetupAsync_CreatesDefaultConfig_ForOpenVpnServer()
     {
-        var (svc, _, ip, _, serverQ, cfgQ, _, _, cfgCmd, _, _, _, _, _, _, _) = CreateService();
+        var (svc, _, _, serverQ, cfgQ, _, _, cfgCmd, _, _, _, _, microserviceInfo, _, _) = CreateService();
         serverQ.Setup(q => q.GetById(88, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new VpnServer { Id = 88, ServerName = "srv88" });
+            .ReturnsAsync(new VpnServer { Id = 88, ServerName = "srv88", ServerType = VpnServerType.OpenVpn });
         cfgQ.Setup(q => q.AnyByVpnServerId(88, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>()))
-            .ReturnsAsync("203.0.113.99");
+        microserviceInfo.Setup(m => m.GetInfoAsync(88, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
+            {
+                ServerType = VpnServerType.OpenVpn,
+                OpenVpn = new RootOpenVpnInfoResponse
+                {
+                    PublicIp = "203.0.113.99",
+                    Config = new ConfigInfoResponse { Port = "1297", Proto = "tcp" }
+                }
+            });
         cfgCmd.Setup(c => c.Add(It.IsAny<VpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()))
             .ReturnsAsync((VpnServerOvpnFileConfig e, bool _, CancellationToken _) => e);
 
@@ -288,14 +293,18 @@ public class VpnDataServiceTests
 
         Assert.Equal(88, result.VpnServerId);
         Assert.True(result.CreatedDefaultConfig);
-        cfgCmd.Verify(c => c.Add(It.Is<VpnServerOvpnFileConfig>(x => x.VpnServerId == 88 && x.VpnServerIp == "203.0.113.99"),
+        cfgCmd.Verify(c => c.Add(It.Is<VpnServerOvpnFileConfig>(x =>
+                x.VpnServerId == 88
+                && x.VpnServerIp == "203.0.113.99"
+                && x.VpnServerPort == 1297
+                && x.ConfigTemplate.Contains("proto tcp")),
             true, It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
     public async Task RunPostAddSetupAsync_ReturnsFalse_WhenDefaultConfigAlreadyExists()
     {
-        var (svc, _, ip, _, serverQ, cfgQ, _, _, cfgCmd, _, _, _, _, _, _, _) = CreateService();
+        var (svc, _, _, serverQ, cfgQ, _, _, cfgCmd, _, _, _, _, microserviceInfo, _, _) = CreateService();
         serverQ.Setup(q => q.GetById(89, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnServer { Id = 89, ServerName = "srv89" });
         cfgQ.Setup(q => q.AnyByVpnServerId(89, It.IsAny<CancellationToken>()))
@@ -306,6 +315,6 @@ public class VpnDataServiceTests
         Assert.Equal(89, result.VpnServerId);
         Assert.False(result.CreatedDefaultConfig);
         cfgCmd.Verify(c => c.Add(It.IsAny<VpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Never);
-        ip.Verify(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>()), Times.Never);
+        microserviceInfo.Verify(m => m.GetInfoAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 }

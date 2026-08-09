@@ -16,6 +16,8 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.DataGateOpenVpnManager;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
+using DataGateMonitor.DataBase.Services.Query.UserTable;
+using DataGateMonitor.Services.VpnAccess;
 using DataGateMonitor.SharedModels.Auth;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OvpnFile.Requests;
@@ -332,7 +334,7 @@ public class OvpnFileApiServiceTests
         }, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>()
-            .WithMessage("*not allowed*active quota plan*");
+            .WithMessage("VpnServerNotAllowedByQuotaPlan");
         ovpnClient.Verify(c => c.AddOvpnFile(It.IsAny<int>(), It.IsAny<GenerateOvpnFileRequest>(), It.IsAny<CancellationToken>()), Times.Never);
         fileCommand.Verify(c => c.Add(It.IsAny<IssuedOvpnFile>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
@@ -478,6 +480,7 @@ public class OvpnFileApiServiceTests
         Mock<IUserIdentityLinkQueryService>? identityLinkQuery = null,
         Mock<IUserQuotaPlanQueryService>? userQuotaPlanQuery = null,
         Mock<IQuotaPlanAllowedServerQueryService>? quotaPlanAllowedServerQuery = null,
+        Mock<IUserQueryService>? userQuery = null,
         Mock<IVpnServerOvpnFileConfigQueryService>? configQuery = null,
         Mock<ICommandService<IssuedOvpnFile, int>>? fileCommand = null)
     {
@@ -495,6 +498,13 @@ public class OvpnFileApiServiceTests
         identityLinkQuery ??= new Mock<IUserIdentityLinkQueryService>(MockBehavior.Loose);
         userQuotaPlanQuery ??= new Mock<IUserQuotaPlanQueryService>(MockBehavior.Loose);
         quotaPlanAllowedServerQuery ??= new Mock<IQuotaPlanAllowedServerQueryService>(MockBehavior.Loose);
+        userQuery ??= new Mock<IUserQueryService>(MockBehavior.Loose);
+
+        IVpnServerQuotaPlanAccessGuard accessGuard = new VpnServerQuotaPlanAccessGuard(
+            identityLinkQuery.Object,
+            userQuotaPlanQuery.Object,
+            quotaPlanAllowedServerQuery.Object,
+            userQuery.Object);
 
         return new OvpnFileApiService(
             ovpnClient.Object,
@@ -504,8 +514,7 @@ public class OvpnFileApiServiceTests
             fileQuery.Object,
             tokenQuery.Object,
             identityLinkQuery.Object,
-            userQuotaPlanQuery.Object,
-            quotaPlanAllowedServerQuery.Object,
+            accessGuard,
             fileCommand.Object,
             tokenCommand.Object,
             serverQuery.Object,

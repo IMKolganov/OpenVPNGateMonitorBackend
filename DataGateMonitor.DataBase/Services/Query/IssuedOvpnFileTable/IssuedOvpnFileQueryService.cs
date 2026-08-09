@@ -15,6 +15,58 @@ public class IssuedOvpnFileQueryService(IQueryService<IssuedOvpnFile, int> q) : 
     public Task<List<IssuedOvpnFile>> GetAllByExternalId(string externalId, CancellationToken ct)
         => q.Where(x => x.ExternalId == externalId, ct: ct);
 
+    public async Task<IReadOnlyDictionary<string, List<IssuedOvpnFile>>> GetAllByExternalIds(
+        IReadOnlyCollection<string> externalIds,
+        CancellationToken ct)
+    {
+        var ids = externalIds
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => x.Trim())
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (ids.Count == 0)
+            return new Dictionary<string, List<IssuedOvpnFile>>(StringComparer.Ordinal);
+
+        var files = await q.Query()
+            .AsNoTracking()
+            .Where(x => ids.Contains(x.ExternalId))
+            .ToListAsync(ct);
+
+        return files
+            .GroupBy(x => x.ExternalId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.ToList(), StringComparer.Ordinal);
+    }
+
+    public async Task<List<IssuedOvpnFile>> GetActiveByServerAndCommonNames(
+        IReadOnlyCollection<(int VpnServerId, string CommonName)> pairs,
+        CancellationToken ct)
+    {
+        if (pairs.Count == 0)
+            return [];
+
+        var serverIds = pairs.Select(p => p.VpnServerId).Distinct().ToList();
+        var commonNames = pairs
+            .Select(p => p.CommonName)
+            .Where(n => !string.IsNullOrWhiteSpace(n))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (serverIds.Count == 0 || commonNames.Count == 0)
+            return [];
+
+        var pairSet = pairs
+            .Where(p => !string.IsNullOrWhiteSpace(p.CommonName))
+            .ToHashSet();
+
+        var candidates = await q.Query()
+            .AsNoTracking()
+            .Where(x => !x.IsRevoked && serverIds.Contains(x.VpnServerId) && commonNames.Contains(x.CommonName))
+            .ToListAsync(ct);
+
+        return candidates
+            .Where(x => pairSet.Contains((x.VpnServerId, x.CommonName)))
+            .ToList();
+    }
+
     public Task<List<IssuedOvpnFile>> GetAllByVpnServerIdAndIsRevoked(int vpnServerId, bool isRevoked, 
         CancellationToken ct)
         => q.Where(x => x.VpnServerId == vpnServerId && x.IsRevoked == isRevoked, ct: ct);

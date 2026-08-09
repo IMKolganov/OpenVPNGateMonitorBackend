@@ -53,7 +53,8 @@ public class VpnServersControllerAddUpdateExoticTests
             new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions())),
             _statusCacheGeneration.Object,
             _statusStreamLogStore.Object,
-            _postSetup.Object);
+            _postSetup.Object,
+            Mock.Of<IConnectedClientsCounterStore>());
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

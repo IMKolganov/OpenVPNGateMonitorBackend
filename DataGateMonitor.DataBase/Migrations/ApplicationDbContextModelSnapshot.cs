@@ -1465,6 +1465,33 @@ namespace DataGateMonitor.DataBase.Migrations
                             Language = 3,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Text = "Не удалось связать аккаунты. Проверьте код и попробуйте снова."
+                        },
+                        new
+                        {
+                            Id = 100,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "VpnServerNotAllowedByQuotaPlan",
+                            Language = 1,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "This VPN server is not available on your current plan. Please choose another server or upgrade your plan."
+                        },
+                        new
+                        {
+                            Id = 101,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "VpnServerNotAllowedByQuotaPlan",
+                            Language = 2,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Αυτός ο διακομιστής VPN δεν είναι διαθέσιμος στο τρέχον πρόγραμμά σας. Επιλέξτε άλλον διακομιστή ή αναβαθμίστε το πρόγραμμα."
+                        },
+                        new
+                        {
+                            Id = 102,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Key = "VpnServerNotAllowedByQuotaPlan",
+                            Language = 3,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Text = "Этот VPN-сервер недоступен на вашем текущем тарифе. Выберите другой сервер или обновите план."
                         });
                 });
 
@@ -2470,6 +2497,77 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("TelegramUserLanguagePreferences", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("DataGateMonitor.Models.TvLoginSession", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int?>("ApprovedUserId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Client")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTimeOffset?>("CompletedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DeviceId")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("DeviceName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("UserAgent")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("UserCode")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApprovedUserId");
+
+                    b.HasIndex("ExpiresAt");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("UserCode");
+
+                    b.HasIndex("ApprovedUserId", "Status");
+
+                    b.HasIndex("UserCode", "Status");
+
+                    b.HasIndex("UserCode")
+                        .IsUnique()
+                        .HasDatabaseName("IX_TvLoginSessions_UserCode_Open")
+                        .HasFilter("\"Status\" IN (0, 5)");
+
+                    b.ToTable("TvLoginSessions", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("DataGateMonitor.Models.User", b =>

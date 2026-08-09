@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.Services.Users.Interfaces;
+using DataGateMonitor.SharedModels.DataGateMonitor.FreeTierEnforcement.Enums;
 using DataGateMonitor.SharedModels.DataGateMonitor.FreeTierEnforcement.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.FreeTierEnforcement.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -16,12 +17,14 @@ namespace DataGateMonitor.Controllers;
 [Authorize]
 [Authorize(Roles = "Admin,App")]
 public class FreeTierEnforcementController(
-    IFreeTierEnforcementOverviewService overviewService) : BaseController
+    IFreeTierEnforcementOverviewService overviewService,
+    IFreeTierUnsubscribedVpnUsersDailyDigestService unsubscribedVpnDigestService,
+    IFreeTierUnsubscribedUserReminderService unsubscribedUserReminderService) : BaseController
 {
     /// <summary>
-    /// Every non-compliant Free/Default user (not merged, not channel-subscribed) — i.e. everyone the
-    /// enforcement job would disconnect on its next run. Refresh manually; this evaluates Telegram
-    /// channel membership per candidate and should not be polled automatically.
+    /// Every non-compliant Free/Default user (not channel-subscribed) — i.e. everyone the
+    /// enforcement job would disconnect on its next run (subject to grace). Refresh manually; this
+    /// evaluates Telegram channel membership per candidate and should not be polled automatically.
     /// </summary>
     [HttpGet("candidates")]
     public async Task<ActionResult<ApiResponse<GetFreeTierEnforcementCandidatesResponse>>> GetCandidates(
@@ -29,6 +32,39 @@ public class FreeTierEnforcementController(
     {
         var result = await overviewService.GetCandidatesAsync(ct);
         return Ok(ApiResponse<GetFreeTierEnforcementCandidatesResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// On-demand digest of Free/Default users currently online without channel subscription
+    /// (text for Telegram + structured candidates for admin buttons).
+    /// </summary>
+    [HttpGet("unsubscribed-vpn-digest")]
+    public async Task<ActionResult<ApiResponse<FreeTierUnsubscribedVpnDigestResponse>>> GetUnsubscribedVpnDigest(
+        CancellationToken ct)
+    {
+        var result = await unsubscribedVpnDigestService.BuildDigestAsync(ct);
+        // Live /unsubscribed_vpn_users fetch counts as today's digest so the hourly job
+        // does not re-DM the same list right after a deploy (IMemoryCache was empty).
+        unsubscribedVpnDigestService.MarkDailyDigestSatisfiedForToday();
+        return Ok(ApiResponse<FreeTierUnsubscribedVpnDigestResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// Force-send a channel-subscribe reminder via Telegram DM or email
+    /// (<paramref name="target"/> = dashboard user id or Telegram id for Telegram;
+    /// dashboard user id for email).
+    /// </summary>
+    [HttpPost("remind-channel-subscribe/{target}")]
+    public async Task<ActionResult<ApiResponse<FreeTierChannelSubscribeRemindResponse>>> RemindChannelSubscribe(
+        string target,
+        [FromQuery] FreeTierChannelSubscribeRemindChannel channel = FreeTierChannelSubscribeRemindChannel.Telegram,
+        CancellationToken ct = default)
+    {
+        var result = await unsubscribedUserReminderService.ForceRemindAsync(target, channel, ct);
+        if (!result.Success)
+            return BadRequest(ApiResponse<FreeTierChannelSubscribeRemindResponse>.ErrorResponse(result.Message));
+
+        return Ok(ApiResponse<FreeTierChannelSubscribeRemindResponse>.SuccessResponse(result));
     }
 
     [HttpGet("disconnect-log")]

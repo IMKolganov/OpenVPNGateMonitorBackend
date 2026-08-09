@@ -46,10 +46,16 @@ public class VpnServerClientOverviewQueryTests
         var (uow, ctx) = CreateUowWithData(data);
 
         var users = new Mock<IUserQueryService>();
-        users.Setup(x => x.GetByExternalId("ext-1", It.IsAny<CancellationToken>()))
-             .ReturnsAsync(new User { Id = 10, DisplayName = "DN-ext-1" });
-        users.Setup(x => x.GetByExternalId("ext-3", It.IsAny<CancellationToken>()))
-             .ReturnsAsync(new User { Id = 11, DisplayName = "DN-ext-3" });
+        users.Setup(x => x.GetByExternalIds(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync((IReadOnlyCollection<string> ids, CancellationToken _) =>
+             {
+                 var map = new Dictionary<string, User>(StringComparer.Ordinal);
+                 if (ids.Contains("ext-1"))
+                     map["ext-1"] = new User { Id = 10, DisplayName = "DN-ext-1" };
+                 if (ids.Contains("ext-3"))
+                     map["ext-3"] = new User { Id = 11, DisplayName = "DN-ext-3" };
+                 return map;
+             });
 
         var sut = new VpnServerClientOverviewQuery(uow.Object, users.Object);
 
@@ -79,8 +85,12 @@ public class VpnServerClientOverviewQueryTests
 
         var (uow, ctx) = CreateUowWithData(data);
         var users = new Mock<IUserQueryService>();
-        users.Setup(x => x.GetByExternalId(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-             .ReturnsAsync((string extId, CancellationToken _) => new User { Id = 100, DisplayName = $"DN-{extId}" });
+        users.Setup(x => x.GetByExternalIds(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+             .ReturnsAsync((IReadOnlyCollection<string> ids, CancellationToken _) =>
+                 ids.ToDictionary(
+                     id => id,
+                     id => new User { Id = 100, DisplayName = $"DN-{id}" },
+                     StringComparer.Ordinal));
 
         var sut = new VpnServerClientOverviewQuery(uow.Object, users.Object);
 

@@ -16,6 +16,10 @@
     "Secret": "super-secret-key-should-be-at-least-16-characters",
     "RefreshPepper": "your-refresh-pepper"
   },
+  "Auth": {
+    "PublicWebBaseUrl": "https://YOUR_PUBLIC_WEB_HOST",
+    "TvLoginSessionMinutes": 5
+  },
   "EmailSender": {
     "Provider": "smtp",
     "FromEmail": "noreply@datagateapp.com",

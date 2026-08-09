@@ -28,7 +28,8 @@ public class VpnServersV2Controller(
     IUserQuotaPlanQueryService userQuotaPlanQueryService,
     IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService,
     IApiMemoryCacheService apiMemoryCacheService,
-    IStatusCacheGenerationService statusCacheGenerationService) : BaseController
+    IStatusCacheGenerationService statusCacheGenerationService,
+    IConnectedClientsCounterStore connectedClientsCounterStore) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
 
@@ -124,6 +125,7 @@ public class VpnServersV2Controller(
                 requireQuotaPlanAssignment: false,
                 restrictToQuotaPlanId,
                 token);
+            await VpnServerConnectedCountOverlay.ApplyAsync(result, connectedClientsCounterStore, token);
             var response = new VpnServerWithStatusesV2Response();
             if (result.Count == 0)
                 return ApiResponse<VpnServerWithStatusesV2Response>.SuccessResponse(response);
@@ -172,6 +174,9 @@ public class VpnServersV2Controller(
                 ServersListCacheTtl,
                 ct);
         }
+
+        if (cached.Data?.VpnServerWithStatuses is { Count: > 0 } statuses)
+            await VpnServerConnectedCountOverlay.ApplyAsync(statuses, connectedClientsCounterStore, ct);
 
         return Ok(cached);
     }

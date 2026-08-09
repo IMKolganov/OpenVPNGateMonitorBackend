@@ -13,4 +13,21 @@ public interface ITelegramDirectMessageSender
     /// unconfigured), so callers can fall back to another channel.
     /// </summary>
     Task<bool> TrySendMessageAsync(long chatId, string text, CancellationToken ct = default);
+
+    /// <summary>
+    /// Attempts to send a photo with caption. Falls back to text-only when <paramref name="photoBytes"/>
+    /// is empty. Never throws.
+    /// </summary>
+    Task<bool> TrySendPhotoAsync(
+        long chatId,
+        byte[]? photoBytes,
+        string caption,
+        string fileName = "photo.jpg",
+        CancellationToken ct = default);
+
+    /// <summary>
+    /// Downloads the largest current Telegram profile photo for <paramref name="telegramUserId"/>.
+    /// Returns null when missing or inaccessible. Never throws.
+    /// </summary>
+    Task<byte[]?> TryDownloadUserProfilePhotoAsync(long telegramUserId, CancellationToken ct = default);
 }

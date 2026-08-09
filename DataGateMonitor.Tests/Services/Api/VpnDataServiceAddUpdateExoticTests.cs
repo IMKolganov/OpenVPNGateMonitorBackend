@@ -5,6 +5,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.PostSetup;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using DataGateMonitor.SharedModels.DataGateXRayManager.Info;
 using DataGateMonitor.SharedModels.Enums;
 using Xunit;
 
@@ -92,6 +93,8 @@ public class VpnDataServiceAddUpdateExoticTests
     public async Task UpdateVpnServer_Throws_When_NameTakenByAnotherServer()
     {
         var h = new VpnDataServiceTestHarness();
+        h.ServerQ.Setup(q => q.GetById(55, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer { Id = 55, ServerName = "old", ApiUrl = "https://a/" });
         h.ServerQ.Setup(q => q.AnyByServerNameExceptId("taken", 55, It.IsAny<CancellationToken>())).ReturnsAsync(true);
         var svc = h.Create();
 
@@ -153,7 +156,8 @@ public class VpnDataServiceAddUpdateExoticTests
         var h = new VpnDataServiceTestHarness();
         h.SetupUpdateServer(80, "srv80");
         h.CfgQ.Setup(q => q.AnyByVpnServerId(80, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        h.Ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ThrowsAsync(new HttpRequestException("timeout"));
+        h.MicroserviceInfo.Setup(m => m.GetInfoAsync(80, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new HttpRequestException("timeout"));
         var svc = h.Create();
 
         await svc.UpdateVpnServer(
@@ -163,8 +167,9 @@ public class VpnDataServiceAddUpdateExoticTests
             CancellationToken.None);
 
         Assert.Single(h.ConfigsAdded);
-        Assert.Equal("127.0.0.1", h.ConfigsAdded[0].VpnServerIp);
+        Assert.Equal(string.Empty, h.ConfigsAdded[0].VpnServerIp);
         Assert.Equal(80, h.ConfigsAdded[0].VpnServerId);
+        Assert.Contains("proto tcp", h.ConfigsAdded[0].ConfigTemplate);
     }
 
     [Fact]
@@ -173,7 +178,12 @@ public class VpnDataServiceAddUpdateExoticTests
         var h = new VpnDataServiceTestHarness();
         h.SetupUpdateServer(81, "xray81");
         h.CfgQ.Setup(q => q.AnyByVpnServerId(81, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        h.Ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("  ");
+        h.MicroserviceInfo.Setup(m => m.GetInfoAsync(81, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
+            {
+                ServerType = VpnServerType.Xray,
+                Xray = new RootXrayInfoResponse { PublicIp = "  " }
+            });
         var svc = h.Create();
 
         await svc.UpdateVpnServer(
@@ -183,7 +193,7 @@ public class VpnDataServiceAddUpdateExoticTests
             CancellationToken.None);
 
         var cfg = Assert.Single(h.ConfigsAdded);
-        Assert.Equal("127.0.0.1", cfg.VpnServerIp);
+        Assert.Equal(string.Empty, cfg.VpnServerIp);
         Assert.Equal(443, cfg.VpnServerPort);
         Assert.Contains("{{vless_uri}}", cfg.ConfigTemplate);
     }
@@ -222,14 +232,14 @@ public class VpnDataServiceAddUpdateExoticTests
         h.ServerQ.Setup(q => q.GetById(90, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnServer { Id = 90, ServerName = "ovpn90", ServerType = VpnServerType.OpenVpn });
         h.CfgQ.Setup(q => q.AnyByVpnServerId(90, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        h.Ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("198.51.100.10");
         h.MicroserviceInfo.Setup(m => m.GetInfoAsync(90, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
             {
                 ServerType = VpnServerType.OpenVpn,
                 OpenVpn = new RootOpenVpnInfoResponse
                 {
-                    Config = new ConfigInfoResponse { Port = "1390", Proto = "tcp" }
+                    PublicIp = "198.51.100.10",
+                    Config = new DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info.ConfigInfoResponse { Port = "1390", Proto = "tcp" }
                 }
             });
         var svc = h.Create();
@@ -237,7 +247,10 @@ public class VpnDataServiceAddUpdateExoticTests
         var result = await svc.RunPostAddSetupAsync(90, CancellationToken.None);
 
         Assert.True(result.CreatedDefaultConfig);
-        Assert.Equal("198.51.100.10", Assert.Single(h.ConfigsAdded).VpnServerIp);
+        var config = Assert.Single(h.ConfigsAdded);
+        Assert.Equal("198.51.100.10", config.VpnServerIp);
+        Assert.Equal(1390, config.VpnServerPort);
+        Assert.Contains("proto tcp", config.ConfigTemplate);
         h.MicroserviceInfo.Verify(m => m.GetInfoAsync(90, It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -248,18 +261,18 @@ public class VpnDataServiceAddUpdateExoticTests
         h.ServerQ.Setup(q => q.GetById(94, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnServer { Id = 94, ServerName = "ovpn94", ServerType = VpnServerType.OpenVpn });
         h.CfgQ.Setup(q => q.AnyByVpnServerId(94, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        h.Ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("10.0.0.2");
         h.MicroserviceInfo.Setup(m => m.GetInfoAsync(94, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
             {
                 ServerType = VpnServerType.Xray,
-                OpenVpn = new RootOpenVpnInfoResponse { Config = new ConfigInfoResponse { Port = "1390", Proto = "tcp" } }
+                OpenVpn = new RootOpenVpnInfoResponse { Config = new DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info.ConfigInfoResponse { Port = "1390", Proto = "tcp" } }
             });
         var svc = h.Create();
 
         await svc.RunPostAddSetupAsync(94, CancellationToken.None);
 
         Assert.Equal(1194, Assert.Single(h.ConfigsAdded).VpnServerPort);
+        Assert.Equal(string.Empty, Assert.Single(h.ConfigsAdded).VpnServerIp);
     }
 
     [Fact]
@@ -269,7 +282,6 @@ public class VpnDataServiceAddUpdateExoticTests
         h.ServerQ.Setup(q => q.GetById(91, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnServer { Id = 91, ServerName = "ovpn91", ServerType = VpnServerType.OpenVpn });
         h.CfgQ.Setup(q => q.AnyByVpnServerId(91, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        h.Ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("203.0.113.1");
         h.MicroserviceInfo.Setup(m => m.GetInfoAsync(91, It.IsAny<CancellationToken>()))
             .ThrowsAsync(new InvalidOperationException("401 Unauthorized"));
         var svc = h.Create();
@@ -277,7 +289,8 @@ public class VpnDataServiceAddUpdateExoticTests
         var result = await svc.RunPostAddSetupAsync(91, CancellationToken.None);
 
         Assert.True(result.CreatedDefaultConfig);
-        Assert.Equal("203.0.113.1", Assert.Single(h.ConfigsAdded).VpnServerIp);
+        Assert.Equal(string.Empty, Assert.Single(h.ConfigsAdded).VpnServerIp);
+        Assert.Contains("proto tcp", Assert.Single(h.ConfigsAdded).ConfigTemplate);
     }
 
     [Fact]
@@ -306,7 +319,7 @@ public class VpnDataServiceAddUpdateExoticTests
         await svc.UpdateVpnServer(new VpnServer { Id = 83, ServerName = "srv83" }, [1], [], CancellationToken.None);
 
         h.CfgCmd.Verify(c => c.Add(It.IsAny<VpnServerOvpnFileConfig>(), true, It.IsAny<CancellationToken>()), Times.Never);
-        h.Ip.Verify(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>()), Times.Never);
+        h.MicroserviceInfo.Verify(m => m.GetInfoAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
@@ -316,7 +329,12 @@ public class VpnDataServiceAddUpdateExoticTests
         h.ServerQ.Setup(q => q.GetById(95, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new VpnServer { Id = 95, ServerName = "xray95", ServerType = VpnServerType.Xray });
         h.CfgQ.Setup(q => q.AnyByVpnServerId(95, It.IsAny<CancellationToken>())).ReturnsAsync(false);
-        h.Ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("203.0.113.5");
+        h.MicroserviceInfo.Setup(m => m.GetInfoAsync(95, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
+            {
+                ServerType = VpnServerType.Xray,
+                Xray = new RootXrayInfoResponse { PublicIp = "203.0.113.5" }
+            });
         var svc = h.Create();
 
         var result = await svc.RunPostAddSetupAsync(95, CancellationToken.None);
@@ -324,6 +342,7 @@ public class VpnDataServiceAddUpdateExoticTests
         Assert.True(result.CreatedDefaultConfig);
         Assert.Equal(VpnServerType.Xray, result.ServerType);
         var cfg = Assert.Single(h.ConfigsAdded);
+        Assert.Equal("203.0.113.5", cfg.VpnServerIp);
         Assert.Equal(443, cfg.VpnServerPort);
         Assert.Contains("{{vless_uri}}", cfg.ConfigTemplate);
     }

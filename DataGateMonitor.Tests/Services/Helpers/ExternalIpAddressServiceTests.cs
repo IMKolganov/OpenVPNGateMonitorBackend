@@ -130,6 +130,50 @@ public class ExternalIpAddressServiceTests
         Assert.Equal("127.0.0.1", result);
     }
 
+    [Fact]
+    public async Task GetRemoteIpAddress_WhenHtmlReturned_UsesNextService()
+    {
+        const string url1 = "https://service1.test/ip";
+        const string url2 = "https://service2.test/ip";
+
+        var config = BuildConfigWithServices(url1, url2);
+        var handler = new FakeHttpMessageHandler((request, _) =>
+        {
+            var body = request.RequestUri!.ToString() == url1
+                ? "<html>error</html>"
+                : "203.0.113.55";
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent(body)
+            });
+        });
+
+        var result = await new ExternalIpAddressService(_logger.Object, config, new HttpClient(handler))
+            .GetRemoteIpAddress(CancellationToken.None);
+
+        Assert.Equal("203.0.113.55", result);
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1")]
+    [InlineData("0.0.0.0")]
+    [InlineData("::1")]
+    [InlineData("<html>nope</html>")]
+    [InlineData("not-an-ip")]
+    public void TryParsePublicIp_RejectsInvalid(string raw)
+    {
+        Assert.False(ExternalIpAddressService.TryParsePublicIp(raw, out _));
+    }
+
+    [Theory]
+    [InlineData("203.0.113.10", "203.0.113.10")]
+    [InlineData("  198.51.100.1 \n", "198.51.100.1")]
+    public void TryParsePublicIp_AcceptsPublicIpv4(string raw, string expected)
+    {
+        Assert.True(ExternalIpAddressService.TryParsePublicIp(raw, out var ip));
+        Assert.Equal(expected, ip);
+    }
+
     // Simple fake handler to control HttpClient responses in tests
     private sealed class FakeHttpMessageHandler : HttpMessageHandler
     {

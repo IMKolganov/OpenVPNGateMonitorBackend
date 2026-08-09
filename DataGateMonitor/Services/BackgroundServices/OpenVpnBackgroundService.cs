@@ -6,6 +6,7 @@ using Npgsql;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using DataGateMonitor.Services.StatusStreamLogs;
@@ -31,6 +32,8 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
     private readonly int _maxPollingDegreeOfParallelism;
     private CancellationTokenSource _delayTokenSource = new();
     private readonly ConcurrentDictionary<int, ServiceStatus> _previousStatusByServer = new();
+    private DateTimeOffset _lastStatusCacheBumpUtc = DateTimeOffset.MinValue;
+    private static readonly TimeSpan StatusCacheBumpMaxInterval = TimeSpan.FromMinutes(2);
     public OpenVpnBackgroundService(
         ILogger<OpenVpnBackgroundService> logger,
         IServiceProvider serviceProvider,
@@ -109,8 +112,13 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
 
             // Disabled rows are never polled — still publish Idle so the status stream is not empty and
             // clients do not treat "missing server" as Pending for the whole fleet.
+            // Also clear hanging IsConnected sessions (disable may have been set outside UpdateVpnServer).
+            var presence = scope.ServiceProvider.GetRequiredService<IVpnServerClientPresenceService>();
             foreach (var skipped in openVpnServers.Where(s => s.IsDisable))
+            {
                 _statusManager.UpdateStatus(skipped.Id, ServiceStatus.Idle, nextRunSeconds);
+                await presence.MarkAllDisconnectedAsync(skipped.Id, cancellationToken);
+            }
 
             var serversToPoll = openVpnServers.Where(x => x.IsDisable != true).ToList();
             _logger.LogInformation(
@@ -263,11 +271,32 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
                 }
             });
 
+            var statusChanged = false;
             foreach (var (serverId, dto) in _statusManager.GetAllStatuses())
             {
-                _previousStatusByServer.AddOrUpdate(serverId, dto.Status, (_, _) => dto.Status);
+                _previousStatusByServer.AddOrUpdate(
+                    serverId,
+                    _ =>
+                    {
+                        statusChanged = true;
+                        return dto.Status;
+                    },
+                    (_, previous) =>
+                    {
+                        if (previous != dto.Status)
+                            statusChanged = true;
+                        return dto.Status;
+                    });
             }
-            _statusCacheGenerationService.Bump();
+
+            // Avoid invalidating get-all-with-status on every poll; refresh at least every 2 minutes
+            // so CountSessions stays reasonably fresh while Redis overlays keep connected counts live.
+            var nowUtc = DateTimeOffset.UtcNow;
+            if (statusChanged || nowUtc - _lastStatusCacheBumpUtc >= StatusCacheBumpMaxInterval)
+            {
+                _statusCacheGenerationService.Bump();
+                _lastStatusCacheBumpUtc = nowUtc;
+            }
 
             _logger.LogInformation(
                 "VPN polling cycle completed in {ElapsedMs} ms. Processed={Processed}, Success={Success}, Timeouts={Timeouts}, Failed={Failed}, Disabled={Disabled}.",

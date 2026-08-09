@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
+using DataGateMonitor.Services.VpnAccess;
 using DataGateMonitor.SharedModels.Responses;
 
 namespace DataGateMonitor.Controllers;
@@ -23,7 +24,7 @@ public static class VpnServerAuthorizationHelper
                 ApiResponse<string>.ErrorResponse("User id missing from token.")));
         if (!await access.UserHasAccessAsync(userId, vpnServerId, ct))
             return new ActionResult<ApiResponse<T>>(new ObjectResult(ApiResponse<string>.ErrorResponse(
-                    "Access to this VPN server is denied for your quota plan."))
+                    VpnServerAccessErrorKeys.NotAllowedByQuotaPlan))
                 { StatusCode = StatusCodes.Status403Forbidden });
         return null;
     }

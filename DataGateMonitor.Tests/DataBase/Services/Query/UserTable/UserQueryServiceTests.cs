@@ -61,6 +61,39 @@ public partial class UserQueryServiceTests
     }
 
     [Fact]
+    public async Task GetByExternalIds_Batches_And_Picks_Lowest_Link_Id_Per_ExternalId()
+    {
+        var (sut, ctx) = CreateSutWithContext();
+        await ctx.Users.AddRangeAsync(
+            new User { Id = 1, DisplayName = "first", AvatarUrl = "a1" },
+            new User { Id = 2, DisplayName = "second", AvatarUrl = "a2" },
+            new User { Id = 3, DisplayName = "third" }
+        );
+        await ctx.UserIdentityLinks.AddRangeAsync(
+            new UserIdentityLink { Id = 20, Provider = "tg", ExternalId = "ext-dup", UserId = 2 },
+            new UserIdentityLink { Id = 10, Provider = "google", ExternalId = "ext-dup", UserId = 1 },
+            new UserIdentityLink { Id = 30, Provider = "tg", ExternalId = "ext-only", UserId = 3 }
+        );
+        await ctx.SaveChangesAsync();
+
+        var map = await sut.GetByExternalIds(["ext-dup", "ext-only", "missing", ""], CancellationToken.None);
+
+        Assert.Equal(2, map.Count);
+        Assert.Equal(1, map["ext-dup"].Id);
+        Assert.Equal("first", map["ext-dup"].DisplayName);
+        Assert.Equal(3, map["ext-only"].Id);
+        Assert.False(map.ContainsKey("missing"));
+    }
+
+    [Fact]
+    public async Task GetByExternalIds_Empty_Input_Returns_Empty_Map()
+    {
+        var (sut, _) = CreateSutWithContext();
+        var map = await sut.GetByExternalIds([], CancellationToken.None);
+        Assert.Empty(map);
+    }
+
+    [Fact]
     public async Task Paging_Works_With_Desc_Sort()
     {
         var (sut, ctx) = CreateSutWithContext();

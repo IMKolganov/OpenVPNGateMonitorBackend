@@ -102,31 +102,27 @@ public class VpnServerClientOverviewQuery(
         };
     }
 
-    // Helper: enrich page items with User.DisplayName by ExternalId
+    // Helper: enrich page items with User.DisplayName by ExternalId (batched)
     private async Task EnrichWithUsersAsync(List<VpnClientInfoDto> items, CancellationToken ct)
     {
         var externalIds = items
             .Select(c => c.ExternalId)
             .Where(id => !string.IsNullOrWhiteSpace(id))
-            .Distinct()
+            .Select(id => id!)
+            .Distinct(StringComparer.Ordinal)
             .ToList();
 
         if (externalIds.Count == 0)
             return;
 
-        var users = new Dictionary<string, User?>();
-        foreach (var extId in externalIds)
-        {
-            var user = await userQueryService.GetByExternalId(extId, ct);
-            users[extId] = user;
-        }
+        var users = await userQueryService.GetByExternalIds(externalIds, ct);
 
         foreach (var client in items)
         {
             if (string.IsNullOrWhiteSpace(client.ExternalId))
                 continue;
 
-            if (users.TryGetValue(client.ExternalId, out var user) && user is not null)
+            if (users.TryGetValue(client.ExternalId, out var user))
             {
                 client.DisplayName = user.DisplayName;
                 client.AvatarUrl = string.IsNullOrWhiteSpace(user.AvatarUrl) ? null : user.AvatarUrl;

@@ -19,6 +19,21 @@ public class UserQueryService(
     public Task<User?> GetById(int id, CancellationToken ct)
         => q.FindById(id, ct: ct);
 
+    public async Task<IReadOnlyDictionary<int, User>> GetByIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct)
+    {
+        var ids = userIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<int, User>();
+
+        var users = await q.Where(
+            predicate: x => ids.Contains(x.Id),
+            asNoTracking: true,
+            ct: ct);
+        return users.ToDictionary(u => u.Id);
+    }
+
     public async Task<User?> GetByEmail(string email, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(email))
@@ -43,20 +58,55 @@ public class UserQueryService(
 
     public async Task<User?> GetByExternalId(string externalId, CancellationToken ct)
     {
-        var link = await qUserIdentityLink.FirstOrDefault(
-            predicate: x => x.ExternalId == externalId,
-            asNoTracking: true,
-            ct: ct
-        );
-
-        if (link is null)
+        if (string.IsNullOrWhiteSpace(externalId))
             return null;
 
-        return await q.FirstOrDefault(
-            predicate: x => x.Id == link.UserId,
+        var map = await GetByExternalIds([externalId], ct);
+        return map.TryGetValue(externalId, out var user) ? user : null;
+    }
+
+    public async Task<IReadOnlyDictionary<string, User>> GetByExternalIds(
+        IReadOnlyCollection<string> externalIds,
+        CancellationToken ct)
+    {
+        var ids = externalIds
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (ids.Count == 0)
+            return new Dictionary<string, User>(StringComparer.Ordinal);
+
+        var links = await qUserIdentityLink.Where(
+            predicate: x => ids.Contains(x.ExternalId),
+            orderBy: qy => qy.OrderBy(x => x.Id),
             asNoTracking: true,
-            ct: ct
-        );
+            ct: ct);
+
+        var firstLinkByExternalId = new Dictionary<string, UserIdentityLink>(StringComparer.Ordinal);
+        foreach (var link in links)
+        {
+            if (!firstLinkByExternalId.ContainsKey(link.ExternalId))
+                firstLinkByExternalId[link.ExternalId] = link;
+        }
+
+        if (firstLinkByExternalId.Count == 0)
+            return new Dictionary<string, User>(StringComparer.Ordinal);
+
+        var userIds = firstLinkByExternalId.Values.Select(l => l.UserId).Distinct().ToList();
+        var users = await q.Where(
+            predicate: x => userIds.Contains(x.Id),
+            asNoTracking: true,
+            ct: ct);
+        var usersById = users.ToDictionary(u => u.Id);
+
+        var result = new Dictionary<string, User>(StringComparer.Ordinal);
+        foreach (var (externalId, link) in firstLinkByExternalId)
+        {
+            if (usersById.TryGetValue(link.UserId, out var user))
+                result[externalId] = user;
+        }
+
+        return result;
     }
 
     public Task<IPagedResult<User>> GetPage(int page, int pageSize, CancellationToken ct)

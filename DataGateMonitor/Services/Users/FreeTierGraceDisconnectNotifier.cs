@@ -101,6 +101,6 @@ public sealed class FreeTierGraceDisconnectNotifier(
     }
 
     private static string BuildTelegramMessage(string requiredChannel)
-        => "⚠️ You were disconnected from the VPN. Your grace period ended and your account still isn't " +
-           $"compliant — subscribe to {requiredChannel} or link your account in the app, then reconnect.";
+        => "⚠️ You were disconnected from the VPN. Your grace period ended and you still are not " +
+           $"subscribed to {requiredChannel}. Please subscribe, then reconnect.";
 }

@@ -95,4 +95,55 @@ public class OpenVpnGeoQueryServiceTests
 
         await ctx.DisposeAsync();
     }
+
+    [Fact]
+    public async Task GetGeoPointsAsync_Clamps_Future_To_And_Excludes_Future_Sessions()
+    {
+        var now = DateTimeOffset.UtcNow;
+        var data = new List<VpnServerClient>
+        {
+            new()
+            {
+                Id = 1,
+                VpnServerId = 1,
+                ExternalId = "e1",
+                ConnectedSince = now.AddMinutes(-30),
+                Country = "US",
+                Region = "CA",
+                Latitude = 1,
+                Longitude = 2,
+                BytesReceived = 10,
+                BytesSent = 20
+            },
+            new()
+            {
+                Id = 2,
+                VpnServerId = 1,
+                ExternalId = "e1",
+                ConnectedSince = now.AddHours(2),
+                Country = "US",
+                Region = "CA",
+                Latitude = 1,
+                Longitude = 2,
+                BytesReceived = 1000,
+                BytesSent = 2000
+            },
+        };
+
+        var (uow, ctx) = CreateUowWithData(data);
+        var sut = new OpenVpnGeoQueryService(uow.Object);
+
+        var res = await sut.GetGeoPointsAsync(
+            now.AddHours(-1),
+            now.AddDays(10),
+            vpnServerId: 1,
+            onlyWithCoordinates: true,
+            ct: CancellationToken.None);
+
+        Assert.Single(res.GeoPointAggs);
+        Assert.Equal(1, res.GeoPointAggs[0].SessionsCount);
+        Assert.Equal(10, res.GeoPointAggs[0].TotalBytesIn);
+
+        await ctx.DisposeAsync();
+    }
 }

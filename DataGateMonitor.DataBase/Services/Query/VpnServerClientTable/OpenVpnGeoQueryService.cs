@@ -21,8 +21,13 @@ public sealed class OpenVpnGeoQueryService(IUnitOfWork uow) : IOpenVpnGeoQuerySe
         bool onlyWithCoordinates = true,
         CancellationToken ct = default)
     {
-        // Normalize bounds (inclusive start, exclusive end).
+        // Normalize bounds (inclusive start, exclusive end) and clamp future To (apps send month-end).
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
+        var utcNow = DateTimeOffset.UtcNow;
+        if (fromUtc > utcNow)
+            fromUtc = toUtc = utcNow;
+        else if (toUtc > utcNow)
+            toUtc = utcNow;
 
         // Base query
         var q = uow.GetQuery<VpnServerClient>().AsQueryable();

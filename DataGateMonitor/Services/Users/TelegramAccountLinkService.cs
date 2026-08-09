@@ -3,6 +3,7 @@ using Microsoft.Extensions.Caching.Memory;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.TelegramBot.Interfaces;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
@@ -15,6 +16,8 @@ public sealed class TelegramAccountLinkService(
     IUserQueryService userQueryService,
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
     IUserMergeService userMergeService,
+    ITelegramUserService telegramUserService,
+    ITelegramAdminAlertService telegramAdminAlertService,
     IConfiguration configuration,
     ILogger<TelegramAccountLinkService> logger) : ITelegramAccountLinkService
 {
@@ -291,6 +294,14 @@ public sealed class TelegramAccountLinkService(
 
             RemoveCode(normalizedCode, dashboardUserId, telegramId);
 
+            await TryNotifyAdminsAccountsLinkedAsync(
+                telegramId,
+                dashboardUser,
+                dashboardLinks,
+                hasGoogle,
+                merge,
+                ct);
+
             return new CompleteTelegramAccountLinkResponse
             {
                 Success = true,
@@ -318,6 +329,50 @@ public sealed class TelegramAccountLinkService(
                 dashboardUserId);
 
             return Fail("Account link failed. Please try again or request a new code.");
+        }
+    }
+
+    private async Task TryNotifyAdminsAccountsLinkedAsync(
+        long telegramId,
+        User dashboardUser,
+        IReadOnlyList<UserIdentityLink> dashboardLinks,
+        bool hasGoogle,
+        MergeTelegramGoogleUsersResponse merge,
+        CancellationToken ct)
+    {
+        try
+        {
+            var tgBotUser = await telegramUserService.GetUserByTelegramIdAsync(telegramId, ct);
+            var tgFullName = $"{tgBotUser?.FirstName} {tgBotUser?.LastName}".Trim();
+            var providerLabel = hasGoogle ? "Google" : "Password";
+            var linkedExternalId = dashboardLinks.FirstOrDefault(l =>
+                    string.Equals(
+                        l.Provider,
+                        hasGoogle ? GoogleProvider : LocalProvider,
+                        StringComparison.OrdinalIgnoreCase))
+                ?.ExternalId;
+
+            await telegramAdminAlertService.NotifyAccountsLinkedAsync(
+                new TelegramAccountsLinkedAlert
+                {
+                    TelegramId = telegramId,
+                    TelegramUsername = tgBotUser?.Username,
+                    TelegramDisplayName = string.IsNullOrWhiteSpace(tgFullName) ? null : tgFullName,
+                    LinkedProviderLabel = providerLabel,
+                    LinkedDisplayName = dashboardUser.DisplayName,
+                    LinkedEmail = dashboardUser.Email,
+                    LinkedExternalId = linkedExternalId,
+                    LinkedAvatarUrl = dashboardUser.AvatarUrl,
+                    SurvivorUserId = merge.SurvivorUserId,
+                    MergedUserId = merge.MergedUserId,
+                },
+                ct);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Accounts-linked admin alert failed for TelegramId={TelegramId}",
+                telegramId);
         }
     }
 

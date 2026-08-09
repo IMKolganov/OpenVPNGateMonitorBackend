@@ -13,7 +13,7 @@ public sealed class OpenVpnOverviewTotalsQuery(
     IUnitOfWork uow,
     IOverviewTrafficAggregator trafficAggregator) : IOpenVpnOverviewTotalsQuery
 {
-    public async Task<OverviewTotalsResponse> GetOverviewTotalsAsync(
+    public Task<OverviewTotalsResponse> GetOverviewTotalsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
         int? vpnServerId,
@@ -22,6 +22,26 @@ public sealed class OpenVpnOverviewTotalsQuery(
     {
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
+        var key = string.Join('|',
+            "overview-summary",
+            fromUtc.UtcTicks,
+            toUtc.UtcTicks,
+            vpnServerId?.ToString() ?? "-",
+            externalId ?? "-");
+
+        return OverviewTrafficResultCache.GetOrCreateAsync(
+            key,
+            token => BuildOverviewTotalsAsync(fromUtc, toUtc, vpnServerId, externalId, token),
+            ct);
+    }
+
+    private async Task<OverviewTotalsResponse> BuildOverviewTotalsAsync(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        int? vpnServerId,
+        string? externalId,
+        CancellationToken ct)
+    {
         var sessionsQ = uow.GetQuery<VpnServerClient>().AsQueryable();
 
         if (vpnServerId.HasValue)
@@ -34,13 +54,22 @@ public sealed class OpenVpnOverviewTotalsQuery(
             .Where(x => x.ConnectedSince >= fromUtc && x.ConnectedSince < toUtc)
             .AsNoTracking();
 
-        var sessionsCount = await sessionsQ.LongCountAsync(ct);
+        // One round-trip: sessions + distinct users (same filters as before).
+        var sessionAgg = await sessionsQ
+            .GroupBy(_ => 1)
+            .Select(g => new
+            {
+                SessionsCount = g.LongCount(),
+                UsersCount = g
+                    .Where(x => x.ExternalId != null && x.ExternalId != "")
+                    .Select(x => x.ExternalId)
+                    .Distinct()
+                    .LongCount()
+            })
+            .FirstOrDefaultAsync(ct);
 
-        var usersCount = await sessionsQ
-            .Select(x => x.ExternalId)
-            .Where(x => x != null && x != "")
-            .Distinct()
-            .LongCountAsync(ct);
+        var sessionsCount = sessionAgg?.SessionsCount ?? 0L;
+        var usersCount = sessionAgg?.UsersCount ?? 0L;
 
         var trafficTotals = await trafficAggregator.GetTrafficTotalsAsync(
             fromUtc, toUtc, vpnServerId, externalId, ct);

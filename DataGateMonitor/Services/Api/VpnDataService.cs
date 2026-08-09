@@ -8,19 +8,15 @@ using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
-using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.Api.PostSetup;
-using DataGateMonitor.Serialization;
-using Newtonsoft.Json.Linq;
-using System.Text.RegularExpressions;
+using DataGateMonitor.Services.Helpers;
 
 namespace DataGateMonitor.Services.Api;
 
 public class VpnDataService(
     ILogger<IVpnDataService> logger,
-    IExternalIpAddressService externalIpAddressService,
     IQuotaPlanQueryService quotaPlanQueryService,
     IVpnServerQueryService openVpnServerQueryService,
     IVpnServerOvpnFileConfigQueryService openVpnServerOvpnFileConfigQueryService,
@@ -33,10 +29,11 @@ public class VpnDataService(
     IStatusCacheGenerationService statusCacheGenerationService,
     IMicroserviceInfoService microserviceInfoService,
     IOpenVpnMicroserviceClientFactory microserviceClientFactory,
-    IOpenVpnEventClientFactory eventClientFactory) : IVpnDataService
+    IOpenVpnEventClientFactory eventClientFactory,
+    IVpnNodePublicIpLookup vpnNodePublicIpLookup,
+    IVpnServerClientPresenceService vpnServerClientPresenceService) : IVpnDataService
 {
-    private static readonly TimeSpan ExternalIpResolveTimeout = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan OpenVpnAutoDetectTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan MicroserviceInfoResolveTimeout = TimeSpan.FromSeconds(5);
 
     public async Task<VpnServer> AddVpnServer(VpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
@@ -87,6 +84,12 @@ public class VpnDataService(
 
     public async Task<VpnServer> UpdateVpnServer(VpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
+        var previous = await openVpnServerQueryService.GetById(server.Id, ct)
+                       ?? throw new InvalidOperationException("OpenVPN server not found");
+        var becameDisabled = server.IsDisable && !previous.IsDisable;
+        var apiUrlChanged = !string.Equals(
+            previous.ApiUrl?.Trim(), server.ApiUrl?.Trim(), StringComparison.OrdinalIgnoreCase);
+
         var result = await transactionRunner.RunAsync(async _ =>
         {
             var now = DateTimeOffset.UtcNow;
@@ -126,6 +129,10 @@ public class VpnDataService(
         statusCacheGenerationService.Bump();
         microserviceClientFactory.Invalidate(result.Id);
         eventClientFactory.Remove(result.Id);
+        if (apiUrlChanged)
+            vpnNodePublicIpLookup.Invalidate(result.Id);
+        if (becameDisabled)
+            await vpnServerClientPresenceService.MarkAllDisconnectedAsync(result.Id, ct);
         return result;
     }
 
@@ -139,10 +146,12 @@ public class VpnDataService(
             x => x.Id == vpnServerId,
             u => u.SetProperty(x => x.IsDeleted, true).SetProperty(x => x.LastUpdate, now),
             ct);
+        await vpnServerClientPresenceService.MarkAllDisconnectedAsync(vpnServerId, ct);
         await serverOpenVpnNotificationService.NotifyDeleted(openVpnServer.Id, openVpnServer.ServerName, ct);
         statusCacheGenerationService.Bump();
         microserviceClientFactory.Invalidate(openVpnServer.Id);
         eventClientFactory.Remove(openVpnServer.Id);
+        vpnNodePublicIpLookup.Invalidate(openVpnServer.Id);
         return true;
     }
 
@@ -213,10 +222,11 @@ public class VpnDataService(
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
 
+        // Empty IP until node /api/info PublicIp is applied — never dashboard WAN IP.
         var config = new VpnServerOvpnFileConfig
         {
             VpnServerId = server.Id,
-            VpnServerIp = await GetExternalIpSafelyAsync(ct),
+            VpnServerIp = string.Empty,
             ConfigTemplate = DefaultOpenVpnClientConfigTemplate,
         };
 
@@ -230,11 +240,11 @@ public class VpnDataService(
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
 
-        var ip = await GetExternalIpSafelyAsync(ct);
+        var ip = await TryGetNodePublicIpAsync(server.Id, VpnServerType.Xray, ct) ?? string.Empty;
         await openVpnServerOvpnFileConfigCommandService.Add(new VpnServerOvpnFileConfig
         {
             VpnServerId = server.Id,
-            VpnServerIp = string.IsNullOrWhiteSpace(ip) ? "127.0.0.1" : ip,
+            VpnServerIp = ip,
             VpnServerPort = 443,
             ConfigTemplate = DefaultXrayClientLinkTemplate,
         }, true, ct);
@@ -291,93 +301,36 @@ public class VpnDataService(
         await openVpnServerTagCommandService.AddRange(links, saveChanges: true, ct);
     }
 
-    private async Task TryApplyDetectedOpenVpnSettingsAsync(int vpnServerId, VpnServerOvpnFileConfig config, CancellationToken ct)
+    private Task TryApplyDetectedOpenVpnSettingsAsync(int vpnServerId, VpnServerOvpnFileConfig config, CancellationToken ct) =>
+        OpenVpnDetectedSettingsHelper.TryApplyAsync(
+            vpnServerId,
+            config,
+            microserviceInfoService,
+            logger,
+            "Failed to auto-detect default OpenVPN export config for VpnServerId={VpnServerId}.",
+            ct,
+            MicroserviceInfoResolveTimeout);
+
+    private async Task<string?> TryGetNodePublicIpAsync(int vpnServerId, VpnServerType serverType, CancellationToken ct)
     {
         try
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeoutCts.CancelAfter(OpenVpnAutoDetectTimeout);
+            timeoutCts.CancelAfter(MicroserviceInfoResolveTimeout);
             var diagnostics = await microserviceInfoService.GetInfoAsync(vpnServerId, timeoutCts.Token);
-            if (diagnostics is null || diagnostics.ServerType != VpnServerType.OpenVpn || diagnostics.OpenVpn is null)
-                return;
-
-            if (!TryExtractPortProto(diagnostics.OpenVpn, out var port, out var proto))
-                return;
-
-            if (port is > 0 and <= 65535)
-                config.VpnServerPort = port.Value;
-
-            if (!string.IsNullOrWhiteSpace(proto))
-                config.ConfigTemplate = ReplaceProtoDirective(config.ConfigTemplate, proto);
+            var ip = serverType == VpnServerType.Xray
+                ? diagnostics.Xray?.PublicIp
+                : diagnostics.OpenVpn?.PublicIp;
+            return string.IsNullOrWhiteSpace(ip) ? null : ip.Trim();
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (Exception ex)
         {
-            logger.LogDebug(ex,
-                "Failed to auto-detect default OpenVPN export config for VpnServerId={VpnServerId}.",
-                vpnServerId);
+            logger.LogDebug(ex, "VpnServerId: {Id}. Could not load node PublicIp for default export config.", vpnServerId);
+            return null;
         }
-    }
-
-    private async Task<string> GetExternalIpSafelyAsync(CancellationToken ct)
-    {
-        try
-        {
-            using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeoutCts.CancelAfter(ExternalIpResolveTimeout);
-            return await externalIpAddressService.GetRemoteIpAddress(timeoutCts.Token);
-        }
-        catch (Exception ex)
-        {
-            logger.LogWarning(ex, "Failed to resolve external IP quickly; fallback to loopback value.");
-            return "127.0.0.1";
-        }
-    }
-
-    private static bool TryExtractPortProto(object openVpnInfo, out int? port, out string? proto)
-    {
-        port = null;
-        proto = null;
-
-        var root = JObject.FromObject(openVpnInfo, Newtonsoft.Json.JsonSerializer.Create(ProjectJson.WebSettings));
-        if (TryGetPropertyIgnoreCase(root, "config", out var cfgToken) && cfgToken is JObject cfg)
-        {
-            if (TryGetPropertyIgnoreCase(cfg, "port", out var portToken) && portToken is { Type: JTokenType.Integer })
-                port = portToken.Value<int>();
-
-            if (TryGetPropertyIgnoreCase(cfg, "proto", out var protoToken) && protoToken is { Type: JTokenType.String })
-            {
-                var p = protoToken.Value<string>()?.Trim().ToLowerInvariant();
-                if (p is "tcp" or "udp")
-                    proto = p;
-            }
-        }
-
-        return port.HasValue || !string.IsNullOrWhiteSpace(proto);
-    }
-
-    private static bool TryGetPropertyIgnoreCase(JObject obj, string propertyName, out JToken? value)
-    {
-        foreach (var prop in obj.Properties())
-        {
-            if (string.Equals(prop.Name, propertyName, StringComparison.OrdinalIgnoreCase))
-            {
-                value = prop.Value;
-                return true;
-            }
-        }
-
-        value = null;
-        return false;
-    }
-
-    private static string ReplaceProtoDirective(string template, string proto)
-    {
-        if (string.IsNullOrWhiteSpace(template))
-            return template;
-
-        if (Regex.IsMatch(template, @"^\s*proto\s+\S+", RegexOptions.IgnoreCase | RegexOptions.Multiline))
-            return Regex.Replace(template, @"^\s*proto\s+\S+", $"proto {proto}", RegexOptions.IgnoreCase | RegexOptions.Multiline);
-
-        return $"proto {proto}\n{template}";
     }
 }

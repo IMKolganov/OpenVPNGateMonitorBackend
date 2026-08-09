@@ -74,6 +74,42 @@ public class TelegramDirectMessageSenderTests
     }
 
     [Fact]
+    public async Task TrySendPhotoAsync_WhenPhotoMissing_FallsBackToText()
+    {
+        SetupHttpClient(_ => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""{"ok":true,"result":{}}"""),
+        }));
+
+        var sut = CreateSut();
+        var result = await sut.TrySendPhotoAsync(123, null, "caption only", ct: CancellationToken.None);
+
+        Assert.True(result);
+    }
+
+    [Fact]
+    public async Task TrySendPhotoAsync_WhenTelegramAcceptsPhoto_ReturnsTrue()
+    {
+        SetupHttpClient(req =>
+        {
+            Assert.Contains("sendPhoto", req.RequestUri!.AbsoluteUri, StringComparison.Ordinal);
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""{"ok":true,"result":{}}"""),
+            });
+        });
+
+        var sut = CreateSut();
+        var result = await sut.TrySendPhotoAsync(
+            123,
+            [0xFF, 0xD8, 0xFF],
+            "with photo",
+            ct: CancellationToken.None);
+
+        Assert.True(result);
+    }
+
+    [Fact]
     public async Task TrySendMessageAsync_WhenHttpThrows_ReturnsFalseWithoutThrowing()
     {
         SetupHttpClient(_ => throw new HttpRequestException("network down"));

@@ -141,6 +141,8 @@ public class GlobalExceptionMiddleware(
         {
             UnauthorizedAccessException => ((int)HttpStatusCode.Unauthorized, exception.Message),
             ArgumentException => ((int)HttpStatusCode.BadRequest, exception.Message),
+            InvalidOperationException ioe when IsRateLimitMessage(ioe.Message)
+                => ((int)HttpStatusCode.TooManyRequests, ioe.Message),
             InvalidOperationException ioe when IsDuplicateOrConflictMessage(ioe.Message)
                 => ((int)HttpStatusCode.Conflict, ioe.Message),
             InvalidOperationException ioe when IsClientFacingInvalidOperation(ioe.Message)
@@ -166,6 +168,9 @@ public class GlobalExceptionMiddleware(
         await context.Response.WriteAsync(json);
     }
 
+    private static bool IsRateLimitMessage(string message) =>
+        message.Contains("Too many requests", StringComparison.OrdinalIgnoreCase);
+
     private static bool IsDuplicateOrConflictMessage(string message) =>
         message.Contains("already exists", StringComparison.OrdinalIgnoreCase)
         || message.Contains("already in use", StringComparison.OrdinalIgnoreCase)
@@ -174,7 +179,12 @@ public class GlobalExceptionMiddleware(
     private static bool IsClientFacingInvalidOperation(string message) =>
         message.Contains("only supported for", StringComparison.OrdinalIgnoreCase)
         || message.Contains("is missing", StringComparison.OrdinalIgnoreCase)
-        || message.Contains("not found", StringComparison.OrdinalIgnoreCase);
+        || message.Contains("not found", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("has expired", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("was denied", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("already completed", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("do not match", StringComparison.OrdinalIgnoreCase)
+        || message.Contains("no longer pending", StringComparison.OrdinalIgnoreCase);
 
     private static string GetExceptionDetails(Exception ex)
     {

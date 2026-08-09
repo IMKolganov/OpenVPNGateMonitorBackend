@@ -23,12 +23,52 @@ public class UserIdentityLinkQueryService(IQueryService<UserIdentityLink, int> q
 
     public Task<UserIdentityLink?> GetByUserId(int userId, CancellationToken ct)
         => q.Query()
-            .FirstOrDefaultAsync(x => x.UserId == userId, ct);
+            .Where(x => x.UserId == userId)
+            .OrderBy(x => x.Id)
+            .FirstOrDefaultAsync(ct);
+
+    public async Task<IReadOnlyDictionary<int, UserIdentityLink>> GetFirstByUserIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<int, UserIdentityLink>();
+
+        var links = await q.Query()
+            .Where(x => userIds.Contains(x.UserId))
+            .OrderBy(x => x.Id)
+            .ToListAsync(ct);
+
+        return links
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.First());
+    }
 
     public Task<List<UserIdentityLink>> GetListByUserId(int userId, CancellationToken ct)
         => q.Query()
             .Where(x => x.UserId == userId)
             .ToListAsync(ct);
+
+    public async Task<IReadOnlyDictionary<int, List<UserIdentityLink>>> GetListByUserIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<int, List<UserIdentityLink>>();
+
+        var ids = userIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<int, List<UserIdentityLink>>();
+
+        var links = await q.Query()
+            .AsNoTracking()
+            .Where(x => ids.Contains(x.UserId))
+            .ToListAsync(ct);
+
+        return links
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
 
     public Task<bool> AnyByUserId(int userId, CancellationToken ct)
         => q.Any(x => x.UserId == userId, ct: ct);

@@ -19,7 +19,7 @@ public class VpnServerOvpnFileConfig : BaseEntity<int>
     public string ConfigTemplate { get; set; } = @"setenv FRIENDLY_NAME ""{{friendly_name}}""
 client
 dev tun
-proto udp
+proto tcp
 remote {{server_ip}} {{server_port}}
 resolv-retry infinite
 nobind
@@ -49,7 +49,7 @@ verb 3
         ConfigTemplate = @"setenv FRIENDLY_NAME ""{{friendly_name}}""
 client
 dev tun
-proto udp
+proto tcp
 remote {{server_ip}} {{server_port}}
 resolv-retry infinite
 nobind

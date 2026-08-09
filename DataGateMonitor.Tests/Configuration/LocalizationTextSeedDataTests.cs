@@ -41,6 +41,17 @@ public class LocalizationTextSeedDataTests
         Assert.Contains("{accountLabel}", text);
     }
 
+    [Theory]
+    [InlineData(Language.English)]
+    [InlineData(Language.Greek)]
+    [InlineData(Language.Russian)]
+    public void VpnServerNotAllowedByQuotaPlan_exists_for_each_language(Language language)
+    {
+        var text = GetText("VpnServerNotAllowedByQuotaPlan", language);
+
+        Assert.False(string.IsNullOrWhiteSpace(text));
+    }
+
     [Fact]
     public void Seed_has_unique_ids()
     {

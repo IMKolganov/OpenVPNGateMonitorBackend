@@ -5,6 +5,7 @@ using Moq;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.TelegramBot.Interfaces;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.User.Requests;
@@ -51,11 +52,17 @@ public class TelegramAccountLinkServiceTests
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(new MergeTelegramGoogleUsersResponse { SurvivorUserId = 10, MergedUserId = 20 });
 
+        var adminAlert = new Mock<ITelegramAdminAlertService>();
+        adminAlert
+            .Setup(a => a.NotifyAccountsLinkedAsync(It.IsAny<TelegramAccountsLinkedAlert>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
         var sut = CreateSut(
             userId: 20,
             telegramUserId: 10,
             links: [new UserIdentityLink { Provider = AuthIdentityProviders.Google, ExternalId = "g-sub" }],
-            merge: merge.Object);
+            merge: merge.Object,
+            adminAlert: adminAlert);
 
         var issued = await sut.RequestLinkCodeFromBotAsync(DefaultTelegramId, CancellationToken.None);
         var result = await sut.CompleteLinkFromAppAsync(20, issued.Code, CancellationToken.None);
@@ -65,6 +72,15 @@ public class TelegramAccountLinkServiceTests
             m => m.MergeTelegramGoogleAsync(
                 It.IsAny<MergeTelegramGoogleUsersRequest>(),
                 20,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+        adminAlert.Verify(
+            a => a.NotifyAccountsLinkedAsync(
+                It.Is<TelegramAccountsLinkedAlert>(x =>
+                    x.TelegramId == DefaultTelegramId
+                    && x.LinkedProviderLabel == "Google"
+                    && x.SurvivorUserId == 10
+                    && x.MergedUserId == 20),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -162,6 +178,8 @@ public class TelegramAccountLinkServiceTests
             userQuery.Object,
             linkQuery.Object,
             merge.Object,
+            Mock.Of<ITelegramUserService>(),
+            Mock.Of<ITelegramAdminAlertService>(),
             config.Object,
             Mock.Of<ILogger<TelegramAccountLinkService>>());
 
@@ -368,7 +386,9 @@ public class TelegramAccountLinkServiceTests
             ]);
 
         var sut = new TelegramAccountLinkService(
-            cache, userQuery.Object, linkQuery.Object, Mock.Of<IUserMergeService>(), config.Object,
+            cache, userQuery.Object, linkQuery.Object, Mock.Of<IUserMergeService>(),
+            Mock.Of<ITelegramUserService>(), Mock.Of<ITelegramAdminAlertService>(),
+            config.Object,
             Mock.Of<ILogger<TelegramAccountLinkService>>());
 
         var result = await sut.CompleteLinkByCodeAsync("STALECOD", DefaultTelegramId, CancellationToken.None);
@@ -391,7 +411,9 @@ public class TelegramAccountLinkServiceTests
             .ReturnsAsync((UserIdentityLink?)null);
 
         var sut = new TelegramAccountLinkService(
-            cache, userQuery.Object, linkQuery.Object, Mock.Of<IUserMergeService>(), config.Object,
+            cache, userQuery.Object, linkQuery.Object, Mock.Of<IUserMergeService>(),
+            Mock.Of<ITelegramUserService>(), Mock.Of<ITelegramAdminAlertService>(),
+            config.Object,
             Mock.Of<ILogger<TelegramAccountLinkService>>());
 
         var result = await sut.CompleteLinkByCodeAsync("NOSUCHCD", DefaultTelegramId, CancellationToken.None);
@@ -430,7 +452,9 @@ public class TelegramAccountLinkServiceTests
             ]);
 
         var sut = new TelegramAccountLinkService(
-            cache, userQuery.Object, linkQuery.Object, Mock.Of<IUserMergeService>(), config.Object,
+            cache, userQuery.Object, linkQuery.Object, Mock.Of<IUserMergeService>(),
+            Mock.Of<ITelegramUserService>(), Mock.Of<ITelegramAdminAlertService>(),
+            config.Object,
             Mock.Of<ILogger<TelegramAccountLinkService>>());
 
         var issued = await sut.RequestLinkCodeAsync(dashboardUserId, null, CancellationToken.None);
@@ -448,7 +472,8 @@ public class TelegramAccountLinkServiceTests
         IReadOnlyList<UserIdentityLink>? survivorLinks = null,
         User? survivorUser = null,
         IMemoryCache? cache = null,
-        IUserMergeService? merge = null)
+        IUserMergeService? merge = null,
+        Mock<ITelegramAdminAlertService>? adminAlert = null)
     {
         cache ??= new MemoryCache(new MemoryCacheOptions());
         var userQuery = new Mock<IUserQueryService>();
@@ -457,6 +482,16 @@ public class TelegramAccountLinkServiceTests
         var mergeService = merge ?? mergeMock!.Object;
         var config = new Mock<IConfiguration>();
         config.Setup(c => c.GetSection(It.IsAny<string>())).Returns(Mock.Of<IConfigurationSection>());
+
+        adminAlert ??= new Mock<ITelegramAdminAlertService>();
+        adminAlert
+            .Setup(a => a.NotifyAccountsLinkedAsync(It.IsAny<TelegramAccountsLinkedAlert>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var telegramUsers = new Mock<ITelegramUserService>();
+        telegramUsers
+            .Setup(s => s.GetUserByTelegramIdAsync(It.IsAny<long>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((TelegramBotUser?)null);
 
         var resolvedTelegramUserId = telegramUserId > 0 ? telegramUserId : userId;
         var resolvedSurvivorLinks = survivorLinks ??
@@ -470,7 +505,14 @@ public class TelegramAccountLinkServiceTests
         ];
 
         userQuery.Setup(q => q.GetById(userId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = userId, IsBlocked = false });
+            .ReturnsAsync(new User
+            {
+                Id = userId,
+                IsBlocked = false,
+                DisplayName = $"user-{userId}",
+                Email = $"user{userId}@example.com",
+                AvatarUrl = "https://example.com/avatar.jpg",
+            });
         if (resolvedTelegramUserId != userId)
         {
             userQuery.Setup(q => q.GetById(resolvedTelegramUserId, It.IsAny<CancellationToken>()))
@@ -506,6 +548,8 @@ public class TelegramAccountLinkServiceTests
             userQuery.Object,
             linkQuery.Object,
             mergeService,
+            telegramUsers.Object,
+            adminAlert.Object,
             config.Object,
             Mock.Of<ILogger<TelegramAccountLinkService>>());
     }

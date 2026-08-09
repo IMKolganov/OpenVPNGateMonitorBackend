@@ -11,7 +11,22 @@ public interface IUserQueryService
     Task<User?> GetByEmail(string email, CancellationToken ct);
     Task<bool> AnyByEmail(string email, CancellationToken ct);
     Task<User?> GetById(int id, CancellationToken ct);
+
+    /// <summary>Batch lookup by primary key.</summary>
+    Task<IReadOnlyDictionary<int, User>> GetByIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct);
+
     Task<User?> GetByExternalId(string externalId, CancellationToken ct);
+
+    /// <summary>
+    /// Batch lookup by external id (one links query + one users query).
+    /// When multiple links share an external id, the lowest link Id wins (stable).
+    /// </summary>
+    Task<IReadOnlyDictionary<string, User>> GetByExternalIds(
+        IReadOnlyCollection<string> externalIds,
+        CancellationToken ct);
+
     Task<IPagedResult<User>> GetPage(int page, int pageSize, CancellationToken ct);
     Task<IPagedResult<User>> GetPage(GetAllUsersRequest request, CancellationToken ct);
     public Task<List<User>> Search(

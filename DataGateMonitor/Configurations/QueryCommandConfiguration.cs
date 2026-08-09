@@ -33,6 +33,7 @@ using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserRefreshTokenTable;
 using DataGateMonitor.DataBase.Services.Query.UserRoleTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
+using DataGateMonitor.DataBase.Services.Query.TvLoginSessionTable;
 
 namespace DataGateMonitor.Configurations;
 
@@ -88,6 +89,7 @@ public static class QueryCommandConfiguration
         services.AddScoped<IUserRefreshTokenQueryService, UserRefreshTokenQueryService>();
         
         services.AddScoped<IDeviceQueryService, DeviceQueryService>();
+        services.AddScoped<ITvLoginSessionQueryService, TvLoginSessionQueryService>();
 
 
         // Feature: overview queries
