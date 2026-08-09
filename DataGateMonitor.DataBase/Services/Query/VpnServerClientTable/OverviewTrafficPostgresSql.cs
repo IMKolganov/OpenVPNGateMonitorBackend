@@ -12,10 +12,10 @@ public static class OverviewTrafficPostgresSql
 {
     /// <summary>
     /// How far before <c>@from</c> to search for per-session byte baselines.
-    /// Polling is frequent; 2 days covers overnight sessions without scanning full history
-    /// (heavy ExternalId users can have 100k+ rows).
+    /// Polling is frequent; 1 day covers overnight sessions without scanning a wide
+    /// history window (verified equivalent to 2-day lookback on prod dump samples).
     /// </summary>
-    public const int BaselineLookbackDays = 2;
+    public const int BaselineLookbackDays = 1;
 
     public const string VpnServerFilterSql = """(@vpnServerId IS NULL OR t."VpnServerId" = @vpnServerId)""";
     public const string ExternalIdFilterSql = """(@externalId IS NULL OR t."ExternalId" = @externalId)""";
