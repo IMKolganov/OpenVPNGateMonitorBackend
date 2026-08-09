@@ -89,6 +89,28 @@ public class SlowDbCommandInterceptorTests
             Times.Never);
     }
 
+    [Fact]
+    public void Record_DoesNotThrow_When_Store_Throws()
+    {
+        var store = new Mock<IPerformanceSampleStore>();
+        store.Setup(s => s.AppendDbAsync(It.IsAny<PerformanceDbSample>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("redis down"));
+
+        var interceptor = new SlowDbCommandInterceptor(
+            store.Object,
+            Options.Create(new PerformanceMonitoringOptions { DbSlowMs = 1 }),
+            NullLogger<SlowDbCommandInterceptor>.Instance);
+
+        var ex = Record.Exception(() =>
+            interceptor.Record(
+                new FakeDbCommand("SELECT 1"),
+                TimeSpan.FromMilliseconds(50),
+                succeeded: true,
+                exception: null));
+
+        Assert.Null(ex);
+    }
+
     [Theory]
     [InlineData(null, 10, "")]
     [InlineData("abc", 10, "abc")]

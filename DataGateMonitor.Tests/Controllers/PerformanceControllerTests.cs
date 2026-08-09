@@ -39,6 +39,40 @@ public class PerformanceControllerTests
         Assert.Equal("abc", item.RequestId);
         Assert.Equal(250, item.DurationMs);
         Assert.Equal("/api/x", item.Path);
+        Assert.Equal("admin", item.UserName);
+        Assert.Equal("t1", item.TraceId);
+    }
+
+    [Fact]
+    public async Task GetDbQueries_Maps_Store_Samples()
+    {
+        var store = new Mock<IPerformanceSampleStore>();
+        store.Setup(s => s.GetDbLatestAsync(25, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new PerformanceDbSample
+                {
+                    TimestampUtc = DateTimeOffset.Parse("2026-01-02T00:00:00Z"),
+                    RequestId = "req-db",
+                    DurationMs = 180,
+                    CommandType = "Text",
+                    Sql = "SELECT 1",
+                    Succeeded = false,
+                    ExceptionMessage = "timeout"
+                }
+            ]);
+
+        var controller = new PerformanceController(store.Object);
+        var result = await controller.GetDbQueries(25, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<ApiResponse<PerformanceDbQueriesResponse>>(ok.Value);
+        var item = Assert.Single(payload.Data!.Items);
+        Assert.Equal("req-db", item.RequestId);
+        Assert.Equal(180, item.DurationMs);
+        Assert.Equal("SELECT 1", item.Sql);
+        Assert.False(item.Succeeded);
+        Assert.Equal("timeout", item.ExceptionMessage);
     }
 
     [Fact]
@@ -52,5 +86,33 @@ public class PerformanceControllerTests
 
         Assert.IsType<OkObjectResult>(result.Result);
         store.Verify(s => s.ClearAllAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ClearHttp_Delegates_To_Store()
+    {
+        var store = new Mock<IPerformanceSampleStore>();
+        store.Setup(s => s.ClearHttpAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        var controller = new PerformanceController(store.Object);
+
+        var result = await controller.ClearHttp(CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result.Result);
+        store.Verify(s => s.ClearHttpAsync(It.IsAny<CancellationToken>()), Times.Once);
+        store.Verify(s => s.ClearDbAsync(It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task ClearDb_Delegates_To_Store()
+    {
+        var store = new Mock<IPerformanceSampleStore>();
+        store.Setup(s => s.ClearDbAsync(It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        var controller = new PerformanceController(store.Object);
+
+        var result = await controller.ClearDb(CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result.Result);
+        store.Verify(s => s.ClearDbAsync(It.IsAny<CancellationToken>()), Times.Once);
+        store.Verify(s => s.ClearHttpAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }
