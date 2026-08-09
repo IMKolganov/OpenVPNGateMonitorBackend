@@ -134,13 +134,32 @@ public class VpnDnsQueryLogQueryService(IQueryService<VpnDnsQueryLog, int> q) : 
         if (request.ToUtc.HasValue)
             query = query.Where(x => x.QueriedAtUtc <= request.ToUtc.Value);
 
-        return await query
-            .GroupBy(x => x.Domain.ToLower())
+        // Two-phase aggregation: (domain, user) then roll up. Same numbers as
+        // COUNT(DISTINCT COALESCE(ExternalId, ClientIp)) but prefers HashAggregate
+        // over a large Sort for DISTINCT, which spills to disk under default work_mem.
+        var projected = query.Select(x => new
+        {
+            DomainKey = x.Domain.ToLower(),
+            x.Domain,
+            UserKey = x.ExternalId ?? x.ClientIp
+        });
+
+        var perUser = projected
+            .GroupBy(x => new { x.DomainKey, x.UserKey })
+            .Select(g => new
+            {
+                g.Key.DomainKey,
+                Domain = g.Max(x => x.Domain),
+                QueryCount = g.Count()
+            });
+
+        return await perUser
+            .GroupBy(x => x.DomainKey)
             .Select(g => new VpnDnsTopDomainDto
             {
-                Domain = g.Max(x => x.Domain),
-                UniqueUsersCount = g.Select(x => x.ExternalId ?? x.ClientIp).Distinct().Count(),
-                QueryCount = g.Count()
+                Domain = g.Max(x => x.Domain) ?? string.Empty,
+                UniqueUsersCount = g.Count(),
+                QueryCount = g.Sum(x => x.QueryCount)
             })
             .OrderByDescending(x => x.UniqueUsersCount)
             .ThenByDescending(x => x.QueryCount)

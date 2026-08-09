@@ -68,6 +68,7 @@ public class OverviewTrafficPostgresSqlTests
         Assert.Contains(@"t.""ExternalId"" = @externalId", cte, StringComparison.Ordinal);
         Assert.Contains(@"t.""VpnServerId"" = @vpnServerId", cte, StringComparison.Ordinal);
         Assert.Contains("DISTINCT ON", cte, StringComparison.Ordinal);
+        Assert.Contains("""IN (SELECT DISTINCT f."SessionId" FROM filtered f)""", cte, StringComparison.Ordinal);
     }
 
     [Fact]

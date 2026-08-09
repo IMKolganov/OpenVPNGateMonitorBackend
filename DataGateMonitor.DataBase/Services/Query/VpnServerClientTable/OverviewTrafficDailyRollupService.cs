@@ -57,6 +57,7 @@ public sealed class OverviewTrafficDailyRollupService(
                                t."BytesSent" AS baseline_out
                            FROM {trafficTable} t
                            WHERE t."MeasuredAt" < @dayStart
+                             AND t."SessionId" IN (SELECT DISTINCT f."SessionId" FROM filtered f)
                            ORDER BY t."SessionId", t."MeasuredAt" DESC
                        ),
                        with_prev AS (

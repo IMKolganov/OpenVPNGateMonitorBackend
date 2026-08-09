@@ -77,7 +77,12 @@ public sealed class OverviewTrafficAggregator(
         if (!ctx.Database.IsNpgsql())
             throw new InvalidOperationException("PostgreSQL aggregation requires Npgsql provider.");
 
-        return await query(ctx);
+        // Keep hash/sort aggregates in memory for multi-day windows; LOCAL scopes to this tx only.
+        await using var tx = await ctx.Database.BeginTransactionAsync(ct);
+        await ctx.Database.ExecuteSqlRawAsync("SET LOCAL work_mem = '64MB'", ct);
+        var result = await query(ctx);
+        await tx.CommitAsync(ct);
+        return result;
     }
 
     private static string ResolveTrafficTable(ApplicationDbContext ctx)

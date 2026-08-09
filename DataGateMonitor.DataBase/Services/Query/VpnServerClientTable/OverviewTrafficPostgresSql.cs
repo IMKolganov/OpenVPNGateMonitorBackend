@@ -96,6 +96,8 @@ public static class OverviewTrafficPostgresSql
             measuredFromParam: "@baselineFrom",
             measuredToExclusiveParam: "@from");
 
+        // Only sessions that appear in the filtered window need a baseline. Without this,
+        // a global lookback (no ExternalId) DISTINCT ON-scans every session in the window.
         return $"""
                baselines AS (
                    SELECT DISTINCT ON (t."SessionId")
@@ -104,6 +106,7 @@ public static class OverviewTrafficPostgresSql
                        t."BytesSent" AS baseline_out
                    FROM {table} t
                    WHERE {predicates}
+                     AND t."SessionId" IN (SELECT DISTINCT f."SessionId" FROM filtered f)
                    ORDER BY t."SessionId", t."MeasuredAt" DESC
                )
                """;
