@@ -19,6 +19,21 @@ public class UserQueryService(
     public Task<User?> GetById(int id, CancellationToken ct)
         => q.FindById(id, ct: ct);
 
+    public async Task<IReadOnlyDictionary<int, User>> GetByIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct)
+    {
+        var ids = userIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<int, User>();
+
+        var users = await q.Where(
+            predicate: x => ids.Contains(x.Id),
+            asNoTracking: true,
+            ct: ct);
+        return users.ToDictionary(u => u.Id);
+    }
+
     public async Task<User?> GetByEmail(string email, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(email))

@@ -13,7 +13,7 @@ public sealed class OpenVpnOverviewTotalsQuery(
     IUnitOfWork uow,
     IOverviewTrafficAggregator trafficAggregator) : IOpenVpnOverviewTotalsQuery
 {
-    public async Task<OverviewTotalsResponse> GetOverviewTotalsAsync(
+    public Task<OverviewTotalsResponse> GetOverviewTotalsAsync(
         DateTimeOffset fromUtc,
         DateTimeOffset toUtc,
         int? vpnServerId,
@@ -22,6 +22,26 @@ public sealed class OpenVpnOverviewTotalsQuery(
     {
         if (toUtc < fromUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
 
+        var key = string.Join('|',
+            "overview-summary",
+            fromUtc.UtcTicks,
+            toUtc.UtcTicks,
+            vpnServerId?.ToString() ?? "-",
+            externalId ?? "-");
+
+        return OverviewTrafficResultCache.GetOrCreateAsync(
+            key,
+            token => BuildOverviewTotalsAsync(fromUtc, toUtc, vpnServerId, externalId, token),
+            ct);
+    }
+
+    private async Task<OverviewTotalsResponse> BuildOverviewTotalsAsync(
+        DateTimeOffset fromUtc,
+        DateTimeOffset toUtc,
+        int? vpnServerId,
+        string? externalId,
+        CancellationToken ct)
+    {
         var sessionsQ = uow.GetQuery<VpnServerClient>().AsQueryable();
 
         if (vpnServerId.HasValue)

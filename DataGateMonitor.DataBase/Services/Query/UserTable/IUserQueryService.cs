@@ -11,6 +11,12 @@ public interface IUserQueryService
     Task<User?> GetByEmail(string email, CancellationToken ct);
     Task<bool> AnyByEmail(string email, CancellationToken ct);
     Task<User?> GetById(int id, CancellationToken ct);
+
+    /// <summary>Batch lookup by primary key.</summary>
+    Task<IReadOnlyDictionary<int, User>> GetByIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct);
+
     Task<User?> GetByExternalId(string externalId, CancellationToken ct);
 
     /// <summary>

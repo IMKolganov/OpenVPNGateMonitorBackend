@@ -36,33 +36,101 @@ public sealed class FreeTierEnforcementOverviewService(
 
     public Task<GetFreeTierEnforcementCandidatesResponse> GetUnsubscribedConnectedAsync(
         CancellationToken ct = default)
-        => CollectAsync(
-            // Include grace-period users: still not subscribed, but temporarily treated as compliant.
-            include: result => result.IsApplicable && !result.IsChannelSubscribed,
-            connectedOnly: true,
-            ct);
+        // Online digest: start from connected sessions so we do not call Telegram for every Free/Default user.
+        => CollectConnectedUnsubscribedAsync(ct);
+
+    private async Task<GetFreeTierEnforcementCandidatesResponse> CollectConnectedUnsubscribedAsync(
+        CancellationToken ct)
+    {
+        var freeTierUserIds = await GetFreeTierUserIdsAsync(ct);
+        if (freeTierUserIds.Count == 0)
+            return new GetFreeTierEnforcementCandidatesResponse();
+
+        var servers = await vpnServerQueryService.GetAll(ct: ct);
+        var serverNameById = servers.ToDictionary(s => s.Id, s => s.ServerName);
+
+        var connected = (await vpnServerClientQueryService.GetAllConnected(ct))
+            .Where(c => !string.IsNullOrWhiteSpace(c.CommonName))
+            .ToList();
+        if (connected.Count == 0)
+            return new GetFreeTierEnforcementCandidatesResponse();
+
+        var userIdByConnection = await ResolveConnectedUserIdsAsync(connected, ct);
+        var connectedByUserId = new Dictionary<int, VpnServerClient>();
+        foreach (var client in connected)
+        {
+            if (!userIdByConnection.TryGetValue(client, out var userId))
+                continue;
+            if (!freeTierUserIds.Contains(userId))
+                continue;
+            connectedByUserId.TryAdd(userId, client);
+        }
+
+        if (connectedByUserId.Count == 0)
+            return new GetFreeTierEnforcementCandidatesResponse();
+
+        var userIds = connectedByUserId.Keys.ToList();
+        var usersById = await userQueryService.GetByIds(userIds, ct);
+        var linksByUserId = await userIdentityLinkQueryService.GetListByUserIds(userIds, ct);
+
+        var candidates = new List<FreeTierEnforcementCandidateDto>(userIds.Count);
+        foreach (var userId in userIds)
+        {
+            ct.ThrowIfCancellationRequested();
+
+            FreeTierAccessComplianceResult result;
+            try
+            {
+                result = await freeTierAccessComplianceService.EvaluateAccessForEnforcementAsync(userId, ct);
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to evaluate free-tier compliance for user {UserId}", userId);
+                continue;
+            }
+
+            if (!result.IsApplicable || result.IsChannelSubscribed)
+                continue;
+
+            usersById.TryGetValue(userId, out var user);
+            linksByUserId.TryGetValue(userId, out var links);
+            links ??= [];
+
+            var dto = new FreeTierEnforcementCandidateDto
+            {
+                UserId = userId,
+                DisplayName = user?.DisplayName ?? user?.Email ?? $"User #{userId}",
+                Email = string.IsNullOrWhiteSpace(user?.Email) ? null : user!.Email.Trim(),
+                TelegramId = result.TelegramId,
+                ActivePlanName = result.ActivePlanName,
+                IsMergedAccount = result.IsMergedAccount,
+                IsChannelSubscribed = result.IsChannelSubscribed,
+                IdentityProviders = FormatIdentityProviders(links),
+                IsConnected = true,
+            };
+
+            var session = connectedByUserId[userId];
+            dto.VpnServerId = session.VpnServerId;
+            dto.VpnServerName = serverNameById.GetValueOrDefault(session.VpnServerId);
+            dto.CommonName = session.CommonName;
+            dto.ConnectedSince = session.ConnectedSince;
+            candidates.Add(dto);
+        }
+
+        return new GetFreeTierEnforcementCandidatesResponse
+        {
+            Candidates = candidates,
+            TotalCount = candidates.Count,
+            ConnectedCount = candidates.Count,
+        };
+    }
 
     private async Task<GetFreeTierEnforcementCandidatesResponse> CollectAsync(
         Func<FreeTierAccessComplianceResult, bool> include,
         bool connectedOnly,
         CancellationToken ct)
     {
-        var plans = await quotaPlanQueryService.GetAll(ct);
-        var freeDefaultPlanIds = plans
-            .Where(p => QuotaPlanNames.IsFreeOrDefault(p.Name))
-            .Select(p => p.Id)
-            .ToHashSet();
-
-        if (freeDefaultPlanIds.Count == 0)
-            return new GetFreeTierEnforcementCandidatesResponse();
-
-        var activeAssignments = await userQuotaPlanQueryService.GetAllActive(ct);
-        var freeTierUserIds = activeAssignments
-            .Where(a => freeDefaultPlanIds.Contains(a.QuotaPlanId))
-            .Select(a => a.UserId)
-            .Distinct()
-            .ToList();
-
+        var freeTierUserIds = await GetFreeTierUserIdsAsync(ct);
         if (freeTierUserIds.Count == 0)
             return new GetFreeTierEnforcementCandidatesResponse();
 
@@ -73,6 +141,18 @@ public sealed class FreeTierEnforcementOverviewService(
             .Where(c => !string.IsNullOrWhiteSpace(c.CommonName))
             .GroupBy(c => (c.VpnServerId, c.CommonName!), StringPairComparer.Instance)
             .ToDictionary(g => g.Key, g => g.First(), StringPairComparer.Instance);
+
+        var usersById = await userQueryService.GetByIds(freeTierUserIds, ct);
+        var linksByUserId = await userIdentityLinkQueryService.GetListByUserIds(freeTierUserIds, ct);
+
+        var allExternalIds = linksByUserId.Values
+            .SelectMany(links => links)
+            .Select(l => l.ExternalId?.Trim())
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .Cast<string>()
+            .ToList();
+        var issuedByExternalId = await issuedOvpnFileQueryService.GetAllByExternalIds(allExternalIds, ct);
 
         var candidates = new List<FreeTierEnforcementCandidateDto>();
 
@@ -94,8 +174,10 @@ public sealed class FreeTierEnforcementOverviewService(
             if (!include(result))
                 continue;
 
-            var user = await userQueryService.GetById(userId, ct);
-            var links = await userIdentityLinkQueryService.GetListByUserId(userId, ct);
+            usersById.TryGetValue(userId, out var user);
+            linksByUserId.TryGetValue(userId, out var links);
+            links ??= [];
+
             var dto = new FreeTierEnforcementCandidateDto
             {
                 UserId = userId,
@@ -108,7 +190,7 @@ public sealed class FreeTierEnforcementOverviewService(
                 IdentityProviders = FormatIdentityProviders(links),
             };
 
-            await TryAttachConnectionAsync(dto, links, connectedByServerAndCn, serverNameById, ct);
+            TryAttachConnection(dto, links, issuedByExternalId, connectedByServerAndCn, serverNameById);
             if (connectedOnly && !dto.IsConnected)
                 continue;
 
@@ -121,6 +203,89 @@ public sealed class FreeTierEnforcementOverviewService(
             TotalCount = candidates.Count,
             ConnectedCount = candidates.Count(c => c.IsConnected),
         };
+    }
+
+    private async Task<HashSet<int>> GetFreeTierUserIdsAsync(CancellationToken ct)
+    {
+        var plans = await quotaPlanQueryService.GetAll(ct);
+        var freeDefaultPlanIds = plans
+            .Where(p => QuotaPlanNames.IsFreeOrDefault(p.Name))
+            .Select(p => p.Id)
+            .ToHashSet();
+
+        if (freeDefaultPlanIds.Count == 0)
+            return [];
+
+        var activeAssignments = await userQuotaPlanQueryService.GetAllActive(ct);
+        return activeAssignments
+            .Where(a => freeDefaultPlanIds.Contains(a.QuotaPlanId))
+            .Select(a => a.UserId)
+            .ToHashSet();
+    }
+
+    private async Task<Dictionary<VpnServerClient, int>> ResolveConnectedUserIdsAsync(
+        IReadOnlyList<VpnServerClient> connected,
+        CancellationToken ct)
+    {
+        var result = new Dictionary<VpnServerClient, int>(ReferenceEqualityComparer.Instance);
+
+        var externalIds = connected
+            .Select(c => c.ExternalId?.Trim())
+            .Where(id => !string.IsNullOrWhiteSpace(id))
+            .Distinct(StringComparer.Ordinal)
+            .Cast<string>()
+            .ToList();
+
+        var usersByExternalId = await userQueryService.GetByExternalIds(externalIds, ct);
+
+        var unresolved = new List<VpnServerClient>();
+        foreach (var client in connected)
+        {
+            if (client.UserId is > 0)
+            {
+                result[client] = client.UserId.Value;
+                continue;
+            }
+
+            var externalId = client.ExternalId?.Trim();
+            if (!string.IsNullOrWhiteSpace(externalId) &&
+                usersByExternalId.TryGetValue(externalId, out var user))
+            {
+                result[client] = user.Id;
+                continue;
+            }
+
+            unresolved.Add(client);
+        }
+
+        if (unresolved.Count == 0)
+            return result;
+
+        var pairs = unresolved
+            .Select(c => (c.VpnServerId, c.CommonName!))
+            .Distinct()
+            .ToList();
+        var issued = await issuedOvpnFileQueryService.GetActiveByServerAndCommonNames(pairs, ct);
+        var externalByPair = issued
+            .Where(f => !string.IsNullOrWhiteSpace(f.ExternalId) && !string.IsNullOrWhiteSpace(f.CommonName))
+            .GroupBy(f => (f.VpnServerId, f.CommonName!), StringPairComparer.Instance)
+            .ToDictionary(g => g.Key, g => g.First().ExternalId!, StringPairComparer.Instance);
+
+        var fallbackExternalIds = externalByPair.Values
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        var fallbackUsers = await userQueryService.GetByExternalIds(fallbackExternalIds, ct);
+
+        foreach (var client in unresolved)
+        {
+            if (!externalByPair.TryGetValue((client.VpnServerId, client.CommonName!), out var externalId))
+                continue;
+            if (!fallbackUsers.TryGetValue(externalId, out var user))
+                continue;
+            result[client] = user.Id;
+        }
+
+        return result;
     }
 
     internal static List<string> FormatIdentityProviders(IEnumerable<UserIdentityLink> links)
@@ -141,24 +306,22 @@ public sealed class FreeTierEnforcementOverviewService(
             _ => 9,
         };
 
-    private async Task TryAttachConnectionAsync(
+    private static void TryAttachConnection(
         FreeTierEnforcementCandidateDto dto,
         IReadOnlyList<UserIdentityLink> links,
+        IReadOnlyDictionary<string, List<IssuedOvpnFile>> issuedByExternalId,
         IReadOnlyDictionary<(int VpnServerId, string CommonName), VpnServerClient> connectedByServerAndCn,
-        IReadOnlyDictionary<int, string> serverNameById,
-        CancellationToken ct)
+        IReadOnlyDictionary<int, string> serverNameById)
     {
         var externalIds = links
             .Select(l => l.ExternalId?.Trim())
             .Where(id => !string.IsNullOrWhiteSpace(id))
             .Distinct(StringComparer.Ordinal)
-            .Cast<string>()
-            .ToList();
+            .Cast<string>();
 
         foreach (var externalId in externalIds)
         {
-            var issuedFiles = await issuedOvpnFileQueryService.GetAllByExternalId(externalId, ct);
-            if (issuedFiles is null)
+            if (!issuedByExternalId.TryGetValue(externalId, out var issuedFiles))
                 continue;
 
             foreach (var file in issuedFiles)

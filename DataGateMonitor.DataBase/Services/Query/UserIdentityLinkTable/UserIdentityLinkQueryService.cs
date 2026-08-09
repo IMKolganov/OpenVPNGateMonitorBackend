@@ -49,6 +49,27 @@ public class UserIdentityLinkQueryService(IQueryService<UserIdentityLink, int> q
             .Where(x => x.UserId == userId)
             .ToListAsync(ct);
 
+    public async Task<IReadOnlyDictionary<int, List<UserIdentityLink>>> GetListByUserIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct)
+    {
+        if (userIds.Count == 0)
+            return new Dictionary<int, List<UserIdentityLink>>();
+
+        var ids = userIds.Where(id => id > 0).Distinct().ToList();
+        if (ids.Count == 0)
+            return new Dictionary<int, List<UserIdentityLink>>();
+
+        var links = await q.Query()
+            .AsNoTracking()
+            .Where(x => ids.Contains(x.UserId))
+            .ToListAsync(ct);
+
+        return links
+            .GroupBy(x => x.UserId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+    }
+
     public Task<bool> AnyByUserId(int userId, CancellationToken ct)
         => q.Any(x => x.UserId == userId, ct: ct);
 

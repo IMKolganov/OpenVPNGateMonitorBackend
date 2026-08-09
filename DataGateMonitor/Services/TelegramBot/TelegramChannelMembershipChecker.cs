@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using DataGateMonitor.Models.Helpers;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
@@ -9,8 +10,10 @@ namespace DataGateMonitor.Services.TelegramBot;
 public sealed class TelegramChannelMembershipChecker(
     IHttpClientFactory httpClientFactory,
     IOptions<TelegramChannelSettings> options,
+    IMemoryCache memoryCache,
     ILogger<TelegramChannelMembershipChecker> logger) : ITelegramChannelMembershipChecker
 {
+    private static readonly TimeSpan MembershipCacheTtl = TimeSpan.FromMinutes(2);
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     public async Task<bool> IsSubscribedAsync(long telegramUserId, CancellationToken ct)
@@ -27,6 +30,10 @@ public sealed class TelegramChannelMembershipChecker(
         if (telegramUserId <= 0)
             return false;
 
+        var cacheKey = BuildCacheKey(telegramUserId, settings.RequiredChannelChatId);
+        if (memoryCache.TryGetValue(cacheKey, out bool cached))
+            return cached;
+
         var chatId = settings.RequiredChannelChatId;
         var url =
             $"https://api.telegram.org/bot{settings.BotToken}/getChatMember?chat_id={Uri.EscapeDataString(chatId)}&user_id={telegramUserId}";
@@ -38,6 +45,7 @@ public sealed class TelegramChannelMembershipChecker(
             var errorBody = await response.Content.ReadAsStringAsync(ct);
             var telegramDescription = TryReadTelegramDescription(errorBody) ?? errorBody;
             LogGetChatMemberFailure(telegramUserId, chatId, (int)response.StatusCode, telegramDescription);
+            memoryCache.Set(cacheKey, false, MembershipCacheTtl);
             return false;
         }
 
@@ -45,11 +53,17 @@ public sealed class TelegramChannelMembershipChecker(
         if (payload is not { Ok: true, Result: not null })
         {
             LogGetChatMemberFailure(telegramUserId, chatId, statusCode: null, payload?.Description ?? "unknown");
+            memoryCache.Set(cacheKey, false, MembershipCacheTtl);
             return false;
         }
 
-        return IsActiveMemberStatus(payload.Result.Status);
+        var subscribed = IsActiveMemberStatus(payload.Result.Status);
+        memoryCache.Set(cacheKey, subscribed, MembershipCacheTtl);
+        return subscribed;
     }
+
+    internal static string BuildCacheKey(long telegramUserId, string chatId)
+        => $"tg-channel-member:{chatId}:{telegramUserId}";
 
     internal static bool IsActiveMemberStatus(string? status)
         => status?.ToLowerInvariant() switch

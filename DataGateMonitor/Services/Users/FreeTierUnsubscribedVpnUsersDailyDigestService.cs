@@ -18,6 +18,8 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
     : IFreeTierUnsubscribedVpnUsersDailyDigestService
 {
     private const string LastSentUtcDateCacheKey = "free-tier-unsub-admin-digest:last-utc-date";
+    private const string DigestResultCacheKey = "free-tier-unsub-admin-digest:result";
+    private static readonly TimeSpan DigestResultTtl = TimeSpan.FromSeconds(30);
 
     public async Task TrySendDailyDigestAsync(CancellationToken ct = default)
     {
@@ -70,17 +72,25 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
 
     public async Task<FreeTierUnsubscribedVpnDigestResponse> BuildDigestAsync(CancellationToken ct = default)
     {
+        if (memoryCache.TryGetValue(DigestResultCacheKey, out FreeTierUnsubscribedVpnDigestResponse? cached) &&
+            cached is not null)
+        {
+            return cached;
+        }
+
         var todayUtc = DateOnly.FromDateTime(DateTime.UtcNow);
         var overview = await overviewService.GetUnsubscribedConnectedAsync(ct);
         var candidates = overview.Candidates
             .OrderBy(c => c.DisplayName)
             .ToList();
 
-        return new FreeTierUnsubscribedVpnDigestResponse
+        var result = new FreeTierUnsubscribedVpnDigestResponse
         {
             Text = BuildDigestMessage(todayUtc, candidates),
             Candidates = candidates,
         };
+        memoryCache.Set(DigestResultCacheKey, result, DigestResultTtl);
+        return result;
     }
 
     /// <summary>

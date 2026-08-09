@@ -54,6 +54,23 @@ public class FreeTierEnforcementOverviewServiceTests
             .ReturnsAsync([new VpnServer { Id = 100, ServerName = "srv-100" }]);
         _vpnServerClientQueryService.Setup(x => x.GetAllConnected(It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
+        _userQueryService
+            .Setup(x => x.GetByIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, User>());
+        _userIdentityLinkQueryService
+            .Setup(x => x.GetListByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<UserIdentityLink>>());
+        _userQueryService
+            .Setup(x => x.GetByExternalIds(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, User>(StringComparer.Ordinal));
+        _issuedOvpnFileQueryService
+            .Setup(x => x.GetAllByExternalIds(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, List<IssuedOvpnFile>>(StringComparer.Ordinal));
+        _issuedOvpnFileQueryService
+            .Setup(x => x.GetActiveByServerAndCommonNames(
+                It.IsAny<IReadOnlyCollection<(int, string)>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
     }
 
     [Fact]
@@ -110,14 +127,23 @@ public class FreeTierEnforcementOverviewServiceTests
                 TelegramId = 555,
             });
         _userQueryService
-            .Setup(x => x.GetById(42, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 42, DisplayName = "Bob", Email = "bob@example.com" });
+            .Setup(x => x.GetByIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, User>
+            {
+                [42] = new User { Id = 42, DisplayName = "Bob", Email = "bob@example.com" },
+            });
         _userIdentityLinkQueryService
-            .Setup(x => x.GetListByUserId(42, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new UserIdentityLink { UserId = 42, Provider = "telegram", ExternalId = "555" }]);
+            .Setup(x => x.GetListByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<UserIdentityLink>>
+            {
+                [42] = [new UserIdentityLink { UserId = 42, Provider = "telegram", ExternalId = "555" }],
+            });
         _issuedOvpnFileQueryService
-            .Setup(x => x.GetAllByExternalId("555", It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new IssuedOvpnFile { Id = 1, VpnServerId = 100, CommonName = "cn-42", ExternalId = "555" }]);
+            .Setup(x => x.GetAllByExternalIds(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, List<IssuedOvpnFile>>(StringComparer.Ordinal)
+            {
+                ["555"] = [new IssuedOvpnFile { Id = 1, VpnServerId = 100, CommonName = "cn-42", ExternalId = "555" }],
+            });
 
         var connectedSince = DateTimeOffset.UtcNow.AddMinutes(-10);
         _vpnServerClientQueryService.Setup(x => x.GetAllConnected(It.IsAny<CancellationToken>())).ReturnsAsync(
@@ -142,7 +168,7 @@ public class FreeTierEnforcementOverviewServiceTests
         Assert.Equal(1, result.ConnectedCount);
         Assert.Equal(1, result.TotalCount);
         _userIdentityLinkQueryService.Verify(
-            x => x.GetListByUserId(42, It.IsAny<CancellationToken>()),
+            x => x.GetListByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -164,14 +190,17 @@ public class FreeTierEnforcementOverviewServiceTests
                 IsMergedAccount = false,
             });
         _userQueryService
-            .Setup(x => x.GetById(150, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 150, DisplayName = "Tatyana", Email = "t@example.com" });
+            .Setup(x => x.GetByIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, User>
+            {
+                [150] = new User { Id = 150, DisplayName = "Tatyana", Email = "t@example.com" },
+            });
         _userIdentityLinkQueryService
-            .Setup(x => x.GetListByUserId(150, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new UserIdentityLink { UserId = 150, Provider = "google", ExternalId = "g-sub" }]);
-        _issuedOvpnFileQueryService
-            .Setup(x => x.GetAllByExternalId("g-sub", It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+            .Setup(x => x.GetListByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<UserIdentityLink>>
+            {
+                [150] = [new UserIdentityLink { UserId = 150, Provider = "google", ExternalId = "g-sub" }],
+            });
 
         var sut = CreateSut();
         var result = await sut.GetCandidatesAsync(CancellationToken.None);
@@ -202,18 +231,21 @@ public class FreeTierEnforcementOverviewServiceTests
                 IsMergedAccount = true,
             });
         _userQueryService
-            .Setup(x => x.GetById(7, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 7, DisplayName = "Alice", Email = "alice@gmail.com" });
+            .Setup(x => x.GetByIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, User>
+            {
+                [7] = new User { Id = 7, DisplayName = "Alice", Email = "alice@gmail.com" },
+            });
         _userIdentityLinkQueryService
-            .Setup(x => x.GetListByUserId(7, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(
-            [
-                new UserIdentityLink { UserId = 7, Provider = "telegram", ExternalId = "111" },
-                new UserIdentityLink { UserId = 7, Provider = "google", ExternalId = "g" },
-            ]);
-        _issuedOvpnFileQueryService
-            .Setup(x => x.GetAllByExternalId(It.IsAny<string>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([]);
+            .Setup(x => x.GetListByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<UserIdentityLink>>
+            {
+                [7] =
+                [
+                    new UserIdentityLink { UserId = 7, Provider = "telegram", ExternalId = "111" },
+                    new UserIdentityLink { UserId = 7, Provider = "google", ExternalId = "g" },
+                ],
+            });
 
         var sut = CreateSut();
         var result = await sut.GetCandidatesAsync(CancellationToken.None);
@@ -222,7 +254,7 @@ public class FreeTierEnforcementOverviewServiceTests
         Assert.Equal(["google", "telegram"], candidate.IdentityProviders);
         Assert.True(candidate.IsMergedAccount);
         _userIdentityLinkQueryService.Verify(
-            x => x.GetListByUserId(7, It.IsAny<CancellationToken>()),
+            x => x.GetListByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -247,17 +279,32 @@ public class FreeTierEnforcementOverviewServiceTests
                 TelegramId = 555,
             });
         _userQueryService
-            .Setup(x => x.GetById(42, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 42, DisplayName = "Grace" });
+            .Setup(x => x.GetByIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, User>
+            {
+                [42] = new User { Id = 42, DisplayName = "Grace" },
+            });
         _userIdentityLinkQueryService
-            .Setup(x => x.GetListByUserId(42, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new UserIdentityLink { UserId = 42, Provider = "telegram", ExternalId = "555" }]);
-        _issuedOvpnFileQueryService
-            .Setup(x => x.GetAllByExternalId("555", It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new IssuedOvpnFile { Id = 1, VpnServerId = 100, CommonName = "cn-42", ExternalId = "555" }]);
+            .Setup(x => x.GetListByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<UserIdentityLink>>
+            {
+                [42] = [new UserIdentityLink { UserId = 42, Provider = "telegram", ExternalId = "555" }],
+            });
+        _userQueryService
+            .Setup(x => x.GetByExternalIds(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, User>(StringComparer.Ordinal)
+            {
+                ["555"] = new User { Id = 42, DisplayName = "Grace" },
+            });
         _vpnServerClientQueryService.Setup(x => x.GetAllConnected(It.IsAny<CancellationToken>())).ReturnsAsync(
         [
-            new VpnServerClient { VpnServerId = 100, CommonName = "cn-42", IsConnected = true },
+            new VpnServerClient
+            {
+                VpnServerId = 100,
+                CommonName = "cn-42",
+                ExternalId = "555",
+                IsConnected = true,
+            },
         ]);
 
         var sut = CreateSut();
@@ -267,6 +314,10 @@ public class FreeTierEnforcementOverviewServiceTests
         Assert.Single(digest.Candidates);
         Assert.Equal(42, digest.Candidates[0].UserId);
         Assert.Empty(disconnectCandidates.Candidates);
+        // Digest evaluates only connected free-tier users (not every Free/Default account).
+        _complianceService.Verify(
+            x => x.EvaluateAccessForEnforcementAsync(42, It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
     }
 
     [Fact]
@@ -287,19 +338,66 @@ public class FreeTierEnforcementOverviewServiceTests
                 TelegramId = 555,
             });
         _userQueryService
-            .Setup(x => x.GetById(42, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new User { Id = 42, DisplayName = "Offline" });
+            .Setup(x => x.GetByIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, User>
+            {
+                [42] = new User { Id = 42, DisplayName = "Offline" },
+            });
         _userIdentityLinkQueryService
-            .Setup(x => x.GetListByUserId(42, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new UserIdentityLink { UserId = 42, Provider = "telegram", ExternalId = "555" }]);
+            .Setup(x => x.GetListByUserIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<UserIdentityLink>>
+            {
+                [42] = [new UserIdentityLink { UserId = 42, Provider = "telegram", ExternalId = "555" }],
+            });
         _issuedOvpnFileQueryService
-            .Setup(x => x.GetAllByExternalId("555", It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new IssuedOvpnFile { Id = 1, VpnServerId = 100, CommonName = "cn-42", ExternalId = "555" }]);
+            .Setup(x => x.GetAllByExternalIds(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, List<IssuedOvpnFile>>(StringComparer.Ordinal)
+            {
+                ["555"] = [new IssuedOvpnFile { Id = 1, VpnServerId = 100, CommonName = "cn-42", ExternalId = "555" }],
+            });
 
         var sut = CreateSut();
         var digest = await sut.GetUnsubscribedConnectedAsync(CancellationToken.None);
 
         Assert.Empty(digest.Candidates);
+        _complianceService.Verify(
+            x => x.EvaluateAccessForEnforcementAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GetUnsubscribedConnectedAsync_SkipsComplianceForPaidConnectedUsers()
+    {
+        SetupCommonPlans();
+        _userQuotaPlanQueryService.Setup(x => x.GetAllActive(It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new UserQuotaPlan { UserId = 42, QuotaPlanId = 1 },
+            new UserQuotaPlan { UserId = 99, QuotaPlanId = 3 },
+        ]);
+        _userQueryService
+            .Setup(x => x.GetByExternalIds(It.IsAny<IReadOnlyCollection<string>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<string, User>(StringComparer.Ordinal)
+            {
+                ["paid"] = new User { Id = 99, DisplayName = "Paid" },
+            });
+        _vpnServerClientQueryService.Setup(x => x.GetAllConnected(It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new VpnServerClient
+            {
+                VpnServerId = 100,
+                CommonName = "cn-paid",
+                ExternalId = "paid",
+                IsConnected = true,
+            },
+        ]);
+
+        var sut = CreateSut();
+        var digest = await sut.GetUnsubscribedConnectedAsync(CancellationToken.None);
+
+        Assert.Empty(digest.Candidates);
+        _complianceService.Verify(
+            x => x.EvaluateAccessForEnforcementAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

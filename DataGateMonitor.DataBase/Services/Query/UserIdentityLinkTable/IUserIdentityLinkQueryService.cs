@@ -17,6 +17,12 @@ public interface IUserIdentityLinkQueryService
         IReadOnlyCollection<int> userIds,
         CancellationToken ct);
     Task<List<UserIdentityLink>> GetListByUserId(int userId, CancellationToken ct);
+
+    /// <summary>All identity links for the given users, grouped by <see cref="UserIdentityLink.UserId"/>.</summary>
+    Task<IReadOnlyDictionary<int, List<UserIdentityLink>>> GetListByUserIds(
+        IReadOnlyCollection<int> userIds,
+        CancellationToken ct);
+
     Task<bool> AnyByUserId(int userId, CancellationToken ct);
 
     Task<IPagedResult<UserIdentityLink>> GetPage(int page, int pageSize, CancellationToken ct);

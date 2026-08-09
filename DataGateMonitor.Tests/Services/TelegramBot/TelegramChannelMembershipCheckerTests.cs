@@ -1,4 +1,5 @@
 using System.Net;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -11,6 +12,7 @@ public class TelegramChannelMembershipCheckerTests
 {
     private readonly Mock<IHttpClientFactory> _httpClientFactory = new();
     private readonly Mock<ILogger<TelegramChannelMembershipChecker>> _logger = new();
+    private readonly IMemoryCache _memoryCache = new MemoryCache(new MemoryCacheOptions());
 
     private TelegramChannelMembershipChecker CreateSut(string? botToken = "test-token")
         => new(
@@ -20,6 +22,7 @@ public class TelegramChannelMembershipCheckerTests
                 BotToken = botToken,
                 RequiredChannelUsername = "datagateapp",
             }),
+            _memoryCache,
             _logger.Object);
 
     private void SetupHttpClient(Func<HttpRequestMessage, Task<HttpResponseMessage>> handler)
