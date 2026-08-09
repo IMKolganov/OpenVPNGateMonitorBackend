@@ -178,7 +178,7 @@ public class VpnServerOvpnFileConfigServiceTests
     }
 
     [Fact]
-    public async Task AddOrUpdate_AutoDetect_Applies_OpenVpn_Port_And_Proto_From_MicroserviceInfo()
+    public async Task AddOrUpdate_AutoDetect_Applies_OpenVpn_Port_Proto_And_PublicIp_When_Ip_Empty()
     {
         var (svc, _, q, cmd, microserviceInfo) = CreateService();
         var serverId = 400;
@@ -197,6 +197,61 @@ public class VpnServerOvpnFileConfigServiceTests
                 ServerType = VpnServerType.OpenVpn,
                 OpenVpn = new RootOpenVpnInfoResponse
                 {
+                    PublicIp = "203.0.113.50",
+                    Config = new ConfigInfoResponse
+                    {
+                        Port = "443",
+                        Proto = "tcp"
+                    }
+                }
+            });
+        q.SetupSequence(x => x.GetByVpnServerIdId(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing)
+            .ReturnsAsync(existing);
+        cmd.Setup(c => c.Update(existing, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var incoming = new VpnServerOvpnFileConfig
+        {
+            VpnServerId = serverId,
+            VpnServerIp = "",
+            VpnServerPort = 1194,
+            ConfigTemplate = "client\nproto udp\nremote server 1194"
+        };
+
+        var result = await svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, true, CancellationToken.None);
+
+        Assert.Same(existing, result);
+        Assert.Equal("203.0.113.50", existing.VpnServerIp);
+        Assert.Equal(443, existing.VpnServerPort);
+        Assert.Contains("proto tcp", existing.ConfigTemplate);
+        Assert.DoesNotContain("proto udp", existing.ConfigTemplate);
+        microserviceInfo.Verify(m => m.GetInfoAsync(serverId, It.IsAny<CancellationToken>()), Times.Once);
+        q.VerifyAll();
+        cmd.VerifyAll();
+    }
+
+    [Fact]
+    public async Task AddOrUpdate_AutoDetect_Applies_OpenVpn_Port_And_Proto_From_MicroserviceInfo()
+    {
+        var (svc, _, q, cmd, microserviceInfo) = CreateService();
+        var serverId = 401;
+        var existing = new VpnServerOvpnFileConfig
+        {
+            Id = 9,
+            VpnServerId = serverId,
+            VpnServerIp = "10.0.0.1",
+            VpnServerPort = 1194,
+            ConfigTemplate = "client\nproto udp\nremote server 1194"
+        };
+
+        microserviceInfo.Setup(m => m.GetInfoAsync(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
+            {
+                ServerType = VpnServerType.OpenVpn,
+                OpenVpn = new RootOpenVpnInfoResponse
+                {
+                    PublicIp = "203.0.113.50",
                     Config = new ConfigInfoResponse
                     {
                         Port = "443",
@@ -221,6 +276,7 @@ public class VpnServerOvpnFileConfigServiceTests
         var result = await svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, true, CancellationToken.None);
 
         Assert.Same(existing, result);
+        Assert.Equal("20.0.0.2", existing.VpnServerIp);
         Assert.Equal(443, existing.VpnServerPort);
         Assert.Contains("proto tcp", existing.ConfigTemplate);
         Assert.DoesNotContain("proto udp", existing.ConfigTemplate);

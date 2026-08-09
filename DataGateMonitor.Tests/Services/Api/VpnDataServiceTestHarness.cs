@@ -14,7 +14,6 @@ using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Helpers;
-using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 
 namespace DataGateMonitor.Tests.Services.Api;
@@ -22,7 +21,6 @@ namespace DataGateMonitor.Tests.Services.Api;
 internal sealed class VpnDataServiceTestHarness
 {
     public Mock<ILogger<IVpnDataService>> Log { get; } = new();
-    public Mock<IExternalIpAddressService> Ip { get; } = new(MockBehavior.Strict);
     public Mock<IQuotaPlanQueryService> QuotaPlanQ { get; } = new(MockBehavior.Strict);
     public Mock<IVpnServerQueryService> ServerQ { get; } = new(MockBehavior.Strict);
     public Mock<IVpnServerOvpnFileConfigQueryService> CfgQ { get; } = new(MockBehavior.Strict);
@@ -71,7 +69,6 @@ internal sealed class VpnDataServiceTestHarness
 
     public VpnDataService Create() => new(
         Log.Object,
-        Ip.Object,
         QuotaPlanQ.Object,
         ServerQ.Object,
         CfgQ.Object,

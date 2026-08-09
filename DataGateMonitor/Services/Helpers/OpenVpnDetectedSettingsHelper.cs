@@ -29,6 +29,8 @@ internal static class OpenVpnDetectedSettingsHelper
             if (diagnostics is null || diagnostics.ServerType != VpnServerType.OpenVpn || diagnostics.OpenVpn is null)
                 return;
 
+            ApplyPublicIpIfEmpty(config, diagnostics.OpenVpn.PublicIp);
+
             if (!TryExtractPortProto(diagnostics.OpenVpn, out var port, out var proto))
                 return;
 
@@ -46,6 +48,19 @@ internal static class OpenVpnDetectedSettingsHelper
         {
             logger.LogDebug(ex, logMessage, vpnServerId);
         }
+    }
+
+    /// <summary>
+    /// Fills <see cref="VpnServerOvpnFileConfig.VpnServerIp"/> from the node <c>PublicIp</c> only when
+    /// the config IP is empty — never from the dashboard's outbound address.
+    /// </summary>
+    public static void ApplyPublicIpIfEmpty(VpnServerOvpnFileConfig config, string? publicIp)
+    {
+        if (!string.IsNullOrWhiteSpace(config.VpnServerIp))
+            return;
+        if (string.IsNullOrWhiteSpace(publicIp))
+            return;
+        config.VpnServerIp = publicIp.Trim();
     }
 
     public static bool TryExtractPortProto(object openVpnInfo, out int? port, out string? proto)

@@ -8,7 +8,6 @@ using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
-using DataGateMonitor.Services.Helpers.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.Api.PostSetup;
@@ -18,7 +17,6 @@ namespace DataGateMonitor.Services.Api;
 
 public class VpnDataService(
     ILogger<IVpnDataService> logger,
-    IExternalIpAddressService externalIpAddressService,
     IQuotaPlanQueryService quotaPlanQueryService,
     IVpnServerQueryService openVpnServerQueryService,
     IVpnServerOvpnFileConfigQueryService openVpnServerOvpnFileConfigQueryService,
@@ -35,7 +33,7 @@ public class VpnDataService(
     IVpnNodePublicIpLookup vpnNodePublicIpLookup,
     IVpnServerClientPresenceService vpnServerClientPresenceService) : IVpnDataService
 {
-    private static readonly TimeSpan ExternalIpResolveTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan MicroserviceInfoResolveTimeout = TimeSpan.FromSeconds(5);
 
     public async Task<VpnServer> AddVpnServer(VpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
@@ -224,10 +222,11 @@ public class VpnDataService(
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
 
+        // Empty IP until node /api/info PublicIp is applied — never dashboard WAN IP.
         var config = new VpnServerOvpnFileConfig
         {
             VpnServerId = server.Id,
-            VpnServerIp = await GetExternalIpSafelyAsync(ct),
+            VpnServerIp = string.Empty,
             ConfigTemplate = DefaultOpenVpnClientConfigTemplate,
         };
 
@@ -241,11 +240,11 @@ public class VpnDataService(
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
 
-        var ip = await GetExternalIpSafelyAsync(ct);
+        var ip = await TryGetNodePublicIpAsync(server.Id, VpnServerType.Xray, ct) ?? string.Empty;
         await openVpnServerOvpnFileConfigCommandService.Add(new VpnServerOvpnFileConfig
         {
             VpnServerId = server.Id,
-            VpnServerIp = string.IsNullOrWhiteSpace(ip) ? "127.0.0.1" : ip,
+            VpnServerIp = ip,
             VpnServerPort = 443,
             ConfigTemplate = DefaultXrayClientLinkTemplate,
         }, true, ct);
@@ -309,15 +308,20 @@ public class VpnDataService(
             microserviceInfoService,
             logger,
             "Failed to auto-detect default OpenVPN export config for VpnServerId={VpnServerId}.",
-            ct);
+            ct,
+            MicroserviceInfoResolveTimeout);
 
-    private async Task<string> GetExternalIpSafelyAsync(CancellationToken ct)
+    private async Task<string?> TryGetNodePublicIpAsync(int vpnServerId, VpnServerType serverType, CancellationToken ct)
     {
         try
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-            timeoutCts.CancelAfter(ExternalIpResolveTimeout);
-            return await externalIpAddressService.GetRemoteIpAddress(timeoutCts.Token);
+            timeoutCts.CancelAfter(MicroserviceInfoResolveTimeout);
+            var diagnostics = await microserviceInfoService.GetInfoAsync(vpnServerId, timeoutCts.Token);
+            var ip = serverType == VpnServerType.Xray
+                ? diagnostics.Xray?.PublicIp
+                : diagnostics.OpenVpn?.PublicIp;
+            return string.IsNullOrWhiteSpace(ip) ? null : ip.Trim();
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -325,8 +329,8 @@ public class VpnDataService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to resolve external IP quickly; fallback to loopback value.");
-            return "127.0.0.1";
+            logger.LogDebug(ex, "VpnServerId: {Id}. Could not load node PublicIp for default export config.", vpnServerId);
+            return null;
         }
     }
 }

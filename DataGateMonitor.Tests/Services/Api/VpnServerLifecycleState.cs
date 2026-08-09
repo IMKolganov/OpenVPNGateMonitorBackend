@@ -13,7 +13,6 @@ using DataGateMonitor.Services.DataGateOpenVpnManager.Events;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
 using DataGateMonitor.Services.Helpers;
-using DataGateMonitor.Services.Helpers.Interfaces;
 using Microsoft.Extensions.Logging;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using DataGateMonitor.SharedModels.Enums;
@@ -247,12 +246,8 @@ internal sealed class VpnServerLifecycleEnvironment
                 return cfg;
             });
 
-        var ip = new Mock<IExternalIpAddressService>();
-        ip.Setup(x => x.GetRemoteIpAddress(It.IsAny<CancellationToken>())).ReturnsAsync("203.0.113.50");
-
         return new VpnDataService(
             Mock.Of<ILogger<IVpnDataService>>(),
-            ip.Object,
             quotaPlanQ.Object,
             serverQ.Object,
             cfgQ.Object,
