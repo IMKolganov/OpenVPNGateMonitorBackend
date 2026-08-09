@@ -123,6 +123,7 @@ public static class ServiceConfiguration
             services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
             services.AddHostedService<TrafficDailyRollupBackgroundService>();
             services.AddHostedService<FreeTierOpenVpnSessionEnforcementBackgroundService>();
+            services.AddHostedService<FreeTierUnsubscribedVpnUsersDailyDigestBackgroundService>();
         }
 
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
@@ -149,6 +150,8 @@ public static class ServiceConfiguration
         services.AddScoped<IOpenVpnDisconnectExecutor, OpenVpnDisconnectExecutor>();
         services.AddScoped<IFreeTierEnforcementOverviewService, FreeTierEnforcementOverviewService>();
         services.AddScoped<IFreeTierGraceDisconnectNotifier, FreeTierGraceDisconnectNotifier>();
+        services.AddScoped<IFreeTierUnsubscribedUserReminderService, FreeTierUnsubscribedUserReminderService>();
+        services.AddScoped<IFreeTierUnsubscribedVpnUsersDailyDigestService, FreeTierUnsubscribedVpnUsersDailyDigestService>();
         
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();

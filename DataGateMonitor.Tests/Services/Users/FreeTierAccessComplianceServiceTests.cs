@@ -9,6 +9,7 @@ using DataGateMonitor.Services.Users;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
@@ -21,22 +22,29 @@ public class FreeTierAccessComplianceServiceTests
     private readonly Mock<IQuotaPlanQueryService> _quotaPlanQuery = new();
     private readonly Mock<IUserIdentityLinkQueryService> _identityLinkQuery = new();
     private readonly Mock<ITelegramChannelMembershipChecker> _channelChecker = new();
+    private readonly Mock<IFreeTierUnsubscribedUserReminderService> _reminder = new();
     private readonly Mock<IAppNotificationFacade> _notifications = new();
     private readonly Mock<ISettingsService> _settingsService = new();
     private readonly MemoryCache _memoryCache = new(new MemoryCacheOptions());
 
     private FreeTierAccessComplianceService CreateSut()
-        => new(
+    {
+        _reminder
+            .Setup(r => r.TryRemindAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        return new(
             _quotaAssignmentQuery.Object,
             _quotaPlanQuery.Object,
             _identityLinkQuery.Object,
             _channelChecker.Object,
+            _reminder.Object,
             _notifications.Object,
             _settingsService.Object,
             _memoryCache,
             Options.Create(new TelegramChannelSettings { RequiredChannelUsername = "DataGateVPNBot" }),
             Mock.Of<ILogger<FreeTierAccessComplianceService>>());
-
+    }
     private void SetupGraceSettings(bool enabled, int minutes = 5)
     {
         _settingsService
@@ -111,7 +119,7 @@ public class FreeTierAccessComplianceServiceTests
     }
 
     [Fact]
-    public async Task IsCompliant_WhenMergedTelegramGoogleAccountOnDefaultPlan()
+    public async Task IsNotCompliant_WhenMergedTelegramGoogleAccount_WithoutChannelSubscription()
     {
         _quotaAssignmentQuery
             .Setup(q => q.GetActiveByUserId(10, It.IsAny<CancellationToken>()))
@@ -126,6 +134,51 @@ public class FreeTierAccessComplianceServiceTests
                 new UserIdentityLink { Provider = "telegram", ExternalId = "12345" },
                 new UserIdentityLink { Provider = "google", ExternalId = "google-sub" },
             ]);
+        _channelChecker
+            .Setup(c => c.IsSubscribedAsync(12345, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
+        SetupGraceSettings(enabled: false);
+        _notifications
+            .Setup(n => n.FreeTierAccessNonCompliant(
+                10,
+                QuotaPlanNames.Default,
+                12345,
+                true,
+                false,
+                "merge",
+                "@DataGateVPNBot",
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var sut = CreateSut();
+        var result = await sut.AuditAndNotifyIfNeededAsync(10, "merge", ct: CancellationToken.None);
+
+        Assert.True(result.IsApplicable);
+        Assert.False(result.IsCompliant);
+        Assert.True(result.IsMergedAccount);
+        Assert.False(result.IsChannelSubscribed);
+        _notifications.VerifyAll();
+    }
+
+    [Fact]
+    public async Task IsCompliant_WhenMergedAndSubscribedToChannel()
+    {
+        _quotaAssignmentQuery
+            .Setup(q => q.GetActiveByUserId(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { UserId = 10, QuotaPlanId = 2 });
+        _quotaPlanQuery
+            .Setup(q => q.GetById(2, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new QuotaPlan { Id = 2, Name = QuotaPlanNames.Default });
+        _identityLinkQuery
+            .Setup(q => q.GetListByUserId(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new UserIdentityLink { Provider = "telegram", ExternalId = "12345" },
+                new UserIdentityLink { Provider = "google", ExternalId = "google-sub" },
+            ]);
+        _channelChecker
+            .Setup(c => c.IsSubscribedAsync(12345, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         var sut = CreateSut();
         var result = await sut.AuditAndNotifyIfNeededAsync(10, "merge", ct: CancellationToken.None);
@@ -133,6 +186,7 @@ public class FreeTierAccessComplianceServiceTests
         Assert.True(result.IsApplicable);
         Assert.True(result.IsCompliant);
         Assert.True(result.IsMergedAccount);
+        Assert.True(result.IsChannelSubscribed);
         _notifications.VerifyNoOtherCalls();
     }
 
@@ -312,7 +366,7 @@ public class FreeTierAccessComplianceServiceTests
     }
 
     [Fact]
-    public async Task GetStatusAsync_WhenCompliant_DoesNotNotifyAdmins()
+    public async Task GetStatusAsync_WhenMergedAndSubscribed_IsCompliant()
     {
         _quotaAssignmentQuery
             .Setup(q => q.GetActiveByUserId(10, It.IsAny<CancellationToken>()))
@@ -327,6 +381,9 @@ public class FreeTierAccessComplianceServiceTests
                 new UserIdentityLink { Provider = "telegram", ExternalId = "12345" },
                 new UserIdentityLink { Provider = "google", ExternalId = "sub" },
             ]);
+        _channelChecker
+            .Setup(c => c.IsSubscribedAsync(12345, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         var sut = CreateSut();
         var status = await sut.GetStatusAsync(10, CancellationToken.None);
@@ -334,6 +391,7 @@ public class FreeTierAccessComplianceServiceTests
         Assert.True(status.IsApplicable);
         Assert.True(status.IsCompliant);
         Assert.True(status.IsMergedAccount);
+        Assert.True(status.IsChannelSubscribed);
         Assert.Equal("@DataGateVPNBot", status.RequiredChannel);
         _notifications.VerifyNoOtherCalls();
     }
@@ -433,7 +491,7 @@ public class FreeTierAccessComplianceServiceTests
     }
 
     [Fact]
-    public async Task RegisterConnectionAsync_WhenCompliant_ReturnsCompliantStatusWithoutGrace()
+    public async Task RegisterConnectionAsync_WhenMergedAndSubscribed_ReturnsCompliantStatusWithoutGrace()
     {
         _quotaAssignmentQuery
             .Setup(q => q.GetActiveByUserId(71, It.IsAny<CancellationToken>()))
@@ -448,6 +506,9 @@ public class FreeTierAccessComplianceServiceTests
                 new UserIdentityLink { Provider = "telegram", ExternalId = "12345" },
                 new UserIdentityLink { Provider = "google", ExternalId = "sub" },
             ]);
+        _channelChecker
+            .Setup(c => c.IsSubscribedAsync(12345, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
 
         var sut = CreateSut();
         var status = await sut.RegisterConnectionAsync(71, "android-connect", CancellationToken.None);
@@ -561,6 +622,59 @@ public class FreeTierAccessComplianceServiceTests
         Assert.True(result.IsApplicable);
         Assert.True(result.IsCompliant);
         Assert.True(result.IsGracePeriod);
+    }
+
+    [Fact]
+    public async Task AuditAndNotify_WhenUnsubscribed_InvokesUserReminder()
+    {
+        SetupFreePlanUser(80, 8080);
+        SetupGraceSettings(enabled: false);
+        _notifications
+            .Setup(n => n.FreeTierAccessNonCompliant(
+                It.IsAny<int>(),
+                It.IsAny<string>(),
+                It.IsAny<long?>(),
+                It.IsAny<bool>(),
+                It.IsAny<bool>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var sut = CreateSut();
+        await sut.AuditAndNotifyIfNeededAsync(80, "bot-files", ct: CancellationToken.None);
+
+        _reminder.Verify(
+            r => r.TryRemindAsync(8080, "bot-files", It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetStatusAsync_WhenUnsubscribed_DoesNotInvokeUserReminder()
+    {
+        SetupFreePlanUser(81, 8081);
+        SetupGraceSettings(enabled: false);
+
+        var sut = CreateSut();
+        await sut.GetStatusAsync(81, CancellationToken.None);
+
+        _reminder.Verify(
+            r => r.TryRemindAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task AuditAndNotify_WhenSubscribed_DoesNotInvokeUserReminder()
+    {
+        SetupFreePlanUser(82, 8082);
+        _channelChecker.Setup(c => c.IsSubscribedAsync(8082, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+
+        var sut = CreateSut();
+        await sut.AuditAndNotifyIfNeededAsync(82, "bot", ct: CancellationToken.None);
+
+        _reminder.Verify(
+            r => r.TryRemindAsync(It.IsAny<long>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]

@@ -11,6 +11,13 @@ namespace DataGateMonitor.Tests.Controllers;
 
 public class FreeTierEnforcementControllerTests
 {
+    private static FreeTierEnforcementController CreateController(
+        Mock<IFreeTierEnforcementOverviewService> overview,
+        Mock<IFreeTierUnsubscribedVpnUsersDailyDigestService>? digest = null)
+        => new(
+            overview.Object,
+            (digest ?? new Mock<IFreeTierUnsubscribedVpnUsersDailyDigestService>()).Object);
+
     [Fact]
     public async Task GetCandidates_ReturnsServicePayload()
     {
@@ -32,7 +39,7 @@ public class FreeTierEnforcementControllerTests
                 ]
             });
 
-        var controller = new FreeTierEnforcementController(overview.Object);
+        var controller = CreateController(overview);
         var result = await controller.GetCandidates(CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
@@ -41,6 +48,23 @@ public class FreeTierEnforcementControllerTests
         Assert.Equal(1, payload.Data!.TotalCount);
         Assert.Equal(42, Assert.Single(payload.Data.Candidates).UserId);
         overview.Verify(s => s.GetCandidatesAsync(It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task GetUnsubscribedVpnDigest_ReturnsDigestText()
+    {
+        var overview = new Mock<IFreeTierEnforcementOverviewService>();
+        var digest = new Mock<IFreeTierUnsubscribedVpnUsersDailyDigestService>();
+        digest.Setup(s => s.BuildDigestTextAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync("digest-body");
+
+        var controller = CreateController(overview, digest);
+        var result = await controller.GetUnsubscribedVpnDigest(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var payload = Assert.IsType<ApiResponse<string>>(ok.Value);
+        Assert.True(payload.Success);
+        Assert.Equal("digest-body", payload.Data);
     }
 
     [Fact]
@@ -70,7 +94,7 @@ public class FreeTierEnforcementControllerTests
                 }
             });
 
-        var controller = new FreeTierEnforcementController(overview.Object);
+        var controller = CreateController(overview);
         var result = await controller.GetDisconnectLog(request, CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);

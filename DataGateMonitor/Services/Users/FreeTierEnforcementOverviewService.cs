@@ -28,7 +28,24 @@ public sealed class FreeTierEnforcementOverviewService(
     IQueryService<FreeTierDisconnectLog, int> disconnectLogQueryService,
     ILogger<FreeTierEnforcementOverviewService> logger) : IFreeTierEnforcementOverviewService
 {
-    public async Task<GetFreeTierEnforcementCandidatesResponse> GetCandidatesAsync(CancellationToken ct = default)
+    public Task<GetFreeTierEnforcementCandidatesResponse> GetCandidatesAsync(CancellationToken ct = default)
+        => CollectAsync(
+            include: result => result.IsApplicable && !result.IsCompliant,
+            connectedOnly: false,
+            ct);
+
+    public Task<GetFreeTierEnforcementCandidatesResponse> GetUnsubscribedConnectedAsync(
+        CancellationToken ct = default)
+        => CollectAsync(
+            // Include grace-period users: still not subscribed, but temporarily treated as compliant.
+            include: result => result.IsApplicable && !result.IsChannelSubscribed,
+            connectedOnly: true,
+            ct);
+
+    private async Task<GetFreeTierEnforcementCandidatesResponse> CollectAsync(
+        Func<FreeTierAccessComplianceResult, bool> include,
+        bool connectedOnly,
+        CancellationToken ct)
     {
         var plans = await quotaPlanQueryService.GetAll(ct);
         var freeDefaultPlanIds = plans
@@ -74,7 +91,7 @@ public sealed class FreeTierEnforcementOverviewService(
                 continue;
             }
 
-            if (!result.IsApplicable || result.IsCompliant)
+            if (!include(result))
                 continue;
 
             var user = await userQueryService.GetById(userId, ct);
@@ -90,6 +107,9 @@ public sealed class FreeTierEnforcementOverviewService(
             };
 
             await TryAttachConnectionAsync(dto, userId, connectedByServerAndCn, serverNameById, ct);
+            if (connectedOnly && !dto.IsConnected)
+                continue;
+
             candidates.Add(dto);
         }
 

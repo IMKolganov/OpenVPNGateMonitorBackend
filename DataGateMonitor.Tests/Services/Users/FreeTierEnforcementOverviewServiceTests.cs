@@ -142,6 +142,82 @@ public class FreeTierEnforcementOverviewServiceTests
     }
 
     [Fact]
+    public async Task GetUnsubscribedConnectedAsync_IncludesGraceUserWhoIsOnlineButNotSubscribed()
+    {
+        SetupCommonPlans();
+        _userQuotaPlanQueryService.Setup(x => x.GetAllActive(It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new UserQuotaPlan { UserId = 42, QuotaPlanId = 1 },
+        ]);
+        // Grace: compliant for disconnect, but still not subscribed.
+        _complianceService
+            .Setup(x => x.EvaluateAccessForEnforcementAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult
+            {
+                IsApplicable = true,
+                IsCompliant = true,
+                IsGracePeriod = true,
+                IsChannelSubscribed = false,
+                ActivePlanName = QuotaPlanNames.Free,
+                TelegramId = 555,
+            });
+        _userQueryService
+            .Setup(x => x.GetById(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 42, DisplayName = "Grace" });
+        _userIdentityLinkQueryService
+            .Setup(x => x.GetListByUserId(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new UserIdentityLink { UserId = 42, Provider = "telegram", ExternalId = "555" }]);
+        _issuedOvpnFileQueryService
+            .Setup(x => x.GetAllByExternalId("555", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new IssuedOvpnFile { Id = 1, VpnServerId = 100, CommonName = "cn-42", ExternalId = "555" }]);
+        _vpnServerClientQueryService.Setup(x => x.GetAllConnected(It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new VpnServerClient { VpnServerId = 100, CommonName = "cn-42", IsConnected = true },
+        ]);
+
+        var sut = CreateSut();
+        var digest = await sut.GetUnsubscribedConnectedAsync(CancellationToken.None);
+        var disconnectCandidates = await sut.GetCandidatesAsync(CancellationToken.None);
+
+        Assert.Single(digest.Candidates);
+        Assert.Equal(42, digest.Candidates[0].UserId);
+        Assert.Empty(disconnectCandidates.Candidates);
+    }
+
+    [Fact]
+    public async Task GetUnsubscribedConnectedAsync_ExcludesOfflineUnsubscribedUsers()
+    {
+        SetupCommonPlans();
+        _userQuotaPlanQueryService.Setup(x => x.GetAllActive(It.IsAny<CancellationToken>())).ReturnsAsync(
+        [
+            new UserQuotaPlan { UserId = 42, QuotaPlanId = 1 },
+        ]);
+        _complianceService
+            .Setup(x => x.EvaluateAccessForEnforcementAsync(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new FreeTierAccessComplianceResult
+            {
+                IsApplicable = true,
+                IsCompliant = false,
+                IsChannelSubscribed = false,
+                TelegramId = 555,
+            });
+        _userQueryService
+            .Setup(x => x.GetById(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 42, DisplayName = "Offline" });
+        _userIdentityLinkQueryService
+            .Setup(x => x.GetListByUserId(42, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new UserIdentityLink { UserId = 42, Provider = "telegram", ExternalId = "555" }]);
+        _issuedOvpnFileQueryService
+            .Setup(x => x.GetAllByExternalId("555", It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new IssuedOvpnFile { Id = 1, VpnServerId = 100, CommonName = "cn-42", ExternalId = "555" }]);
+
+        var sut = CreateSut();
+        var digest = await sut.GetUnsubscribedConnectedAsync(CancellationToken.None);
+
+        Assert.Empty(digest.Candidates);
+    }
+
+    [Fact]
     public async Task GetDisconnectLogAsync_MapsPagedResultToDto()
     {
         var now = DateTimeOffset.UtcNow;

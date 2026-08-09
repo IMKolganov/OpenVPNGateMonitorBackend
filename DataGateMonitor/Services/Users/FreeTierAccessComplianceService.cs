@@ -18,6 +18,7 @@ public sealed class FreeTierAccessComplianceService(
     IQuotaPlanQueryService quotaPlanQueryService,
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
     ITelegramChannelMembershipChecker telegramChannelMembershipChecker,
+    IFreeTierUnsubscribedUserReminderService unsubscribedUserReminderService,
     IAppNotificationFacade appNotificationFacade,
     ISettingsService settingsService,
     IMemoryCache memoryCache,
@@ -130,6 +131,14 @@ public sealed class FreeTierAccessComplianceService(
         var result = evaluation.Result;
         var links = evaluation.Links;
 
+        if (result is { IsApplicable: true, IsChannelSubscribed: false, TelegramId: > 0 })
+        {
+            await unsubscribedUserReminderService.TryRemindAsync(
+                result.TelegramId.Value,
+                context,
+                ct);
+        }
+
         if (!result.IsApplicable || result.IsCompliant)
             return (result, links);
 
@@ -168,10 +177,11 @@ public sealed class FreeTierAccessComplianceService(
         }
 
         logger.LogWarning(
-            "User {UserId} on plan {PlanName} is not merged and not subscribed to {Channel}. Context={Context}",
+            "User {UserId} on plan {PlanName} is not subscribed to {Channel}. Merged={IsMerged}. Context={Context}",
             userId,
             result.ActivePlanName,
             channelOptions.Value.RequiredChannelChatId,
+            result.IsMergedAccount,
             context);
 
         return (CopyResult(result, adminsNotified: true), links);
@@ -237,7 +247,9 @@ public sealed class FreeTierAccessComplianceService(
         if (channelSubscribed != true && telegramId is > 0)
             channelSubscribed = await telegramChannelMembershipChecker.IsSubscribedAsync(telegramId.Value, ct);
 
-        var isCompliant = isMerged || channelSubscribed == true;
+        // Free/Default always require an active Telegram channel subscription.
+        // Linking Telegram+Google/password does not exempt the user.
+        var isCompliant = channelSubscribed == true;
 
         return (
             new FreeTierAccessComplianceResult

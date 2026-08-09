@@ -16,12 +16,13 @@ namespace DataGateMonitor.Controllers;
 [Authorize]
 [Authorize(Roles = "Admin,App")]
 public class FreeTierEnforcementController(
-    IFreeTierEnforcementOverviewService overviewService) : BaseController
+    IFreeTierEnforcementOverviewService overviewService,
+    IFreeTierUnsubscribedVpnUsersDailyDigestService unsubscribedVpnDigestService) : BaseController
 {
     /// <summary>
-    /// Every non-compliant Free/Default user (not merged, not channel-subscribed) — i.e. everyone the
-    /// enforcement job would disconnect on its next run. Refresh manually; this evaluates Telegram
-    /// channel membership per candidate and should not be polled automatically.
+    /// Every non-compliant Free/Default user (not channel-subscribed) — i.e. everyone the
+    /// enforcement job would disconnect on its next run (subject to grace). Refresh manually; this
+    /// evaluates Telegram channel membership per candidate and should not be polled automatically.
     /// </summary>
     [HttpGet("candidates")]
     public async Task<ActionResult<ApiResponse<GetFreeTierEnforcementCandidatesResponse>>> GetCandidates(
@@ -29,6 +30,17 @@ public class FreeTierEnforcementController(
     {
         var result = await overviewService.GetCandidatesAsync(ct);
         return Ok(ApiResponse<GetFreeTierEnforcementCandidatesResponse>.SuccessResponse(result));
+    }
+
+    /// <summary>
+    /// On-demand digest text of Free/Default users currently online without channel subscription
+    /// (same payload as the daily admin Telegram digest).
+    /// </summary>
+    [HttpGet("unsubscribed-vpn-digest")]
+    public async Task<ActionResult<ApiResponse<string>>> GetUnsubscribedVpnDigest(CancellationToken ct)
+    {
+        var text = await unsubscribedVpnDigestService.BuildDigestTextAsync(ct);
+        return Ok(ApiResponse<string>.SuccessResponse(text));
     }
 
     [HttpGet("disconnect-log")]

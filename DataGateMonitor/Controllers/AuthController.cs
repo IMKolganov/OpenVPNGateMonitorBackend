@@ -219,7 +219,7 @@ public class AuthController(
     }
 
     /// <summary>
-    /// Client apps: read-only Free/Default access status (channel subscription or merged Telegram account).
+    /// Client apps: read-only Free/Default access status (requires Telegram channel subscription).
     /// Does not notify admins or start a grace period.
     /// </summary>
     [Authorize]
