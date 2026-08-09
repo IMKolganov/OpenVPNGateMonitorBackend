@@ -118,6 +118,60 @@ public class VpnDnsQueryControllerTests
         Assert.Equal(12, envelope.Data.Items[0].UniqueUsersCount);
     }
 
+    [Fact]
+    public async Task ProfileSummary_MergesIssuedFilesWithDnsCounts()
+    {
+        var issued = new Mock<IIssuedOvpnFileQueryService>();
+        issued.Setup(x => x.GetAllByExternalId("ext-9", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new IssuedOvpnFile
+                {
+                    CommonName = "cn-a",
+                    VpnServerId = 3,
+                    ExternalId = "ext-9",
+                    IsRevoked = false
+                }
+            ]);
+
+        var queryService = new Mock<IVpnDnsQueryLogQueryService>();
+        queryService.Setup(x => x.GetProfileSummaryAsync(
+                "ext-9",
+                It.Is<IReadOnlyList<string>>(cns => cns.Contains("cn-a")),
+                3,
+                null,
+                null,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new DataGateMonitor.SharedModels.DataGateMonitor.VpnDnsQuery.Dto.VpnDnsProfileSummaryItemDto
+                {
+                    CommonName = "cn-a",
+                    VpnServerId = 3,
+                    QueryCount = 44,
+                    LastQueriedAtUtc = DateTimeOffset.Parse("2026-02-01T00:00:00Z")
+                }
+            ]);
+
+        var controller = new VpnDnsQueryController(queryService.Object, issued.Object);
+        controller.ControllerContext = AdminContext();
+
+        var result = await controller.ProfileSummary(
+            "ext-9",
+            vpnServerId: 3,
+            fromUtc: null,
+            toUtc: null,
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var envelope = Assert.IsType<ApiResponse<IReadOnlyList<DataGateMonitor.SharedModels.DataGateMonitor.VpnDnsQuery.Dto.VpnDnsProfileSummaryItemDto>>>(ok.Value);
+        Assert.True(envelope.Success);
+        var item = Assert.Single(envelope.Data!);
+        Assert.Equal("cn-a", item.CommonName);
+        Assert.Equal(44, item.QueryCount);
+        Assert.False(item.IsRevoked);
+    }
+
     private static ControllerContext AdminContext() => new()
     {
         HttpContext = new DefaultHttpContext
