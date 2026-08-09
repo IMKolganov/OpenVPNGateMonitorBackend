@@ -253,4 +253,104 @@ public class AuthControllerSessionAndTotpTests
         var ok = Assert.IsType<OkObjectResult>(result.Result);
         Assert.Equal("sec", Assert.IsType<ApiResponse<TotpSetupResponse>>(ok.Value).Data!.SharedSecret);
     }
+
+    [Fact]
+    public async Task Register_DelegatesToUserRegistrationService()
+    {
+        _userRegistrationService
+            .Setup(s => s.RegisterAsync(
+                It.Is<RegisterUserRequest>(r => r.Login == "newuser"),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RegisterUserResponse
+            {
+                UserId = 11,
+                DisplayName = "New",
+                Email = "n@ex.com",
+                HasDashboardAccess = true
+            });
+
+        var result = await CreateController().Register(
+            new RegisterUserRequest
+            {
+                DisplayName = "New",
+                Email = "n@ex.com",
+                Login = "newuser",
+                Password = "p",
+                ConfirmPassword = "p"
+            },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Equal(11, Assert.IsType<ApiResponse<RegisterUserResponse>>(ok.Value).Data!.UserId);
+    }
+
+    [Fact]
+    public async Task GoogleCodeLogin_WhenRequestNull_ReturnsBadRequest()
+    {
+        var result = await CreateController().GoogleCodeLogin(null!, CancellationToken.None);
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GoogleCodeLogin_ExchangesCodeThenLogsIn()
+    {
+        _exchange
+            .Setup(e => e.ExchangeCodeForIdTokenAsync("code", "verifier", "https://app/cb", It.IsAny<CancellationToken>()))
+            .ReturnsAsync("id-token");
+        _userLoginService
+            .Setup(s => s.LoginWithGoogleAsync("id-token", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new GoogleLoginResponse { Token = "g-tok", UserId = 3 });
+
+        var result = await CreateController().GoogleCodeLogin(
+            new GoogleCodeLoginRequest
+            {
+                Code = "code",
+                CodeVerifier = "verifier",
+                RedirectUri = "https://app/cb"
+            },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Equal("g-tok", Assert.IsType<ApiResponse<GoogleLoginResponse>>(ok.Value).Data!.Token);
+        _exchange.VerifyAll();
+        _userLoginService.VerifyAll();
+    }
+
+    [Fact]
+    public async Task ConfirmTotpSetup_DelegatesForCurrentUser()
+    {
+        _currentUserService.Setup(s => s.UserId).Returns(5);
+        _adminTotpService
+            .Setup(s => s.ConfirmSetupAsync(
+                5,
+                It.Is<TotpConfirmRequest>(r => r.Code == "123456"),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateController().ConfirmTotpSetup(
+            new TotpConfirmRequest { Code = "123456" },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Contains("enabled", Assert.IsType<ApiResponse<string>>(ok.Value).Data);
+    }
+
+    [Fact]
+    public async Task DisableTotp_DelegatesForCurrentUser()
+    {
+        _currentUserService.Setup(s => s.UserId).Returns(5);
+        _adminTotpService
+            .Setup(s => s.DisableAsync(
+                5,
+                It.Is<TotpDisableRequest>(r => r.Code == "123456" && r.Password == "pw"),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var result = await CreateController().DisableTotp(
+            new TotpDisableRequest { Code = "123456", Password = "pw" },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.Contains("disabled", Assert.IsType<ApiResponse<string>>(ok.Value).Data);
+    }
 }

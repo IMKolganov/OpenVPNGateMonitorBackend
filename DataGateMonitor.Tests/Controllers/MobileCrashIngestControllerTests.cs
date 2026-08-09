@@ -126,4 +126,69 @@ public class MobileCrashIngestControllerTests
         var status = Assert.IsType<ObjectResult>(second);
         Assert.Equal(StatusCodes.Status429TooManyRequests, status.StatusCode);
     }
+
+    [Fact]
+    public async Task Recent_WhenLimitNonPositive_ReturnsBadRequest()
+    {
+        var controller = CreateController(new CrashIngestOptions { RecentMaxLimit = 100 }, out _);
+        var result = await controller.Recent(0, CancellationToken.None);
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task Recent_ClampsLimitAndReturnsServiceResult()
+    {
+        var controller = CreateController(new CrashIngestOptions { RecentMaxLimit = 10 }, out var ingest);
+        ingest.Setup(s => s.GetRecentAsync(10, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                new DataGateMonitor.SharedModels.DataGateMonitor.MobileCrashIngest.Dto.RecentCrashReportDto
+                {
+                    Id = 1,
+                    AppProcess = "com.example",
+                    FileName = "a.txt"
+                }
+            ]);
+
+        var result = await controller.Recent(500, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var list = Assert.IsAssignableFrom<IReadOnlyList<DataGateMonitor.SharedModels.DataGateMonitor.MobileCrashIngest.Dto.RecentCrashReportDto>>(ok.Value);
+        Assert.Single(list);
+        ingest.Verify(s => s.GetRecentAsync(10, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task Ingest_WhenHttpsRequiredOverHttp_ReturnsBadRequest()
+    {
+        var controller = CreateController(new CrashIngestOptions { RequireHttps = true }, out _);
+        var context = new DefaultHttpContext
+        {
+            Request =
+            {
+                Scheme = "http",
+                ContentType = "text/plain; charset=utf-8",
+                Body = new MemoryStream(Encoding.UTF8.GetBytes("x")),
+            },
+        };
+        context.Request.Headers["X-Crash-Filename"] = "f.txt";
+        context.Request.Headers["X-Crash-Process"] = "com.imkolganov.datagate.dev";
+        controller.ControllerContext = new ControllerContext { HttpContext = context };
+
+        var result = await controller.Ingest(CancellationToken.None);
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task Ingest_WhenAuthTokenMismatch_ReturnsUnauthorized()
+    {
+        var controller = CreateController(
+            new CrashIngestOptions { RequireHttps = true, AuthToken = "secret" },
+            out _);
+        AttachHttpsRequest(controller, "process=com.imkolganov.datagate.dev\n\nstack");
+        controller.ControllerContext.HttpContext.Request.Headers["X-Crash-Token"] = "wrong";
+
+        var result = await controller.Ingest(CancellationToken.None);
+        Assert.IsType<UnauthorizedResult>(result);
+    }
 }
