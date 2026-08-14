@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using DataGateMonitor.Models.Auth;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
@@ -26,6 +27,7 @@ namespace DataGateMonitor.Controllers;
 [ApiController]
 public class AuthController(
     IConfiguration config,
+    IWebHostEnvironment environment,
     IApplicationService appService,
     IMicroserviceTokenService microserviceTokenService,
     IUserRegistrationService userRegistrationService,
@@ -68,6 +70,7 @@ public class AuthController(
         return NoContent();
     }
 
+    [AllowAnonymous]
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request,
         CancellationToken cancellationToken)
@@ -117,6 +120,117 @@ public class AuthController(
             }));
     }
 
+    /// <summary>
+    /// Development-only: issue JWT without dashboard login / TOTP.
+    /// Roles: <c>App</c>, <c>Admin</c>, or <c>OpenVpn</c> (RSA microservice token for DataGateOpenVpnManager).
+    /// Returns 404 outside Development or when <c>DevAuth:Enabled</c> is false.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("dev/token")]
+    [ProducesResponseType(typeof(ApiResponse<DevTokenResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public ActionResult<ApiResponse<DevTokenResponse>> GenerateDevToken([FromBody] DevTokenRequest? request)
+    {
+        if (!environment.IsDevelopment() || !config.GetValue("DevAuth:Enabled", false))
+            return NotFound();
+
+        var roleRaw = (request?.Role ?? "OpenVpn").Trim();
+        if (string.Equals(roleRaw, "OpenVpn", StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(roleRaw, "Microservice", StringComparison.OrdinalIgnoreCase))
+        {
+            const string audience = "DataGateOpenVpnManager";
+            const string purpose = "cert-create";
+            const string microserviceRole = "backend";
+            var token = microserviceTokenService.GenerateToken(
+                "vpn-cert-issuer", purpose, microserviceRole, audience);
+
+            return Ok(ApiResponse<DevTokenResponse>.SuccessResponse(new DevTokenResponse
+            {
+                Token = token,
+                Expiration = DateTimeOffset.UtcNow.AddMinutes(10),
+                Role = "OpenVpn",
+                Issuer = "OpenVPNGateBackend",
+                Audience = audience,
+                Purpose = purpose,
+                MicroserviceRole = microserviceRole,
+                PublicKeyPem = microserviceTokenService.GetPublicKeyPem(),
+            }));
+        }
+
+        if (!string.Equals(roleRaw, "App", StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(roleRaw, "Admin", StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequest(ApiResponse<DevTokenResponse>.ErrorResponse(
+                "Role must be OpenVpn, App, or Admin."));
+        }
+
+        var isAdmin = string.Equals(roleRaw, "Admin", StringComparison.OrdinalIgnoreCase);
+        var secret = config["Jwt:Secret"]
+                     ?? throw new InvalidOperationException("Jwt:Secret is not configured.");
+        var issuer = config["Jwt:Issuer"] ?? "OpenVPNGateBackend";
+        var audienceHs = config["Jwt:Audience"] ?? "OpenVPNGateFrontend";
+
+        var lifetimeMinutes = config.GetValue<int?>("DevAuth:LifetimeMinutes")
+                              ?? config.GetValue<int?>("Jwt:LifetimeMinutes")
+                              ?? 60;
+        if (lifetimeMinutes <= 0)
+            lifetimeMinutes = 60;
+
+        var now = DateTimeOffset.UtcNow;
+        var expires = now.AddMinutes(lifetimeMinutes);
+        var key = new SymmetricSecurityKey(Encoding.ASCII.GetBytes(secret));
+        var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        List<Claim> claims;
+        if (isAdmin)
+        {
+            var userId = config.GetValue("DevAuth:AdminUserId", 1);
+            var displayName = config["DevAuth:AdminDisplayName"] ?? "Dev Admin";
+            var email = config["DevAuth:AdminEmail"] ?? "dev-admin@localhost";
+            claims =
+            [
+                new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+                new Claim(ClaimTypes.Name, displayName),
+                new Claim(ClaimTypes.Role, "Admin"),
+                new Claim("externalId", string.Empty),
+                new Claim("displayName", displayName),
+                new Claim("email", email),
+            ];
+            var idleMinutes = config.GetValue<int?>("Jwt:AdminIdleTimeoutMinutes") ?? 15;
+            if (idleMinutes <= 0)
+                idleMinutes = 15;
+            claims.Add(new Claim("adminIdleTimeoutMinutes", idleMinutes.ToString()));
+            adminIdleSessionTracker.Touch(userId);
+        }
+        else
+        {
+            var clientId = config["DevAuth:AppClientId"] ?? "dev-loadtest-app";
+            claims =
+            [
+                new Claim(ClaimTypes.Name, clientId),
+                new Claim(ClaimTypes.Role, "App"),
+            ];
+        }
+
+        var jwt = new JwtSecurityToken(
+            issuer: issuer,
+            audience: audienceHs,
+            claims: claims,
+            notBefore: now.UtcDateTime,
+            expires: expires.UtcDateTime,
+            signingCredentials: creds);
+
+        return Ok(ApiResponse<DevTokenResponse>.SuccessResponse(new DevTokenResponse
+        {
+            Token = new JwtSecurityTokenHandler().WriteToken(jwt),
+            Expiration = expires,
+            Role = isAdmin ? "Admin" : "App",
+            Issuer = issuer,
+            Audience = audienceHs,
+        }));
+    }
+
+    [AllowAnonymous]
     [HttpGet("public-key/{pin:int}")]
     public ActionResult<ApiResponse<string>> GetPublicKeyForMicroservice([FromRoute(Name = "pin")] int pin)
     {

@@ -1,5 +1,7 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
@@ -50,8 +52,12 @@ public class AuthControllerTests
             })
             .Build();
 
+        var env = new Mock<IWebHostEnvironment>();
+        env.Setup(e => e.EnvironmentName).Returns(Environments.Development);
+
         return new AuthController(
             config,
+            env.Object,
             _appService.Object,
             _microserviceTokenService.Object,
             _userRegistrationService.Object,

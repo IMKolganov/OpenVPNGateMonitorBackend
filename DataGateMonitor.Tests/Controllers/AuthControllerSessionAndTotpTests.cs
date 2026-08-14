@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
@@ -41,9 +43,12 @@ public class AuthControllerSessionAndTotpTests
     private readonly Mock<IAdminIdleSessionTracker> _adminIdleSessionTracker = new();
     private readonly Mock<IUserSessionService> _userSessionService = new();
 
-    private AuthController CreateController(HttpContext? httpContext = null)
+    private AuthController CreateController(
+        HttpContext? httpContext = null,
+        IWebHostEnvironment? environment = null,
+        IConfiguration? configuration = null)
     {
-        var config = new ConfigurationBuilder()
+        var config = configuration ?? new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Jwt:Secret"] = "VeryStrongTestSecretKey1234567890",
@@ -51,8 +56,11 @@ public class AuthControllerSessionAndTotpTests
             })
             .Build();
 
+        var env = environment ?? CreateEnvironment(Environments.Development);
+
         var controller = new AuthController(
             config,
+            env,
             _appService.Object,
             _microserviceTokenService.Object,
             _userRegistrationService.Object,
@@ -75,6 +83,13 @@ public class AuthControllerSessionAndTotpTests
             controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
 
         return controller;
+    }
+
+    private static IWebHostEnvironment CreateEnvironment(string environmentName)
+    {
+        var env = new Mock<IWebHostEnvironment>();
+        env.Setup(e => e.EnvironmentName).Returns(environmentName);
+        return env.Object;
     }
 
     [Fact]

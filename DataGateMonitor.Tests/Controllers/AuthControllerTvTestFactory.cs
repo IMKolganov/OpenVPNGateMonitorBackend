@@ -1,6 +1,8 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
@@ -31,8 +33,12 @@ internal static class AuthControllerTvTestFactory
             })
             .Build();
 
+        var env = new Mock<IWebHostEnvironment>();
+        env.Setup(e => e.EnvironmentName).Returns(Environments.Development);
+
         var controller = new AuthController(
             config,
+            env.Object,
             Mock.Of<IApplicationService>(),
             Mock.Of<IMicroserviceTokenService>(),
             Mock.Of<IUserRegistrationService>(),

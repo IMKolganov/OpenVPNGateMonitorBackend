@@ -16,6 +16,14 @@
     "Secret": "super-secret-key-should-be-at-least-16-characters",
     "RefreshPepper": "your-refresh-pepper"
   },
+  "DevAuth": {
+    "Enabled": true,
+    "AppClientId": "dev-loadtest-app",
+    "AdminUserId": 1,
+    "AdminDisplayName": "Dev Admin",
+    "AdminEmail": "dev-admin@localhost",
+    "LifetimeMinutes": 60
+  },
   "Auth": {
     "PublicWebBaseUrl": "https://YOUR_PUBLIC_WEB_HOST",
     "TvLoginSessionMinutes": 5
