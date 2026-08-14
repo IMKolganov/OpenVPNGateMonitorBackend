@@ -190,8 +190,7 @@ public class VpnServerServiceStatusLogPublicIpTests
             {
                 BytesIn = 100,
                 BytesOut = 200,
-                DcoEnabled = true,
-                UsedClientListFallback = true
+                DcoEnabled = true
             });
         _ovpnConfig.Setup(q => q.GetByVpnServerIdId(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync((VpnServerOvpnFileConfig?)null);
@@ -221,8 +220,7 @@ public class VpnServerServiceStatusLogPublicIpTests
             {
                 BytesIn = 9000,
                 BytesOut = 8000,
-                DcoEnabled = false,
-                UsedClientListFallback = false
+                DcoEnabled = false
             });
         _ovpnConfig.Setup(q => q.GetByVpnServerIdId(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync((VpnServerOvpnFileConfig?)null);

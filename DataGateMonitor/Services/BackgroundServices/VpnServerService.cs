@@ -182,8 +182,8 @@ public class VpnServerService(
                 serverInfo.Version = await openVpnVersionService.GetVersionAsync(openVpnServer, ct);
             }
 
-            // With DCO on, load-stats undercounts; GetSummaryStatsAsync uses CLIENT_LIST sum instead.
-            // DCO can be toggled at runtime — each poll re-reads GLOBAL_STATS dco_enabled.
+            // Server totals always come from status 3 CLIENT_LIST (kernel-fresh under DCO).
+            // load-stats is not used: with DCO it has no dco_get_peer_stats_multi pull.
             serverInfo.OpenVpnSummaryStats = await openVpnSummaryStatService.GetSummaryStatsAsync(openVpnServer, ct);
         }
         catch (Exception ex)
