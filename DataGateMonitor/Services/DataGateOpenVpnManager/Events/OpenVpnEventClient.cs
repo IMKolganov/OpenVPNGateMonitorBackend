@@ -363,6 +363,9 @@ public class OpenVpnEventClient(
             {
                 var nowUtc = DateTimeOffset.UtcNow;
                 var remoteIp = OpenVpnRealAddressParser.NormalizeRemoteIp(req.RealAddress);
+                var disconnectedAt = VpnClientDisconnectFinalizer.ResolveDisconnectedAt(req, nowUtc);
+                var bytesReceived = req.BytesReceived;
+                var bytesSent = req.BytesSent;
 
                 await clientCmd.UpdateWhere(
                     x => x.VpnServerId == _openVpnServer.Id
@@ -370,10 +373,17 @@ public class OpenVpnEventClient(
                          && x.CommonName == req.CommonName
                          && x.ConnectedSince == req.ConnectedSince
                          && x.RemoteIp == remoteIp,
-                    s => s
-                        .SetProperty(c => c.IsConnected, false)
-                        .SetProperty(c => c.DisconnectedAt, nowUtc)
-                        .SetProperty(c => c.LastUpdate, nowUtc),
+                    s =>
+                    {
+                        s.SetProperty(c => c.IsConnected, false)
+                            .SetProperty(c => c.DisconnectedAt, disconnectedAt)
+                            .SetProperty(c => c.LastUpdate, nowUtc);
+                        // Final session totals from client-disconnect (authoritative vs last poll).
+                        if (bytesReceived is { } br)
+                            s.SetProperty(c => c.BytesReceived, br);
+                        if (bytesSent is { } bs)
+                            s.SetProperty(c => c.BytesSent, bs);
+                    },
                     CancellationToken.None);
             }
 
