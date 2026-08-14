@@ -49,7 +49,7 @@ public sealed class AdminIdleTimeoutProvider(
         }
     }
 
-    internal static int Clamp(int minutes)
+    public static int Clamp(int minutes)
     {
         if (minutes < MinMinutes) return DefaultMinutes;
         if (minutes > MaxMinutes) return MaxMinutes;

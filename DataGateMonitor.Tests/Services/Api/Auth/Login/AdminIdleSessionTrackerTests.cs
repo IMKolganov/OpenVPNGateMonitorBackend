@@ -21,6 +21,12 @@ public class AdminIdleSessionTrackerTests
     }
 
     [Fact]
+    public void IsExpired_WhenNeverTouched_ReturnsTrue()
+    {
+        Assert.True(CreateSut().IsExpired(7));
+    }
+
+    [Fact]
     public void Touch_ThenIsExpired_ReturnsFalse()
     {
         var sut = CreateSut();
@@ -29,9 +35,27 @@ public class AdminIdleSessionTrackerTests
     }
 
     [Fact]
+    public void IdleTimeout_UsesProviderMinutes()
+    {
+        Assert.Equal(TimeSpan.FromMinutes(12), CreateSut(12).IdleTimeout);
+    }
+
+    [Fact]
+    public void Clear_MakesSessionExpiredAgain()
+    {
+        var sut = CreateSut();
+        sut.Touch(9);
+        Assert.False(sut.IsExpired(9));
+        sut.Clear(9);
+        Assert.True(sut.IsExpired(9));
+    }
+
+    [Fact]
     public void IsAdminRole_MatchesAdminCaseInsensitive()
     {
         Assert.True(AdminIdleSessionTracker.IsAdminRole("admin"));
+        Assert.True(AdminIdleSessionTracker.IsAdminRole("Admin"));
         Assert.False(AdminIdleSessionTracker.IsAdminRole("user"));
+        Assert.False(AdminIdleSessionTracker.IsAdminRole(null));
     }
 }
