@@ -31,6 +31,9 @@ internal static class AuthControllerTvTestFactory
             })
             .Build();
 
+        var idleTimeout = new Mock<IAdminIdleTimeoutProvider>();
+        idleTimeout.Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(20);
+
         var controller = new AuthController(
             config,
             Mock.Of<IApplicationService>(),
@@ -49,6 +52,7 @@ internal static class AuthControllerTvTestFactory
             Mock.Of<IAdminTotpService>(),
             currentUser.Object,
             Mock.Of<IAdminIdleSessionTracker>(),
+            idleTimeout.Object,
             Mock.Of<IUserSessionService>());
 
         controller.ControllerContext = new ControllerContext

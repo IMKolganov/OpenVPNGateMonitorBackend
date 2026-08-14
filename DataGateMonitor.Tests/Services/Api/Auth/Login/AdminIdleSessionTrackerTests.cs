@@ -1,20 +1,17 @@
 using DataGateMonitor.Services.Api.Auth.Login;
 using Microsoft.Extensions.Caching.Memory;
-using Microsoft.Extensions.Configuration;
+using Moq;
 
 namespace DataGateMonitor.Tests.Services.Api.Auth.Login;
 
 public class AdminIdleSessionTrackerTests
 {
-    private static AdminIdleSessionTracker CreateSut()
+    private static AdminIdleSessionTracker CreateSut(int minutes = 15)
     {
-        var config = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Jwt:AdminIdleTimeoutMinutes"] = "15",
-            })
-            .Build();
-        return new AdminIdleSessionTracker(config, new MemoryCache(new MemoryCacheOptions()));
+        var provider = new Mock<IAdminIdleTimeoutProvider>();
+        provider.Setup(p => p.GetMinutes()).Returns(minutes);
+        provider.Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(minutes);
+        return new AdminIdleSessionTracker(provider.Object, new MemoryCache(new MemoryCacheOptions()));
     }
 
     [Fact]

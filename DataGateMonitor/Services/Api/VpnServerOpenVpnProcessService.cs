@@ -85,6 +85,13 @@ public class VpnServerOpenVpnProcessService(
                 if (response.StatusCode == HttpStatusCode.Conflict)
                     throw new InvalidOperationException(string.IsNullOrWhiteSpace(detail) ? BusyMessage : detail);
 
+                if (response.StatusCode == HttpStatusCode.NotFound
+                    || LooksLikeMissingEndpoint(detail))
+                {
+                    throw new InvalidOperationException(
+                        "This OpenVPN node does not support process control. Update DataGateOpenVpnManager to 1.2.5.86 or newer.");
+                }
+
                 throw new InvalidOperationException(
                     string.IsNullOrWhiteSpace(detail)
                         ? $"OpenVPN process call failed (HTTP {(int)response.StatusCode})."
@@ -98,4 +105,9 @@ public class VpnServerOpenVpnProcessService(
             gate?.Release();
         }
     }
+
+    private static bool LooksLikeMissingEndpoint(string? detail) =>
+        !string.IsNullOrWhiteSpace(detail)
+        && (detail.Contains("Page Not Found", StringComparison.OrdinalIgnoreCase)
+            || detail.Contains("was not found", StringComparison.OrdinalIgnoreCase));
 }

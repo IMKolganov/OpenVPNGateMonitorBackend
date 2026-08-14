@@ -35,6 +35,10 @@ public static class MicroserviceApiResponseHelper
             if (!string.IsNullOrWhiteSpace(message))
                 return message;
 
+            var detail = root["detail"]?.ToString() ?? root["Detail"]?.ToString();
+            if (!string.IsNullOrWhiteSpace(detail))
+                return detail;
+
             var error = root["error"]?.ToString();
             if (!string.IsNullOrWhiteSpace(error))
                 return error;

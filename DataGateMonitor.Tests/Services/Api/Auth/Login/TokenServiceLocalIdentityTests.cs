@@ -50,6 +50,9 @@ public class TokenServiceLocalIdentityTests
             .Setup(q => q.GetListByUserId(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(links.ToList());
 
+        var idleTimeout = new Mock<IAdminIdleTimeoutProvider>();
+        idleTimeout.Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(15);
+
         return new TokenService(
             config,
             userQuery.Object,
@@ -57,7 +60,8 @@ public class TokenServiceLocalIdentityTests
             new Mock<IUserRefreshTokenQueryService>().Object,
             refreshTokenCommand.Object,
             userIdentityLinkQuery.Object,
-            new Mock<IAdminIdleSessionTracker>().Object);
+            new Mock<IAdminIdleSessionTracker>().Object,
+            idleTimeout.Object);
     }
 
     private static string ReadExternalIdClaim(string accessToken)

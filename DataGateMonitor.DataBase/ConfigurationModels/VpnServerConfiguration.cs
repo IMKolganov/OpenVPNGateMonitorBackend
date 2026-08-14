@@ -44,8 +44,10 @@ public class VpnServerConfiguration : BaseEntityConfiguration<VpnServer, int>
         entity.Property(e => e.XrayClientsPollError).HasMaxLength(2000);
 
         // Indexes
+        // Soft-deleted rows must not reserve the name — allow recreate with the same ServerName.
         entity.HasIndex(e => e.ServerName)
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = FALSE");
 
         entity.HasIndex(e => e.IsOnline);
 

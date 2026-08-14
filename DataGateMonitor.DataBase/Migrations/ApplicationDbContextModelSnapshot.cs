@@ -3423,7 +3423,8 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.HasIndex("IsOnline");
 
                     b.HasIndex("ServerName")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = FALSE");
 
                     b.HasIndex("ServerType");
 

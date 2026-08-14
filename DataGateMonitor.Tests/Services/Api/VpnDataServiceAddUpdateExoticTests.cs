@@ -14,6 +14,20 @@ namespace DataGateMonitor.Tests.Services.Api;
 public class VpnDataServiceAddUpdateExoticTests
 {
     [Fact]
+    public async Task AddVpnServer_AllowsReuseOfDeletedServerName()
+    {
+        var h = new VpnDataServiceTestHarness();
+        // Unique check ignores soft-deleted rows (filtered DB index).
+        h.SetupInsertServer("reused", 210);
+        var svc = h.Create();
+
+        var created = await svc.AddVpnServer(new VpnServer { ServerName = "reused" }, [], [], CancellationToken.None);
+
+        Assert.Equal(210, created.Id);
+        h.ServerQ.Verify(q => q.AnyByServerName("reused", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
     public async Task AddVpnServer_Throws_When_ServerNameAlreadyExists()
     {
         var h = new VpnDataServiceTestHarness();

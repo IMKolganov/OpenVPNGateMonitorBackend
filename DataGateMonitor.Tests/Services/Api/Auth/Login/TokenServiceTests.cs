@@ -25,6 +25,8 @@ public class TokenServiceTests
         var refreshTokenCommand = new Mock<ICommandService<UserRefreshToken, int>>();
         var userIdentityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
         var adminIdleTracker = new Mock<IAdminIdleSessionTracker>();
+        var adminIdleTimeout = new Mock<IAdminIdleTimeoutProvider>();
+        adminIdleTimeout.Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(15);
 
         var sut = new TokenService(
             config.Object,
@@ -33,7 +35,8 @@ public class TokenServiceTests
             refreshTokenQuery.Object,
             refreshTokenCommand.Object,
             userIdentityLinkQuery.Object,
-            adminIdleTracker.Object);
+            adminIdleTracker.Object,
+            adminIdleTimeout.Object);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => sut.IssueAsync(999, null, null, null, CancellationToken.None));
@@ -57,6 +60,8 @@ public class TokenServiceTests
         var refreshTokenCommand = new Mock<ICommandService<UserRefreshToken, int>>();
         var userIdentityLinkQuery = new Mock<IUserIdentityLinkQueryService>();
         var adminIdleTracker = new Mock<IAdminIdleSessionTracker>();
+        var adminIdleTimeout = new Mock<IAdminIdleTimeoutProvider>();
+        adminIdleTimeout.Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>())).ReturnsAsync(15);
 
         var sut = new TokenService(
             config.Object,
@@ -65,7 +70,8 @@ public class TokenServiceTests
             refreshTokenQuery.Object,
             refreshTokenCommand.Object,
             userIdentityLinkQuery.Object,
-            adminIdleTracker.Object);
+            adminIdleTracker.Object,
+            adminIdleTimeout.Object);
 
         var ex = await Assert.ThrowsAsync<UnauthorizedAccessException>(
             () => sut.IssueAsync(1, null, null, null, CancellationToken.None));

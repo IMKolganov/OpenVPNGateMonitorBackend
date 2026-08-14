@@ -181,6 +181,23 @@ public class VpnServerOpenVpnProcessServiceTests
     }
 
     [Fact]
+    public async Task StatusAsync_WhenNodeReturns404_ThrowsUpgradeHint()
+    {
+        SetupOpenVpnServer();
+        _handler.Enqueue(_ => new HttpResponseMessage(HttpStatusCode.NotFound)
+        {
+            Content = new StringContent(
+                """{"type":"https://tools.ietf.org/html/rfc9110#section-15.5.5","title":"Page Not Found","status":404,"detail":"The requested resource was not found."}""")
+        });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateSut().GetStatusAsync(7, CancellationToken.None));
+
+        Assert.Contains("1.2.5.86", ex.Message);
+        Assert.Contains("does not support process control", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task KillAsync_WhenAnotherCallInFlight_ThrowsBusyWithoutCallingNode()
     {
         SetupOpenVpnServer(id: 42);

@@ -147,8 +147,8 @@ public class GlobalExceptionMiddleware(
                 => ((int)HttpStatusCode.Conflict, ioe.Message),
             InvalidOperationException ioe when IsClientFacingInvalidOperation(ioe.Message)
                 => ((int)HttpStatusCode.BadRequest, ioe.Message),
-            DbUpdateException when exception.InnerException is PostgresException pg && pg.SqlState == "23505"
-                => ((int)HttpStatusCode.Conflict, "A resource already exists with the same key."),
+            DbUpdateException db when TryMapUniqueViolation(db, out var conflictMessage)
+                => ((int)HttpStatusCode.Conflict, conflictMessage),
             _ => ((int)HttpStatusCode.InternalServerError, "An unexpected error occurred. Please try again later.")
         };
 
@@ -156,11 +156,16 @@ public class GlobalExceptionMiddleware(
         context.Response.ContentType = "application/json";
         context.Response.StatusCode = statusCodeInt;
 
+        // Never leak SQL / provider text to the client for expected 4xx conflicts.
+        var clientDetail = statusCodeInt >= 500
+            ? GetExceptionDetails(exception)
+            : responseMessage;
+
         var payload = new
         {
             statusCode = statusCodeInt,
             message = responseMessage,
-            detail = GetExceptionDetails(exception),
+            detail = clientDetail,
             traceId = context.TraceIdentifier
         };
 
@@ -185,6 +190,29 @@ public class GlobalExceptionMiddleware(
         || message.Contains("already completed", StringComparison.OrdinalIgnoreCase)
         || message.Contains("do not match", StringComparison.OrdinalIgnoreCase)
         || message.Contains("no longer pending", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Maps PostgreSQL unique violations to short UI-facing messages (no SQLSTATE / constraint dumps).
+    /// </summary>
+    private static bool TryMapUniqueViolation(DbUpdateException exception, out string message)
+    {
+        message = string.Empty;
+        if (exception.InnerException is not PostgresException { SqlState: "23505" } pg)
+            return false;
+
+        var constraint = pg.ConstraintName ?? string.Empty;
+        var haystack = $"{constraint} {pg.MessageText} {pg.Detail}";
+
+        if (haystack.Contains("IX_VpnServers_ServerName", StringComparison.OrdinalIgnoreCase)
+            || haystack.Contains("VpnServers_ServerName", StringComparison.OrdinalIgnoreCase))
+        {
+            message = "A VPN server with the same name already exists.";
+            return true;
+        }
+
+        message = "A resource with these values already exists. Change the unique fields and try again.";
+        return true;
+    }
 
     private static string GetExceptionDetails(Exception ex)
     {

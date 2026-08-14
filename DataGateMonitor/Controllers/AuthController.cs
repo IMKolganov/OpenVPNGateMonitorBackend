@@ -42,16 +42,16 @@ public class AuthController(
     IAdminTotpService adminTotpService,
     ICurrentUserService currentUserService,
     IAdminIdleSessionTracker adminIdleSessionTracker,
+    IAdminIdleTimeoutProvider adminIdleTimeoutProvider,
     IUserSessionService userSessionService) : BaseController
 {
     [AllowAnonymous]
     [HttpGet("session-policy")]
     [ProducesResponseType(typeof(ApiResponse<AuthSessionPolicyResponse>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<AuthSessionPolicyResponse>> GetSessionPolicy()
+    public async Task<ActionResult<ApiResponse<AuthSessionPolicyResponse>>> GetSessionPolicy(
+        CancellationToken cancellationToken)
     {
-        var minutes = config.GetValue<int?>("Jwt:AdminIdleTimeoutMinutes") ?? 15;
-        if (minutes <= 0)
-            minutes = 15;
+        var minutes = await adminIdleTimeoutProvider.GetMinutesAsync(cancellationToken);
 
         return Ok(ApiResponse<AuthSessionPolicyResponse>.SuccessResponse(new AuthSessionPolicyResponse
         {

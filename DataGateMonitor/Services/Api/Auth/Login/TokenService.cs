@@ -20,7 +20,8 @@ public sealed class TokenService(
     IUserRefreshTokenQueryService refreshTokenQueryService,
     ICommandService<UserRefreshToken, int> refreshTokenCommandService,
     IUserIdentityLinkQueryService userIdentityLinkQueryService,
-    IAdminIdleSessionTracker adminIdleSessionTracker
+    IAdminIdleSessionTracker adminIdleSessionTracker,
+    IAdminIdleTimeoutProvider adminIdleTimeoutProvider
 ) : ITokenService
 {
     public async Task<TokenPair> IssueAsync(
@@ -192,9 +193,7 @@ public sealed class TokenService(
 
         if (AdminIdleSessionTracker.IsAdminRole(role))
         {
-            var idleMinutes = configuration.GetValue<int?>("Jwt:AdminIdleTimeoutMinutes") ?? 15;
-            if (idleMinutes <= 0)
-                idleMinutes = 15;
+            var idleMinutes = await adminIdleTimeoutProvider.GetMinutesAsync(ct);
             claims.Add(new Claim("adminIdleTimeoutMinutes", idleMinutes.ToString()));
         }
 
