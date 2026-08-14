@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.OpenVpnProcess.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -21,11 +22,11 @@ public class VpnServerOpenVpnProcessController(IVpnServerOpenVpnProcessService p
         try
         {
             var data = await processService.GetStatusAsync(vpnServerId, ct);
-            return Ok(ApiResponse<OpenVpnProcessStatusResponse>.SuccessResponse(data));
+            return Ok(ApiResponse<OpenVpnProcessStatusResponse>.SuccessResponse(data, data.Message));
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ApiResponse<OpenVpnProcessStatusResponse>.ErrorResponse(ex.Message));
+            return MapInvalidOperation(ex);
         }
     }
 
@@ -38,11 +39,11 @@ public class VpnServerOpenVpnProcessController(IVpnServerOpenVpnProcessService p
         try
         {
             var data = await processService.StartAsync(vpnServerId, ct);
-            return Ok(ApiResponse<OpenVpnProcessStatusResponse>.SuccessResponse(data));
+            return Ok(ApiResponse<OpenVpnProcessStatusResponse>.SuccessResponse(data, data.Message));
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ApiResponse<OpenVpnProcessStatusResponse>.ErrorResponse(ex.Message));
+            return MapInvalidOperation(ex);
         }
     }
 
@@ -55,11 +56,11 @@ public class VpnServerOpenVpnProcessController(IVpnServerOpenVpnProcessService p
         try
         {
             var data = await processService.RestartAsync(vpnServerId, ct);
-            return Ok(ApiResponse<OpenVpnProcessStatusResponse>.SuccessResponse(data));
+            return Ok(ApiResponse<OpenVpnProcessStatusResponse>.SuccessResponse(data, data.Message));
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ApiResponse<OpenVpnProcessStatusResponse>.ErrorResponse(ex.Message));
+            return MapInvalidOperation(ex);
         }
     }
 
@@ -72,11 +73,23 @@ public class VpnServerOpenVpnProcessController(IVpnServerOpenVpnProcessService p
         try
         {
             var data = await processService.KillAsync(vpnServerId, ct);
-            return Ok(ApiResponse<OpenVpnProcessStatusResponse>.SuccessResponse(data));
+            return Ok(ApiResponse<OpenVpnProcessStatusResponse>.SuccessResponse(data, data.Message));
         }
         catch (InvalidOperationException ex)
         {
-            return BadRequest(ApiResponse<OpenVpnProcessStatusResponse>.ErrorResponse(ex.Message));
+            return MapInvalidOperation(ex);
         }
     }
+
+    private static ActionResult<ApiResponse<OpenVpnProcessStatusResponse>> MapInvalidOperation(
+        InvalidOperationException ex)
+    {
+        var body = ApiResponse<OpenVpnProcessStatusResponse>.ErrorResponse(ex.Message);
+        if (IsBusy(ex.Message))
+            return new ConflictObjectResult(body);
+        return new BadRequestObjectResult(body);
+    }
+
+    private static bool IsBusy(string message) =>
+        message.Contains("already in progress", StringComparison.OrdinalIgnoreCase);
 }

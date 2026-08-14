@@ -150,7 +150,7 @@ public class VpnServerOpenVpnProcessServiceTests
     }
 
     [Fact]
-    public async Task KillAsync_WhenMicroserviceFails_ThrowsWithStatusAndDetail()
+    public async Task KillAsync_WhenMicroserviceFails_ThrowsWithDetail()
     {
         SetupOpenVpnServer();
         _handler.Enqueue(_ => new HttpResponseMessage(HttpStatusCode.BadGateway)
@@ -161,8 +161,51 @@ public class VpnServerOpenVpnProcessServiceTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             CreateSut().KillAsync(7, CancellationToken.None));
 
-        Assert.Contains("502", ex.Message);
         Assert.Contains("openvpn busy", ex.Message);
+    }
+
+    [Fact]
+    public async Task KillAsync_WhenNodeReturnsConflict_ThrowsBusyMessage()
+    {
+        SetupOpenVpnServer();
+        _handler.Enqueue(_ => new HttpResponseMessage(HttpStatusCode.Conflict)
+        {
+            Content = new StringContent(
+                """{"success":false,"message":"OpenVPN process operation already in progress. Please wait and try again."}""")
+        });
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            CreateSut().KillAsync(7, CancellationToken.None));
+
+        Assert.Contains("already in progress", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task KillAsync_WhenAnotherCallInFlight_ThrowsBusyWithoutCallingNode()
+    {
+        SetupOpenVpnServer(id: 42);
+        var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        _handler.Enqueue(_ =>
+        {
+            entered.TrySetResult();
+            release.Task.GetAwaiter().GetResult();
+            return OkProcess("kill", running: false, pid: null);
+        });
+
+        var sut = CreateSut();
+        var first = Task.Run(() => sut.KillAsync(42, CancellationToken.None));
+        await entered.Task.WaitAsync(TimeSpan.FromSeconds(2));
+
+        var busy = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            sut.KillAsync(42, CancellationToken.None));
+        Assert.Equal(VpnServerOpenVpnProcessService.BusyMessage, busy.Message);
+        Assert.Single(_handler.Requests);
+
+        release.TrySetResult();
+        var result = await first;
+        Assert.Equal("kill", result.Action);
     }
 
     [Fact]
