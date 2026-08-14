@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Command.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
@@ -12,6 +13,7 @@ using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using DataGateMonitor.SharedModels.Enums;
+using Microsoft.EntityFrameworkCore.Query;
 using Microsoft.Extensions.Logging;
 using Moq;
 
@@ -177,5 +179,86 @@ public class VpnServerServiceStatusLogPublicIpTests
         Assert.Equal("203.0.113.9", existing.ServerRemoteIp);
         _statusCmd.Verify(c => c.Update(existing, true, It.IsAny<CancellationToken>()), Times.Once);
         _statusCmd.Verify(c => c.Add(It.IsAny<VpnServerStatusLog>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SaveVpnServerStatusLogAsync_WhenSummaryReportsDco_UpdatesServerFlag()
+    {
+        SetupHappyPathState();
+        _summary.Setup(s => s.GetSummaryStatsAsync(It.IsAny<VpnServer>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OpenVpnSummaryStats
+            {
+                BytesIn = 100,
+                BytesOut = 200,
+                DcoEnabled = true,
+                UsedClientListFallback = true
+            });
+        _ovpnConfig.Setup(q => q.GetByVpnServerIdId(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServerOvpnFileConfig?)null);
+        _publicIp.Setup(p => p.GetAsync(7, VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+        _serverCmd
+            .Setup(c => c.UpdateWhere(
+                It.IsAny<Expression<Func<VpnServer, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<VpnServer>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        await CreateSut().SaveVpnServerStatusLogAsync(Server(), CancellationToken.None);
+
+        _serverCmd.Verify(c => c.UpdateWhere(
+            It.IsAny<Expression<Func<VpnServer, bool>>>(),
+            It.IsAny<Action<UpdateSettersBuilder<VpnServer>>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveVpnServerStatusLogAsync_WhenDcoToggledOff_StillUpdatesServerFlag()
+    {
+        SetupHappyPathState();
+        _summary.Setup(s => s.GetSummaryStatsAsync(It.IsAny<VpnServer>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OpenVpnSummaryStats
+            {
+                BytesIn = 9000,
+                BytesOut = 8000,
+                DcoEnabled = false,
+                UsedClientListFallback = false
+            });
+        _ovpnConfig.Setup(q => q.GetByVpnServerIdId(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServerOvpnFileConfig?)null);
+        _publicIp.Setup(p => p.GetAsync(7, VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+        _serverCmd
+            .Setup(c => c.UpdateWhere(
+                It.IsAny<Expression<Func<VpnServer, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<VpnServer>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        await CreateSut().SaveVpnServerStatusLogAsync(Server(), CancellationToken.None);
+
+        _serverCmd.Verify(c => c.UpdateWhere(
+            It.IsAny<Expression<Func<VpnServer, bool>>>(),
+            It.IsAny<Action<UpdateSettersBuilder<VpnServer>>>(),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SaveVpnServerStatusLogAsync_WhenDcoUnknown_DoesNotTouchServerFlag()
+    {
+        SetupHappyPathState();
+        _summary.Setup(s => s.GetSummaryStatsAsync(It.IsAny<VpnServer>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new OpenVpnSummaryStats { BytesIn = 1, BytesOut = 2, DcoEnabled = null });
+        _ovpnConfig.Setup(q => q.GetByVpnServerIdId(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((VpnServerOvpnFileConfig?)null);
+        _publicIp.Setup(p => p.GetAsync(7, VpnServerType.OpenVpn, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        await CreateSut().SaveVpnServerStatusLogAsync(Server(), CancellationToken.None);
+
+        _serverCmd.Verify(c => c.UpdateWhere(
+            It.IsAny<Expression<Func<VpnServer, bool>>>(),
+            It.IsAny<Action<UpdateSettersBuilder<VpnServer>>>(),
+            It.IsAny<CancellationToken>()), Times.Never);
     }
 }
