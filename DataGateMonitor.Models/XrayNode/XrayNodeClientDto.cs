@@ -12,6 +12,12 @@ public sealed class XrayNodeClientDto
     /// <summary>Client endpoint, e.g. <c>198.51.100.10:443</c>.</summary>
     public string RemoteAddress { get; set; } = string.Empty;
 
+    /// <summary>
+    /// When <see cref="RemoteAddress"/> is loopback/private (WSS/docker proxy peer), the real client IP:port
+    /// from the Xray node, e.g. <c>203.0.113.5:443</c>.
+    /// </summary>
+    public string? ProxyRealIp { get; set; }
+
     /// <summary>Optional display name; defaults to <see cref="Email"/> when saving.</summary>
     public string? Username { get; set; }
 

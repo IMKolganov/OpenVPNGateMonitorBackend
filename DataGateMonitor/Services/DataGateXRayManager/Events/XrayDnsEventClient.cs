@@ -84,7 +84,7 @@ public class XrayDnsEventClient(
         }
     }
 
-    private async Task HandleDnsQueriesAsync(DnsQueryBatchRequest batch)
+    internal async Task HandleDnsQueriesAsync(DnsQueryBatchRequest batch)
     {
         if (batch.Queries.Count == 0)
             return;

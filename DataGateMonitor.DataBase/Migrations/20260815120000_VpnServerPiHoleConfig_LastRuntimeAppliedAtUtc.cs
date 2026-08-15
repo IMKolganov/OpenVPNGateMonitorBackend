@@ -13,20 +13,22 @@ public partial class VpnServerPiHoleConfig_LastRuntimeAppliedAtUtc : Migration
     /// <inheritdoc />
     protected override void Up(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.AddColumn<DateTimeOffset>(
-            name: "LastRuntimeAppliedAtUtc",
-            schema: "xgb_dashopnvpn",
-            table: "VpnServerPiHoleConfigs",
-            type: "timestamp with time zone",
-            nullable: true);
+        // Idempotent: column may already exist if a previous deploy applied DDL
+        // without recording this migration (or schema was patched manually).
+        migrationBuilder.Sql(
+            """
+            ALTER TABLE xgb_dashopnvpn."VpnServerPiHoleConfigs"
+            ADD COLUMN IF NOT EXISTS "LastRuntimeAppliedAtUtc" timestamp with time zone NULL;
+            """);
     }
 
     /// <inheritdoc />
     protected override void Down(MigrationBuilder migrationBuilder)
     {
-        migrationBuilder.DropColumn(
-            name: "LastRuntimeAppliedAtUtc",
-            schema: "xgb_dashopnvpn",
-            table: "VpnServerPiHoleConfigs");
+        migrationBuilder.Sql(
+            """
+            ALTER TABLE xgb_dashopnvpn."VpnServerPiHoleConfigs"
+            DROP COLUMN IF EXISTS "LastRuntimeAppliedAtUtc";
+            """);
     }
 }
