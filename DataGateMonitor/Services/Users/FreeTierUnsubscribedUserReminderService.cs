@@ -112,16 +112,27 @@ public sealed class FreeTierUnsubscribedUserReminderService(
 
         if (id <= int.MaxValue)
         {
-            var links = await identityLinkQueryService.GetListByUserId((int)id, ct);
+            var userIdCandidate = (int)id;
+            var links = await identityLinkQueryService.GetListByUserId(userIdCandidate, ct);
             var fromUser = FreeTierAccessComplianceService.TryGetTelegramId(links);
             if (fromUser is > 0)
             {
-                userId = (int)id;
+                userId = userIdCandidate;
                 telegramId = fromUser.Value;
-                resolvedAs = $"user #{id} → TG:{telegramId}";
+                resolvedAs = $"user #{userIdCandidate} → TG:{telegramId}";
             }
             else
             {
+                // Dashboard user exists but has no Telegram identity — do not treat userId as a chat id.
+                var dashboardUser = await userQueryService.GetById(userIdCandidate, ct);
+                if (dashboardUser is not null)
+                {
+                    return FreeTierChannelSubscribeRemindResponse.Fail(
+                        FreeTierChannelSubscribeRemindChannel.Telegram,
+                        $"User #{userIdCandidate} has no linked Telegram account. " +
+                        $"Use /remind_channel_email {userIdCandidate} or pass a Telegram id.");
+                }
+
                 telegramId = id;
                 resolvedAs = $"TG:{telegramId}";
             }
