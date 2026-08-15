@@ -19,6 +19,7 @@ using DataGateMonitor.Services.UserRoles;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
+using DataGateMonitor.Services.DataGateXRayManager.Events;
 using DataGateMonitor.Services.VpnAccess;
 using DataGateMonitor.Services.Api.MobileCrashIngest;
 using DataGateMonitor.Services.Api.WindowsCrashIngest;
@@ -119,6 +120,7 @@ public static class ServiceConfiguration
             services.AddScoped<ITrafficDailyRollupRunner, TrafficDailyRollupRunner>();
             services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
             services.AddHostedService<OpenVpnEventBackgroundService>();
+            services.AddHostedService<XrayDnsEventBackgroundService>();
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
             services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
             services.AddHostedService<TrafficDailyRollupBackgroundService>();
@@ -129,6 +131,7 @@ public static class ServiceConfiguration
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
         services.AddScoped<IVpnDnsQueryLogService, VpnDnsQueryLogService>();
         services.AddSingleton<IOpenVpnEventClientFactory, OpenVpnEventClientFactory>();
+        services.AddSingleton<IXrayDnsEventClientFactory, XrayDnsEventClientFactory>();
 
         services.AddScoped<IVpnServerOvpnFileConfigService, VpnServerOvpnFileConfigService>();
         services.AddScoped<IVpnServerPiHoleConfigService, VpnServerPiHoleConfigService>();

@@ -2,6 +2,7 @@ using Mapster;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
+using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTable;
 using DataGateMonitor.DataBase.Services.Query.VpnDnsQueryLogTable;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnDnsQuery.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnDnsQuery.Requests;
@@ -15,7 +16,8 @@ namespace DataGateMonitor.Controllers;
 [Authorize(Roles = "Admin")]
 public class VpnDnsQueryController(
     IVpnDnsQueryLogQueryService queryService,
-    IIssuedOvpnFileQueryService issuedOvpnFileQueryService) : BaseController
+    IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
+    IIssuedXrayClientLinkQueryService issuedXrayClientLinkQueryService) : BaseController
 {
     [HttpGet("search")]
     public async Task<ActionResult<ApiResponse<VpnDnsQueryPageResponse>>> Search(
@@ -45,11 +47,11 @@ public class VpnDnsQueryController(
         CancellationToken cancellationToken = default)
     {
         var ext = externalId?.Trim() ?? string.Empty;
-        var issuedFiles = ext.Length == 0
+        var issuedProfiles = ext.Length == 0
             ? []
-            : await issuedOvpnFileQueryService.GetAllByExternalId(ext, cancellationToken);
+            : await LoadIssuedProfilesAsync(ext, cancellationToken);
 
-        var profileCommonNames = issuedFiles
+        var profileCommonNames = issuedProfiles
             .Select(f => f.CommonName)
             .Where(cn => !string.IsNullOrWhiteSpace(cn))
             .Distinct(StringComparer.Ordinal)
@@ -68,17 +70,19 @@ public class VpnDnsQueryController(
             x => x,
             StringComparer.Ordinal);
 
-        var items = issuedFiles
+        var items = issuedProfiles
             .GroupBy(f => ProfileKey(f.CommonName, f.VpnServerId))
             .Select(g =>
             {
                 var sample = g.First();
+                // Prefer non-revoked when the same CN exists in both OpenVPN and Xray tables.
+                var isRevoked = g.All(x => x.IsRevoked);
                 dnsLookup.TryGetValue(ProfileKey(sample.CommonName, sample.VpnServerId), out var dns);
                 return new VpnDnsProfileSummaryItemDto
                 {
                     CommonName = sample.CommonName,
                     VpnServerId = sample.VpnServerId,
-                    IsRevoked = sample.IsRevoked,
+                    IsRevoked = isRevoked,
                     QueryCount = dns?.QueryCount ?? 0,
                     LastQueriedAtUtc = dns?.LastQueriedAtUtc
                 };
@@ -126,8 +130,8 @@ public class VpnDnsQueryController(
         if (!matchUserProfiles || string.IsNullOrWhiteSpace(externalId))
             return null;
 
-        var files = await issuedOvpnFileQueryService.GetAllByExternalId(externalId.Trim(), cancellationToken);
-        var names = files
+        var profiles = await LoadIssuedProfilesAsync(externalId.Trim(), cancellationToken);
+        var names = profiles
             .Select(f => f.CommonName)
             .Where(cn => !string.IsNullOrWhiteSpace(cn))
             .Distinct(StringComparer.Ordinal)
@@ -136,6 +140,19 @@ public class VpnDnsQueryController(
         return names.Count == 0 ? null : names;
     }
 
+    private async Task<List<IssuedProfileRef>> LoadIssuedProfilesAsync(string externalId, CancellationToken cancellationToken)
+    {
+        var ovpn = await issuedOvpnFileQueryService.GetAllByExternalId(externalId, cancellationToken);
+        var xray = await issuedXrayClientLinkQueryService.GetAllByExternalId(externalId, cancellationToken);
+
+        var list = new List<IssuedProfileRef>(ovpn.Count + xray.Count);
+        list.AddRange(ovpn.Select(f => new IssuedProfileRef(f.CommonName, f.VpnServerId, f.IsRevoked)));
+        list.AddRange(xray.Select(f => new IssuedProfileRef(f.CommonName, f.VpnServerId, f.IsRevoked)));
+        return list;
+    }
+
     private static string ProfileKey(string commonName, int vpnServerId) =>
         $"{vpnServerId}|{commonName}";
+
+    private sealed record IssuedProfileRef(string CommonName, int VpnServerId, bool IsRevoked);
 }

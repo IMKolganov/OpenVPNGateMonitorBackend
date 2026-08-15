@@ -139,7 +139,8 @@ public sealed class FreeTierUnsubscribedVpnUsersDailyDigestService(
         AppendUserSection(sb, "👤 Not merged", notMerged);
 
         sb.AppendLine();
-        sb.AppendLine("Remind: tap TG #id / Email #id below, or /remind_channel_subscribe|/remind_channel_email");
+        sb.AppendLine("Remind: tap TG #id / Email #id below, or /remind_channel_subscribe <id> | /remind_channel_email <userId>");
+        sb.AppendLine("Live list anytime: /unsubscribed_vpn_users");
 
         return sb.ToString();
     }

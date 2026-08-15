@@ -286,6 +286,66 @@ public class VpnServerOvpnFileConfigServiceTests
     }
 
     [Fact]
+    public async Task AddOrUpdate_AutoDetect_Applies_OpenVpn_Cipher_Auth_Tls_And_DataCiphers_From_MicroserviceInfo()
+    {
+        var (svc, _, q, cmd, microserviceInfo) = CreateService();
+        var serverId = 402;
+        var existing = new VpnServerOvpnFileConfig
+        {
+            Id = 11,
+            VpnServerId = serverId,
+            VpnServerIp = "10.0.0.1",
+            VpnServerPort = 1194,
+            ConfigTemplate = "client\nproto udp\nremote-cert-tls server\ntls-version-min 1.0\ncipher AES-256-CBC\nauth SHA1\nverb 1\nremote server 1194"
+        };
+
+        microserviceInfo.Setup(m => m.GetInfoAsync(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
+            {
+                ServerType = VpnServerType.OpenVpn,
+                OpenVpn = new RootOpenVpnInfoResponse
+                {
+                    Config = new ConfigInfoResponse
+                    {
+                        Port = "1194",
+                        Proto = "udp",
+                        Cipher = "AES-128-GCM",
+                        DataCiphers = "AES-128-GCM:AES-256-GCM:CHACHA20-POLY1305",
+                        Auth = "SHA256",
+                        TlsVersionMin = "1.2",
+                        ClientVerb = "3"
+                    }
+                }
+            });
+        q.SetupSequence(x => x.GetByVpnServerIdId(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing)
+            .ReturnsAsync(existing);
+        cmd.Setup(c => c.Update(existing, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var incoming = new VpnServerOvpnFileConfig
+        {
+            VpnServerId = serverId,
+            VpnServerIp = "10.0.0.1",
+            VpnServerPort = 1194,
+            ConfigTemplate = "client\nproto udp\nremote-cert-tls server\ntls-version-min 1.0\ncipher AES-256-CBC\nauth SHA1\nverb 1\nremote server 1194"
+        };
+
+        var result = await svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, true, CancellationToken.None);
+
+        Assert.Same(existing, result);
+        Assert.Contains("cipher AES-128-GCM", existing.ConfigTemplate);
+        Assert.DoesNotContain("AES-256-CBC", existing.ConfigTemplate);
+        Assert.Contains("data-ciphers AES-128-GCM:AES-256-GCM:CHACHA20-POLY1305", existing.ConfigTemplate);
+        Assert.Contains("auth SHA256", existing.ConfigTemplate);
+        Assert.Contains("tls-version-min 1.2", existing.ConfigTemplate);
+        Assert.Contains("verb 3", existing.ConfigTemplate);
+        microserviceInfo.Verify(m => m.GetInfoAsync(serverId, It.IsAny<CancellationToken>()), Times.Once);
+        q.VerifyAll();
+        cmd.VerifyAll();
+    }
+
+    [Fact]
     public async Task AddOrUpdate_AutoDetect_Keeps_Provided_Settings_When_InfoService_Throws()
     {
         var (svc, _, q, cmd, microserviceInfo) = CreateService();

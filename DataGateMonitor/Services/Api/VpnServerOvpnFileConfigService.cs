@@ -35,7 +35,7 @@ public class VpnServerOvpnFileConfigService(
                 openVpnServerOvpnFileConfig,
                 microserviceInfoService,
                 _logger,
-                "Failed to auto-detect OpenVPN port/proto for VpnServerId={VpnServerId}. Keeping provided values.",
+                "Failed to auto-detect OpenVPN client settings for VpnServerId={VpnServerId}. Keeping provided values.",
                 ct,
                 _openVpnAutoDetectTimeout);
 

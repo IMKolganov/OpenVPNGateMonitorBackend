@@ -23,6 +23,7 @@ public sealed class FreeTierUnsubscribedUserReminderService(
     IEmailSenderService emailSenderService,
     ISystemTransactionalEmailService systemTransactionalEmailService,
     ISentEmailLogService sentEmailLogService,
+    ITelegramAccountLinkService telegramAccountLinkService,
     IMemoryCache memoryCache,
     IOptions<TelegramChannelSettings> channelOptions,
     ILogger<FreeTierUnsubscribedUserReminderService> logger) : IFreeTierUnsubscribedUserReminderService
@@ -81,8 +82,10 @@ public sealed class FreeTierUnsubscribedUserReminderService(
             return FreeTierChannelSubscribeRemindResponse.Fail(
                 channel,
                 channel == FreeTierChannelSubscribeRemindChannel.Email
-                    ? "Usage: /remind_channel_email <userId>"
-                    : "Usage: /remind_channel_subscribe <userId|telegramId>");
+                    ? "Usage: /remind_channel_email <userId>\n" +
+                      "Emails that dashboard user: subscribe to the channel and link Google/password ↔ Telegram."
+                    : "Usage: /remind_channel_subscribe <userId|telegramId>\n" +
+                      "Sends a Telegram DM asking that user to subscribe to the required channel.");
         }
 
         target = target.Trim();
@@ -185,10 +188,29 @@ public sealed class FreeTierUnsubscribedUserReminderService(
         var channelUrl = channelOptions.Value.RequiredChannelUrl;
         var displayName = string.IsNullOrWhiteSpace(user.DisplayName) ? $"User #{userId}" : user.DisplayName.Trim();
 
+        string? linkCode = null;
+        string? linkBotUrl = null;
+        var linkTtlMinutes = 15;
+        try
+        {
+            var issued = await telegramAccountLinkService.RequestLinkCodeAsync(userId, null, ct);
+            linkCode = issued.Code;
+            linkBotUrl = channelOptions.Value.BuildAccountLinkDeepLink(issued.Code);
+            if (issued.ExpiresInSeconds > 0)
+                linkTtlMinutes = Math.Max(1, (int)Math.Round(issued.ExpiresInSeconds / 60.0));
+        }
+        catch (Exception ex)
+        {
+            logger.LogInformation(
+                ex,
+                "No account-link code for channel-subscribe email to user {UserId}; sending channel-only email",
+                userId);
+        }
+
         try
         {
             var (subject, bodyHtml) = await systemTransactionalEmailService.GetFreeTierChannelSubscribeReminderAsync(
-                displayName, channelChat, channelUrl, ct);
+                displayName, channelChat, channelUrl, linkCode, linkBotUrl, linkTtlMinutes, ct);
 
             string? sendError = null;
             try
@@ -218,10 +240,15 @@ public sealed class FreeTierUnsubscribedUserReminderService(
                     $"Failed to send email to {email}.");
             }
 
-            logger.LogInformation("Admin forced email channel-subscribe reminder to user {UserId} ({Email})", userId, email);
+            var linkNote = linkCode is null
+                ? "channel subscribe only (no link code — already linked or no Google/password identity)"
+                : $"link code {linkCode}";
+            logger.LogInformation(
+                "Admin forced email channel-subscribe reminder to user {UserId} ({Email}), {LinkNote}",
+                userId, email, linkNote);
             return FreeTierChannelSubscribeRemindResponse.Ok(
                 FreeTierChannelSubscribeRemindChannel.Email,
-                $"✅ Email reminder sent to user #{userId} ({email})",
+                $"✅ Email reminder sent to user #{userId} ({email}) — {linkNote}",
                 userId,
                 email: email);
         }

@@ -21,7 +21,7 @@ namespace DataGateMonitor.DataBase.Migrations
                 {
                     {
                         SystemEmailTemplateNames.FreeTierChannelSubscribeReminder,
-                        "Built-in: admin force email remind to subscribe to Telegram channel. Placeholders: {{DISPLAY_NAME}}, {{REQUIRED_CHANNEL}}, {{CHANNEL_URL}}",
+                        "Built-in: admin email remind — subscribe to channel and/or link Google↔Telegram. Placeholders: {{DISPLAY_NAME}}, {{REQUIRED_CHANNEL}}, {{CHANNEL_URL}}, {{LINK_CODE}}, {{LINK_TTL_MINUTES}}, {{CODE_LABEL}}, {{CODE_VALUE}}, {{ACTION_URL}}, {{ACTION_LABEL}}; optional block <!--BEGIN_LINK_ACCOUNT-->…<!--END_LINK_ACCOUNT-->",
                         TransactionalEmailHtml.DefaultFreeTierChannelSubscribeReminderSubject,
                         TransactionalEmailHtml.BuildFreeTierChannelSubscribeReminderWithPlaceholders(),
                         null,

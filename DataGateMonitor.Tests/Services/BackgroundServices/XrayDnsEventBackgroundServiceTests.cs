@@ -1,0 +1,94 @@
+using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
+using DataGateMonitor.Models;
+using DataGateMonitor.Services.BackgroundServices;
+using DataGateMonitor.Services.DataGateXRayManager.Events;
+using DataGateMonitor.SharedModels.Enums;
+using DataGateMonitor.Tests.Helpers;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
+
+namespace DataGateMonitor.Tests.Services.BackgroundServices;
+
+public class XrayDnsEventBackgroundServiceTests
+{
+    [Fact]
+    public async Task ExecuteAsync_StartsListening_OnlyForEnabledXrayServers()
+    {
+        var xray = new VpnServer
+        {
+            Id = 1,
+            ServerName = "xray-a",
+            ApiUrl = "https://xs1.datagateapp.com/",
+            ServerType = VpnServerType.Xray,
+            IsDisable = false
+        };
+        var disabledXray = new VpnServer
+        {
+            Id = 2,
+            ServerName = "xray-off",
+            ApiUrl = "https://xs2.datagateapp.com/",
+            ServerType = VpnServerType.Xray,
+            IsDisable = true
+        };
+        var openVpn = OpenVpnHubTestHelpers.OpenVpnServer(id: 3);
+
+        var startCalls = 0;
+        var factory = new Mock<IXrayDnsEventClientFactory>();
+        factory.Setup(x => x.Create(It.IsAny<VpnServer>()))
+            .Returns((VpnServer server) =>
+            {
+                var client = new MockXrayDnsEventClient(server, () => Interlocked.Increment(ref startCalls));
+                return client;
+            });
+
+        var query = new Mock<IVpnServerQueryService>();
+        query.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([xray, disabledXray, openVpn]);
+
+        var services = new ServiceCollection();
+        services.AddSingleton(query.Object);
+        var sp = services.BuildServiceProvider();
+
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+        var sut = new XrayDnsEventBackgroundService(
+            NullLogger<XrayDnsEventBackgroundService>.Instance,
+            factory.Object,
+            sp.GetRequiredService<IServiceScopeFactory>());
+
+        await sut.StartAsync(cts.Token);
+        await Task.Delay(250, CancellationToken.None);
+        await cts.CancelAsync();
+        await sut.StopAsync(CancellationToken.None);
+
+        factory.Verify(x => x.Create(It.Is<VpnServer>(s => s.Id == 1)), Times.AtLeastOnce);
+        factory.Verify(x => x.Create(It.Is<VpnServer>(s => s.Id == 2)), Times.Never);
+        factory.Verify(x => x.Create(It.Is<VpnServer>(s => s.Id == 3)), Times.Never);
+        Assert.True(startCalls >= 1);
+    }
+
+    /// <summary>
+    /// Thin stand-in: real <see cref="XrayDnsEventClient"/> is sealed and hub-bound;
+    /// background service only needs Create + StartListeningAsync.
+    /// </summary>
+    private sealed class MockXrayDnsEventClient : XrayDnsEventClient
+    {
+        private readonly Action _onStart;
+
+        public MockXrayDnsEventClient(VpnServer server, Action onStart)
+            : base(
+                server,
+                NullLogger<XrayDnsEventClient>.Instance,
+                OpenVpnHubTestHelpers.CreateTokenService(),
+                Mock.Of<IServiceScopeFactory>())
+        {
+            _onStart = onStart;
+        }
+
+        public new Task StartListeningAsync(CancellationToken cancellationToken)
+        {
+            _onStart();
+            return Task.CompletedTask;
+        }
+    }
+}
