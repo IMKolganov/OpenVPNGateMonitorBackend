@@ -1,10 +1,4 @@
--- Upsert free-tier channel subscribe reminder email template (deep link)
--- Row was missing on prod (UPDATE matched 0 rows).
-
-SELECT "Id", "Name", "Subject", LEFT("BodyHtml", 80) AS body_preview
-FROM xgb_dashopnvpn."EmailBroadcastTemplates"
-WHERE "Name" ILIKE '%free_tier%' OR "Name" ILIKE '%channel%' OR "Name" ILIKE '%subscribe%'
-ORDER BY "Id";
+-- INSERT new template system.free_tier_channel_subscribe_reminder (do NOT update grace_disconnected)
 
 INSERT INTO xgb_dashopnvpn."EmailBroadcastTemplates"
   ("Name", "Description", "Subject", "BodyHtml", "CreatedByUserId", "CreateDate", "LastUpdate")
