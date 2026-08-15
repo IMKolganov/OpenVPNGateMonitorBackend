@@ -4,7 +4,7 @@ using DataGateMonitor.Services.DataGateXRayManager.Events;
 using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.Tests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
+using Moq;
 
 namespace DataGateMonitor.Tests.Services.DataGateXRayManager.Events;
 

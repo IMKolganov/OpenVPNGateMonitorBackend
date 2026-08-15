@@ -1,5 +1,6 @@
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.Services.BackgroundServices;
 using DataGateMonitor.Services.DataGateXRayManager.Events;
 using DataGateMonitor.SharedModels.Enums;
@@ -33,13 +34,13 @@ public class XrayDnsEventBackgroundServiceTests
         };
         var openVpn = OpenVpnHubTestHelpers.OpenVpnServer(id: 3);
 
-        var startCalls = 0;
+        StubXrayDnsEventClient? stubClient = null;
         var factory = new Mock<IXrayDnsEventClientFactory>();
         factory.Setup(x => x.Create(It.IsAny<VpnServer>()))
             .Returns((VpnServer server) =>
             {
-                var client = new MockXrayDnsEventClient(server, () => Interlocked.Increment(ref startCalls));
-                return client;
+                stubClient ??= new StubXrayDnsEventClient(server);
+                return stubClient;
             });
 
         var query = new Mock<IVpnServerQueryService>();
@@ -64,30 +65,21 @@ public class XrayDnsEventBackgroundServiceTests
         factory.Verify(x => x.Create(It.Is<VpnServer>(s => s.Id == 1)), Times.AtLeastOnce);
         factory.Verify(x => x.Create(It.Is<VpnServer>(s => s.Id == 2)), Times.Never);
         factory.Verify(x => x.Create(It.Is<VpnServer>(s => s.Id == 3)), Times.Never);
-        Assert.True(startCalls >= 1);
+        Assert.NotNull(stubClient);
+        Assert.True(stubClient!.StartListeningCallCount >= 1);
     }
 
-    /// <summary>
-    /// Thin stand-in: real <see cref="XrayDnsEventClient"/> is sealed and hub-bound;
-    /// background service only needs Create + StartListeningAsync.
-    /// </summary>
-    private sealed class MockXrayDnsEventClient : XrayDnsEventClient
+    private sealed class StubXrayDnsEventClient(VpnServer server) : XrayDnsEventClient(
+        server,
+        NullLogger<XrayDnsEventClient>.Instance,
+        OpenVpnHubTestHelpers.CreateTokenService(),
+        Mock.Of<IServiceScopeFactory>())
     {
-        private readonly Action _onStart;
+        public int StartListeningCallCount { get; private set; }
 
-        public MockXrayDnsEventClient(VpnServer server, Action onStart)
-            : base(
-                server,
-                NullLogger<XrayDnsEventClient>.Instance,
-                OpenVpnHubTestHelpers.CreateTokenService(),
-                Mock.Of<IServiceScopeFactory>())
+        public override Task StartListeningAsync(CancellationToken cancellationToken)
         {
-            _onStart = onStart;
-        }
-
-        public new Task StartListeningAsync(CancellationToken cancellationToken)
-        {
-            _onStart();
+            StartListeningCallCount++;
             return Task.CompletedTask;
         }
     }

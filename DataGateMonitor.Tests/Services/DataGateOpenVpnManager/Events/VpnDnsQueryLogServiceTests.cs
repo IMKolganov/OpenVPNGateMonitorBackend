@@ -128,6 +128,48 @@ public class VpnDnsQueryLogServiceTests
     }
 
     [Fact]
+    public async Task SaveBatchAsync_AllowsNullCommonName_ForXrayIpOnlyRows()
+    {
+        await using var context = CreateContext();
+        var query = CreateQueryService(context);
+        var persisted = new List<VpnDnsQueryLog>();
+        var command = new Mock<ICommandService<VpnDnsQueryLog, int>>();
+        command.Setup(x => x.AddRange(It.IsAny<IEnumerable<VpnDnsQueryLog>>(), true, It.IsAny<CancellationToken>()))
+            .Callback<IEnumerable<VpnDnsQueryLog>, bool, CancellationToken>((rows, _, _) => persisted.AddRange(rows))
+            .ReturnsAsync(1);
+
+        var sut = new VpnDnsQueryLogService(
+            command.Object,
+            query,
+            new Mock<IIssuedOvpnFileQueryService>().Object,
+            new Mock<IIssuedXrayClientLinkQueryService>().Object,
+            NullLogger<VpnDnsQueryLogService>.Instance);
+
+        var saved = await sut.SaveBatchAsync(7, new DnsQueryBatchRequest
+        {
+            CollectedAtUtc = DateTimeOffset.UtcNow,
+            Queries =
+            [
+                new DnsQueryEventDto
+                {
+                    PiHoleQueryId = 777,
+                    ClientIp = "10.80.0.9",
+                    CommonName = null,
+                    Domain = "ip-only.example",
+                    Status = "FORWARDED",
+                    QueriedAtUtc = DateTimeOffset.UtcNow
+                }
+            ]
+        }, CancellationToken.None);
+
+        Assert.Equal(1, saved);
+        Assert.Single(persisted);
+        Assert.Null(persisted[0].CommonName);
+        Assert.Equal("10.80.0.9", persisted[0].ClientIp);
+        Assert.Null(persisted[0].ExternalId);
+    }
+
+    [Fact]
     public async Task SaveBatchAsync_ReturnsZero_WhenAllDuplicates()
     {
         var existing = new VpnDnsQueryLog

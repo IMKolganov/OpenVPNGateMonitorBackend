@@ -10,7 +10,7 @@ namespace DataGateMonitor.Services.DataGateXRayManager.Events;
 /// Dashboard → Xray node SignalR client for Pi-hole DNS batches (<c>DnsQueriesReceived</c>).
 /// Mirrors the OpenVPN event-hub receive path for DNS only.
 /// </summary>
-public sealed class XrayDnsEventClient(
+public class XrayDnsEventClient(
     VpnServer server,
     ILogger<XrayDnsEventClient> logger,
     IMicroserviceTokenService tokenService,
@@ -24,7 +24,7 @@ public sealed class XrayDnsEventClient(
     private readonly SemaphoreSlim _lock = new(1, 1);
     private bool _handlersRegistered;
 
-    public async Task StartListeningAsync(CancellationToken cancellationToken)
+    public virtual async Task StartListeningAsync(CancellationToken cancellationToken)
     {
         await _lock.WaitAsync(cancellationToken);
         try

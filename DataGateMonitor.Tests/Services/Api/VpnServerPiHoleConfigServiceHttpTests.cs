@@ -109,6 +109,10 @@ public class VpnServerPiHoleConfigServiceHttpTests
         await harness.Sut.ApplyRuntimeToMicroserviceAsync(harness.ServerId, CancellationToken.None);
 
         Assert.Single(harness.Handler.Requests);
+        var row = await harness.Context.VpnServerPiHoleConfigs
+            .AsNoTracking()
+            .FirstAsync(x => x.VpnServerId == harness.ServerId);
+        Assert.NotNull(row.LastRuntimeAppliedAtUtc);
     }
 
     [Fact]
@@ -118,6 +122,45 @@ public class VpnServerPiHoleConfigServiceHttpTests
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
             harness.Sut.ApplyRuntimeToMicroserviceAsync(harness.ServerId, CancellationToken.None));
         Assert.Contains("API URL", ex.Message);
+    }
+
+    [Fact]
+    public async Task GetMicroserviceDiagnosticsAsync_ForXray_UsesXrayAudience()
+    {
+        string? capturedAudience = null;
+        await using var harness = await CreateHarnessAsync(
+            serverType: DataGateMonitor.SharedModels.Enums.VpnServerType.Xray);
+        harness.TokenService
+            .Setup(x => x.GenerateToken(
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>(),
+                It.IsAny<string>()))
+            .Returns((string _, string __, string ___, string audience) =>
+            {
+                capturedAudience = audience;
+                return "test-token";
+            });
+
+        harness.Handler.Enqueue(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("""
+                {
+                  "success": true,
+                  "data": {
+                    "enabled": true,
+                    "authenticated": true,
+                    "baseUrl": "http://172.17.0.1:8080",
+                    "collectorRunning": true
+                  }
+                }
+                """)
+        });
+
+        await harness.Sut.GetMicroserviceDiagnosticsAsync(harness.ServerId, CancellationToken.None);
+
+        Assert.Equal("DataGateXRayManager", capturedAudience);
+        Assert.Contains("api/pi-hole/diagnostics", harness.Handler.Requests[0].RequestUri!.AbsoluteUri);
     }
 
     [Fact]
@@ -260,6 +303,7 @@ public class VpnServerPiHoleConfigServiceHttpTests
     {
         public int ServerId { get; } = serverId;
         public VpnServerPiHoleConfigService Sut { get; } = sut;
+        public ApplicationDbContext Context => context;
         public Mock<IVpnDnsQueryLogQueryService> DnsQuery { get; } = dnsQuery;
         public QueueHandler Handler { get; } = handler;
         public Mock<IMicroserviceTokenService> TokenService { get; } = tokenService;
