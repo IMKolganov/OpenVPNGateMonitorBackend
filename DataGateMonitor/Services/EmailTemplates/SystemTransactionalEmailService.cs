@@ -85,7 +85,10 @@ public sealed class SystemTransactionalEmailService(IQueryService<EmailBroadcast
             asNoTracking: true,
             ct: ct);
 
-        if (entity is { BodyHtml: { Length: > 0 } body })
+        // Stale DB seeds only replace {{DISPLAY_NAME}}/channel tokens and never include the
+        // account-link deep link. Prefer the code builder unless the template is modern.
+        if (entity is { BodyHtml: { Length: > 0 } body } &&
+            IsModernFreeTierChannelSubscribeReminderTemplate(body))
         {
             var subject = string.IsNullOrWhiteSpace(entity.Subject)
                 ? TransactionalEmailHtml.DefaultFreeTierChannelSubscribeReminderSubject
@@ -98,4 +101,11 @@ public sealed class SystemTransactionalEmailService(IQueryService<EmailBroadcast
             TransactionalEmailHtml.BuildFreeTierChannelSubscribeReminder(
                 displayName, requiredChannel, channelUrl, linkCode, linkBotUrl, linkCodeTtlMinutes));
     }
+
+    /// <summary>
+    /// Modern templates must support deep-link account linking placeholders.
+    /// </summary>
+    internal static bool IsModernFreeTierChannelSubscribeReminderTemplate(string bodyHtml)
+        => bodyHtml.Contains("{{ACTION_URL}}", StringComparison.Ordinal)
+           && bodyHtml.Contains("<!--BEGIN_LINK_ACCOUNT-->", StringComparison.Ordinal);
 }
