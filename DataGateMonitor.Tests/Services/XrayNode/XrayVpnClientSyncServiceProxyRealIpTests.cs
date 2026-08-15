@@ -159,6 +159,77 @@ public class XrayVpnClientSyncServiceProxyRealIpTests
         Assert.NotNull(captured);
         Assert.Null(captured!.ProxyRealIp);
         Assert.Null(captured.Country);
+        // persistProxyEnrichment=false → FromClient nulls enrichment fields so upsert COALESCE keeps prior row.
+        geo.Verify(g => g.GetGeoInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Sync_WhenPublicRemoteWithoutProxy_GeosOnRemoteAndPersistsEnrichmentFields()
+    {
+        VpnServerClientUpsertPayload? captured = null;
+        string? geoHost = null;
+
+        var upsert = new Mock<IVpnServerClientUpsertService>(MockBehavior.Strict);
+        upsert.Setup(u => u.UpsertAsync(It.IsAny<VpnServerClientUpsertPayload>(), It.IsAny<CancellationToken>()))
+            .Callback<VpnServerClientUpsertPayload, CancellationToken>((p, _) => captured = p)
+            .ReturnsAsync(1);
+
+        var geo = new Mock<IGeoLiteQueryService>(MockBehavior.Strict);
+        geo.Setup(g => g.GetGeoInfoAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, CancellationToken>((h, _) => geoHost = h)
+            .ReturnsAsync(new OpenVpnGeoInfo { Country = "NL", Region = "NH", City = "Amsterdam" });
+
+        var (clientCmd, trafficCmd, tx, counter) = CreateCommandMocks();
+        trafficCmd.Setup(c => c.UpdateWhere(
+                It.IsAny<Expression<Func<VpnServerClientTraffic, bool>>>(),
+                It.IsAny<Action<UpdateSettersBuilder<VpnServerClientTraffic>>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var xrayLinks = new Mock<IIssuedXrayClientLinkQueryService>(MockBehavior.Strict);
+        xrayLinks.Setup(q => q.GetExternalIdByCommonName(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+        var ovpn = new Mock<IIssuedOvpnFileQueryService>(MockBehavior.Strict);
+        ovpn.Setup(q => q.GetExternalIdByCommonName(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((string?)null);
+
+        var sut = new XrayVpnClientSyncService(
+            NullLogger<XrayVpnClientSyncService>.Instance,
+            xrayLinks.Object,
+            ovpn.Object,
+            Mock.Of<IUserQueryService>(),
+            geo.Object,
+            tx.Object,
+            clientCmd.Object,
+            trafficCmd.Object,
+            upsert.Object,
+            counter.Object);
+
+        await sut.SyncConnectedClientsAsync(
+            new VpnServer
+            {
+                Id = 2,
+                ServerType = VpnServerType.Xray,
+                ServerName = "x",
+                ApiUrl = "https://x/",
+                CreateDate = DateTimeOffset.UtcNow,
+                LastUpdate = DateTimeOffset.UtcNow
+            },
+            [
+                new XrayNodeClientDto
+                {
+                    Email = "cn",
+                    RemoteAddress = "203.0.113.50:443",
+                    ProxyRealIp = null,
+                    ConnectedSince = DateTimeOffset.UtcNow
+                }
+            ],
+            CancellationToken.None);
+
+        Assert.NotNull(captured);
+        Assert.Null(captured!.ProxyRealIp);
+        Assert.Equal("NL", captured.Country);
+        Assert.Equal("203.0.113.50", geoHost);
     }
 
     private static (
