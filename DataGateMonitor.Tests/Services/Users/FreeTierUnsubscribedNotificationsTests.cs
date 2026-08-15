@@ -59,7 +59,7 @@ public class FreeTierUnsubscribedNotificationsTests
             (email ?? new Mock<IEmailSenderService>()).Object,
             (templates ?? new Mock<ISystemTransactionalEmailService>()).Object,
             (sentLog ?? new Mock<ISentEmailLogService>()).Object,
-            (accountLink ?? new Mock<ITelegramAccountLinkService>()).Object,
+            new Lazy<ITelegramAccountLinkService>(() => (accountLink ?? new Mock<ITelegramAccountLinkService>()).Object),
             cache ?? new MemoryCache(new MemoryCacheOptions()),
             Options.Create(new TelegramChannelSettings
             {

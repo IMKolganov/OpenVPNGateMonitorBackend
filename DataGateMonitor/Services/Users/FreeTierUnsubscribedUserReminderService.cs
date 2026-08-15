@@ -23,7 +23,7 @@ public sealed class FreeTierUnsubscribedUserReminderService(
     IEmailSenderService emailSenderService,
     ISystemTransactionalEmailService systemTransactionalEmailService,
     ISentEmailLogService sentEmailLogService,
-    ITelegramAccountLinkService telegramAccountLinkService,
+    Lazy<ITelegramAccountLinkService> telegramAccountLinkService,
     IMemoryCache memoryCache,
     IOptions<TelegramChannelSettings> channelOptions,
     ILogger<FreeTierUnsubscribedUserReminderService> logger) : IFreeTierUnsubscribedUserReminderService
@@ -204,7 +204,7 @@ public sealed class FreeTierUnsubscribedUserReminderService(
         var linkTtlMinutes = 15;
         try
         {
-            var issued = await telegramAccountLinkService.RequestLinkCodeAsync(userId, null, ct);
+            var issued = await telegramAccountLinkService.Value.RequestLinkCodeAsync(userId, null, ct);
             linkCode = issued.Code;
             linkBotUrl = channelOptions.Value.BuildAccountLinkDeepLink(issued.Code);
             if (issued.ExpiresInSeconds > 0)

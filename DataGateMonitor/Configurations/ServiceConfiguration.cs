@@ -149,6 +149,9 @@ public static class ServiceConfiguration
         services.AddScoped<IUserPasswordHistoryService, UserPasswordHistoryService>();
         services.AddScoped<IUserMergeService, UserMergeService>();
         services.AddScoped<ITelegramAccountLinkService, TelegramAccountLinkService>();
+        // MS.DI does not auto-wrap Lazy<T>; needed to break TelegramAccountLink ↔ free-tier reminder cycle.
+        services.AddScoped(sp => new Lazy<ITelegramAccountLinkService>(
+            () => sp.GetRequiredService<ITelegramAccountLinkService>()));
         services.AddScoped<IFreeTierAccessComplianceService, FreeTierAccessComplianceService>();
         services.AddScoped<IFreeTierOpenVpnSessionEnforcementService, FreeTierOpenVpnSessionEnforcementService>();
         services.AddScoped<IOpenVpnDisconnectExecutor, OpenVpnDisconnectExecutor>();
