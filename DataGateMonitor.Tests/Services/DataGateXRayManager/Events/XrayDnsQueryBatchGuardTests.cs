@@ -16,11 +16,22 @@ public class XrayDnsQueryBatchGuardTests
     [InlineData("203.0.113.9", false)]
     [InlineData("164.215.15.224", false)]
     [InlineData("203.0.113.9:443", false)]
+    [InlineData("fc00::1", true)]
+    [InlineData("fd12:3456:789a::1", true)]
+    [InlineData("fe80::1", true)]
+    [InlineData("2001:db8::1", false)]
     [InlineData(null, true)]
     [InlineData("", true)]
     [InlineData("   ", true)]
     public void IsPrivateOrLoopback_ClassifiesClientIps(string? ip, bool expected) =>
         Assert.Equal(expected, XrayDnsQueryBatchGuard.IsPrivateOrLoopback(ip));
+
+    [Fact]
+    public void FilterForPersistence_DropsIpv6UlaWithoutCommonName()
+    {
+        var batch = Batch(Q(1, "fd12:3456:789a::10", cn: null, "leak.example"));
+        Assert.Empty(XrayDnsQueryBatchGuard.FilterForPersistence(batch).Queries);
+    }
 
     [Fact]
     public void FilterForPersistence_DropsOpenVpnLanRowsWithoutCommonName()

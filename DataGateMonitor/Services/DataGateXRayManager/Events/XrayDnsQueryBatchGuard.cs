@@ -49,6 +49,17 @@ public static class XrayDnsQueryBatchGuard
         if (ip.IsIPv4MappedToIPv6)
             ip = ip.MapToIPv4();
 
+        if (ip.AddressFamily == System.Net.Sockets.AddressFamily.InterNetworkV6)
+        {
+            // Unique-local fc00::/7 and link-local fe80::/10 — same leak class as RFC1918 for null-CN rows.
+            var bytes = ip.GetAddressBytes();
+            if ((bytes[0] & 0xfe) == 0xfc)
+                return true;
+            if ((bytes[0] & 0xfe) == 0xfe && (bytes[1] & 0xc0) == 0x80)
+                return true;
+            return false;
+        }
+
         if (ip.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork)
             return false;
 
