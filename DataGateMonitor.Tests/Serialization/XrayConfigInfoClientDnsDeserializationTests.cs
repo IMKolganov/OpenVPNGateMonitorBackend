@@ -40,6 +40,48 @@ public class XrayConfigInfoClientDnsDeserializationTests
     }
 
     [Fact]
+    public void Deserialize_MissingClientDnsServers_DefaultsToEmptyList()
+    {
+        const string json =
+            """
+            {
+              "application": "DataGateXRayManager",
+              "config": {
+                "dns1": "172.20.0.1",
+                "dnsIdentityEnabled": true,
+                "port": "443"
+              }
+            }
+            """;
+
+        var info = ProjectJson.Deserialize<RootXrayInfoResponse>(json);
+        Assert.NotNull(info);
+        Assert.NotNull(info!.Config.ClientDnsServers);
+        Assert.Empty(info.Config.ClientDnsServers);
+        Assert.True(info.Config.DnsIdentityEnabled);
+        Assert.Equal("172.20.0.1", info.Config.Dns1);
+    }
+
+    [Fact]
+    public void Deserialize_EmptyClientDnsServersArray_StaysEmpty()
+    {
+        const string json =
+            """
+            {
+              "application": "DataGateXRayManager",
+              "config": {
+                "clientDnsServers": [],
+                "dnsIdentityEnabled": true
+              }
+            }
+            """;
+
+        var info = ProjectJson.Deserialize<RootXrayInfoResponse>(json);
+        Assert.Empty(info!.Config.ClientDnsServers);
+        Assert.True(info.Config.DnsIdentityEnabled);
+    }
+
+    [Fact]
     public void Serialize_ConfigInfo_EmitsCamelCaseClientDnsFields()
     {
         var json = ProjectJson.Serialize(new ConfigInfoResponse

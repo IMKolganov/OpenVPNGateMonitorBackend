@@ -64,7 +64,7 @@ public class VpnServerPiHoleConfigService(
                 PollIntervalSeconds = request.PollIntervalSeconds,
                 BatchSize = request.BatchSize,
                 LookbackSeconds = request.LookbackSeconds,
-                ClientSubnetPrefix = request.ClientSubnetPrefix.Trim(),
+                ClientSubnetPrefix = PiHoleClientSubnetPrefix.Normalize(request.ClientSubnetPrefix),
                 CreateDate = now,
                 LastUpdate = now
             };
@@ -78,7 +78,7 @@ public class VpnServerPiHoleConfigService(
             existing.PollIntervalSeconds = request.PollIntervalSeconds;
             existing.BatchSize = request.BatchSize;
             existing.LookbackSeconds = request.LookbackSeconds;
-            existing.ClientSubnetPrefix = request.ClientSubnetPrefix.Trim();
+            existing.ClientSubnetPrefix = PiHoleClientSubnetPrefix.Normalize(request.ClientSubnetPrefix);
             existing.LastUpdate = now;
             await piHoleConfigCommand.SaveChanges(ct);
         }

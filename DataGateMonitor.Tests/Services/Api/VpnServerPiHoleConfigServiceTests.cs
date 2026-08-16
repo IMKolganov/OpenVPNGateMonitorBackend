@@ -51,6 +51,26 @@ public class VpnServerPiHoleConfigServiceTests
     }
 
     [Fact]
+    public async Task UpsertAsync_NormalizesUndottedClientSubnetPrefix()
+    {
+        await using var harness = await CreateHarnessAsync();
+        var upsert = await harness.Sut.UpsertAsync(new UpsertVpnServerPiHoleConfigRequest
+        {
+            VpnServerId = harness.ServerId,
+            BaseUrl = "http://pi-hole:8080",
+            AppPassword = PiHoleTestFixtures.AppCredential,
+            PollIntervalSeconds = 60,
+            BatchSize = 200,
+            LookbackSeconds = 120,
+            ClientSubnetPrefix = "10.80.0"
+        }, CancellationToken.None);
+
+        Assert.Equal("10.80.0.", upsert.Config.ClientSubnetPrefix);
+        var read = await harness.Sut.GetForAdminAsync(harness.ServerId, CancellationToken.None);
+        Assert.Equal("10.80.0.", read.Config.ClientSubnetPrefix);
+    }
+
+    [Fact]
     public async Task GetRuntimeForMicroserviceAsync_ReturnsNull_WhenPiHoleDisabled()
     {
         await using var harness = await CreateHarnessAsync(isPiHoleEnabled: false);
