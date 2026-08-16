@@ -86,19 +86,29 @@ public class XrayDnsEventClient(
 
     internal async Task HandleDnsQueriesAsync(DnsQueryBatchRequest batch)
     {
-        if (batch.Queries.Count == 0)
+        var scoped = XrayDnsQueryBatchGuard.FilterForPersistence(batch);
+        if (scoped.Queries.Count == 0)
             return;
+
+        var dropped = batch.Queries.Count - scoped.Queries.Count;
+        if (dropped > 0)
+        {
+            logger.LogInformation(
+                "Xray Pi-hole DNS batch for ServerId={ServerId}: dropped {Dropped} unscoped/private rows (shared Pi-hole guard).",
+                server.Id,
+                dropped);
+        }
 
         try
         {
             using var scope = scopeFactory.CreateScope();
             var dnsLogService = scope.ServiceProvider.GetRequiredService<IVpnDnsQueryLogService>();
-            var saved = await dnsLogService.SaveBatchAsync(server.Id, batch, CancellationToken.None);
+            var saved = await dnsLogService.SaveBatchAsync(server.Id, scoped, CancellationToken.None);
             if (saved > 0)
             {
                 logger.LogInformation(
                     "Xray Pi-hole DNS batch for ServerId={ServerId}: saved={Saved}, received={Received}",
-                    server.Id, saved, batch.Queries.Count);
+                    server.Id, saved, scoped.Queries.Count);
             }
         }
         catch (Exception ex)
