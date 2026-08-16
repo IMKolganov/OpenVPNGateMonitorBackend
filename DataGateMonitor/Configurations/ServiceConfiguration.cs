@@ -15,6 +15,7 @@ using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.QuotaPlans;
 using DataGateMonitor.Services.Tags;
+using DataGateMonitor.Services.VpnServerGroups;
 using DataGateMonitor.Services.UserRoles;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
@@ -164,6 +165,7 @@ public static class ServiceConfiguration
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
         services.AddScoped<IQuotaPlanAllowedServerService, QuotaPlanAllowedServerService>();
         services.AddScoped<ITagService, TagService>();
+        services.AddScoped<IVpnServerGroupService, VpnServerGroupService>();
         
         services.AddScoped<IUserCredentialQueryService, UserCredentialQueryService>();
         services.AddScoped<ICrashReportParser, CrashReportParser>();

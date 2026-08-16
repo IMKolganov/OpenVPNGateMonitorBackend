@@ -25,4 +25,10 @@ public class VpnServer : BaseEntity<int>
 
     /// <summary>Last error from Xray node client poll (HTTP failure or node-reported <c>PollError</c>).</summary>
     public string? XrayClientsPollError { get; set; }
+
+    /// <summary>Optional UI folder for the servers list. Null = ungrouped.</summary>
+    public int? VpnServerGroupId { get; set; }
+
+    /// <summary>Order within the group (or among ungrouped servers when <see cref="VpnServerGroupId"/> is null).</summary>
+    public int SortOrder { get; set; }
 }

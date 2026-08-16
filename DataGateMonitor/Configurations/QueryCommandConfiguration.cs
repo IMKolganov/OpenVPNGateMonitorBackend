@@ -20,6 +20,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerStatusLogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerConflogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerGroupTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.TagTable;
@@ -84,6 +85,7 @@ public static class QueryCommandConfiguration
         services.AddScoped<IQuotaPlanAllowedServerQueryService, QuotaPlanAllowedServerQueryService>();
         services.AddScoped<ITagQueryService, TagQueryService>();
         services.AddScoped<IVpnServerTagQueryService, VpnServerTagQueryService>();
+        services.AddScoped<IVpnServerGroupQueryService, VpnServerGroupQueryService>();
         services.AddScoped<IVpnServerConflogQueryService, VpnServerConflogQueryService>();
 
         services.AddScoped<IUserRefreshTokenQueryService, UserRefreshTokenQueryService>();

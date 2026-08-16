@@ -28,7 +28,11 @@ public class VpnServerMapping : IRegister
             .Map(dest => dest.DcoIsEnabled, src => src.DcoIsEnabled)
             .Map(dest => dest.XrayClientsPolledAt, src => src.XrayClientsPolledAt)
             .Map(dest => dest.XrayClientsPollError, src => src.XrayClientsPollError)
-            .Map(dest => dest.IsDisabled, src => src.IsDisable);
+            .Map(dest => dest.IsDisabled, src => src.IsDisable)
+            .Map(dest => dest.GroupId, src => src.VpnServerGroupId)
+            .Map(dest => dest.SortOrder, src => src.SortOrder)
+            .Ignore(dest => dest.GroupName)
+            .Ignore(dest => dest.Tags);
 
         config.NewConfig<UpdateServerRequest, VpnServer>()
             .Map(dest => dest.IsDisable, src => src.IsDisabled);
