@@ -89,6 +89,40 @@ public class VpnServerOvpnFileConfigQueryServiceTests
     }
 
     [Fact]
+    public async Task GetConfigTemplatesByVpnServerIds_ReturnsTemplatesForRequestedServers()
+    {
+        var data = CreateSample();
+        data[0].ConfigTemplate = "proto tcp";
+        data[1].ConfigTemplate = "proto udp";
+        data[2].ConfigTemplate = "proto tcp";
+        var (q, ctx) = CreateEfBackedQuery(data);
+        var sut = new VpnServerOvpnFileConfigQueryService(q.Object);
+
+        var result = await sut.GetConfigTemplatesByVpnServerIds([11, 22], CancellationToken.None);
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal("proto tcp", result[11]);
+        Assert.Equal("proto udp", result[22]);
+        Assert.False(result.ContainsKey(33));
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetConfigTemplatesByVpnServerIds_WhenEmpty_DoesNotQuery()
+    {
+        var (q, ctx) = CreateEfBackedQuery(CreateSample());
+        var sut = new VpnServerOvpnFileConfigQueryService(q.Object);
+
+        var result = await sut.GetConfigTemplatesByVpnServerIds([], CancellationToken.None);
+
+        Assert.Empty(result);
+        q.Verify(
+            x => x.Query(It.IsAny<bool>(), It.IsAny<Expression<Func<VpnServerOvpnFileConfig, object>>[]>()),
+            Times.Never);
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
     public async Task AnyByVpnServerId_Delegates_To_AnyAsync()
     {
         var (q, ctx) = CreateEfBackedQuery(Array.Empty<VpnServerOvpnFileConfig>());

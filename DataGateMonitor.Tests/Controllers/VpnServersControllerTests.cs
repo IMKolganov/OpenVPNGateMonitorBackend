@@ -9,6 +9,7 @@ using Newtonsoft.Json.Linq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
@@ -38,6 +39,7 @@ public class VpnServersControllerTests
     private readonly Mock<IVpnServerOverviewQuery> _overviewQuery = new();
     private readonly Mock<IVpnServerQueryService> _serverQuery = new();
     private readonly Mock<IVpnServerTagQueryService> _tagQuery = new();
+    private readonly Mock<IVpnServerOvpnFileConfigQueryService> _ovpnConfigQuery = new();
     private readonly Mock<IOpenVpnBackgroundService> _backgroundService = new();
     private readonly Mock<IMicroserviceInfoService> _microserviceInfo = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
@@ -64,7 +66,11 @@ public class VpnServersControllerTests
             _statusCacheGeneration.Object,
             _statusStreamLogStore.Object,
             _vpnServerPostSetupService.Object,
-            Mock.Of<IConnectedClientsCounterStore>());
+            Mock.Of<IConnectedClientsCounterStore>(),
+            _ovpnConfigQuery.Object);
+        _ovpnConfigQuery
+            .Setup(q => q.GetConfigTemplatesByVpnServerIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, string>());
         SetUserAsAdmin(_controller);
     }
 
@@ -184,6 +190,60 @@ public class VpnServersControllerTests
         Assert.Equal(7, item["openVpnServerResponses"]?["openVpnServer"]?["id"]?.Value<int>());
         Assert.Equal(7, item["openVpnServerStatusLogResponse"]?["vpnServerId"]?.Value<int>());
         _overviewQuery.Verify(q => q.GetAllVpnServersWithStatusAsync(false, false, null, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    [Trait("Compatibility", "LegacyAndroid")]
+    public async Task GetAllServersWithStatus_HidesXrayAndUdpOpenVpnFromOvpnProtoNotTags()
+    {
+        VpnServerWithStatusDto Item(int id, string name, VpnServerType type) => new()
+        {
+            VpnServerResponses = new VpnServerResponse
+            {
+                VpnServer = new VpnServerDto
+                {
+                    Id = id,
+                    ServerName = name,
+                    ServerType = type,
+                    IsOnline = true,
+                    ApiUrl = $"https://{id}.example"
+                }
+            }
+        };
+
+        _overviewQuery.Setup(q => q.GetAllVpnServersWithStatusAsync(
+                It.IsAny<bool>(),
+                It.IsAny<bool>(),
+                It.IsAny<int?>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(
+            [
+                Item(1, "Helsinki 1", VpnServerType.OpenVpn),
+                Item(2, "Helsinki 2", VpnServerType.OpenVpn),
+                Item(3, "Helsinki Xray", VpnServerType.Xray)
+            ]);
+        _tagQuery.Setup(q => q.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<string>>
+            {
+                [1] = ["udp"],
+                [2] = ["tcp"],
+                [3] = ["xray"]
+            });
+        _ovpnConfigQuery.Setup(q => q.GetConfigTemplatesByVpnServerIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, string>
+            {
+                [1] = "client\nproto tcp\nremote {{server_ip}} {{server_port}}",
+                [2] = "client\nproto udp\nremote {{server_ip}} {{server_port}}",
+                [3] = "{{vless_uri}}"
+            });
+
+        var result = await _controller.GetAllServersWithStatus(false, CancellationToken.None);
+
+        var json = ParseLegacyJsonResponse(result);
+        var items = json["data"]?["openVpnServerWithStatuses"] as JArray;
+        Assert.NotNull(items);
+        Assert.Single(items!);
+        Assert.Equal("Helsinki 1", items![0]?["openVpnServerResponses"]?["openVpnServer"]?["serverName"]?.Value<string>());
     }
 
     [Fact]
