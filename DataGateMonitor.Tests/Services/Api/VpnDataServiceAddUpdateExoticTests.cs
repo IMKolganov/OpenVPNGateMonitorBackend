@@ -119,6 +119,42 @@ public class VpnDataServiceAddUpdateExoticTests
     }
 
     [Fact]
+    public async Task UpdateVpnServer_PreservesGroupMembershipAndSortOrder()
+    {
+        var h = new VpnDataServiceTestHarness();
+        var previous = new VpnServer
+        {
+            Id = 76,
+            ServerName = "grouped",
+            VpnServerGroupId = 3,
+            SortOrder = 7,
+            CreateDate = DateTimeOffset.Parse("2025-01-01T00:00:00Z"),
+            DcoIsEnabled = true,
+            XrayClientsPolledAt = DateTimeOffset.Parse("2025-06-01T12:00:00Z"),
+            XrayClientsPollError = "old",
+        };
+        h.ServerQ.Setup(q => q.GetById(76, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(previous);
+        h.ServerQ.Setup(q => q.AnyByServerNameExceptId("grouped", 76, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        VpnServer? updated = null;
+        h.ServerCmd.Setup(c => c.Update(It.IsAny<VpnServer>(), true, It.IsAny<CancellationToken>()))
+            .Callback<VpnServer, bool, CancellationToken>((s, _, _) => updated = s)
+            .Returns(Task.FromResult(1));
+        h.CfgQ.Setup(q => q.AnyByVpnServerId(76, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var svc = h.Create();
+
+        await svc.UpdateVpnServer(new VpnServer { Id = 76, ServerName = "grouped" }, [1], [], CancellationToken.None);
+
+        Assert.NotNull(updated);
+        Assert.Equal(3, updated!.VpnServerGroupId);
+        Assert.Equal(7, updated.SortOrder);
+        Assert.Equal(previous.CreateDate, updated.CreateDate);
+        Assert.Equal(previous.DcoIsEnabled, updated.DcoIsEnabled);
+        Assert.Equal(previous.XrayClientsPolledAt, updated.XrayClientsPolledAt);
+        Assert.Equal(previous.XrayClientsPollError, updated.XrayClientsPollError);
+    }
+
+    [Fact]
     public async Task UpdateVpnServer_ReplacesQuotaPlans_ForServerOnly()
     {
         var h = new VpnDataServiceTestHarness();
@@ -210,6 +246,8 @@ public class VpnDataServiceAddUpdateExoticTests
         Assert.Equal(string.Empty, cfg.VpnServerIp);
         Assert.Equal(443, cfg.VpnServerPort);
         Assert.Contains("{{vless_uri}}", cfg.ConfigTemplate);
+        Assert.Contains("{{dns_servers_json}}", cfg.ConfigTemplate);
+        Assert.Contains("dnsServers", cfg.ConfigTemplate);
     }
 
     [Fact]
@@ -359,6 +397,8 @@ public class VpnDataServiceAddUpdateExoticTests
         Assert.Equal("203.0.113.5", cfg.VpnServerIp);
         Assert.Equal(443, cfg.VpnServerPort);
         Assert.Contains("{{vless_uri}}", cfg.ConfigTemplate);
+        Assert.Contains("{{dns_servers_json}}", cfg.ConfigTemplate);
+        Assert.Contains("dnsServers", cfg.ConfigTemplate);
     }
 
     [Fact]

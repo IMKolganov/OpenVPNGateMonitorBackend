@@ -110,6 +110,15 @@ public class VpnDataService(
                     ct);
             }
 
+            // UpdateServerRequest does not carry list layout fields — preserve them.
+            server.VpnServerGroupId = previous.VpnServerGroupId;
+            server.SortOrder = previous.SortOrder;
+            server.CreateDate = previous.CreateDate;
+            server.IsDeleted = previous.IsDeleted;
+            server.DcoIsEnabled = previous.DcoIsEnabled;
+            server.XrayClientsPolledAt = previous.XrayClientsPolledAt;
+            server.XrayClientsPollError = previous.XrayClientsPollError;
+
             // Update this server
             server.LastUpdate = now;
             await openVpnServerCommandService.Update(server, saveChanges: true, ct);
@@ -169,8 +178,18 @@ public class VpnDataService(
         };
     }
 
+    /// <summary>Keep in sync with frontend <c>XRAY_EXPORT_TEMPLATE</c> and xray ClientLinkServiceDnsPlaceholderTests.</summary>
     private const string DefaultXrayClientLinkTemplate =
-        "{{vless_uri}}\r\n# {{friendly_name}}\r\nUUID: {{uuid}}\r\nEndpoint: {{server_ip}}:{{server_port}}\r\n";
+        """
+        {
+          "vless": "{{vless_uri}}",
+          "dnsServers": {{dns_servers_json}},
+          "dnsIdentityEnabled": {{dns_identity_enabled}},
+          "friendlyName": "{{friendly_name}}",
+          "uuid": "{{uuid}}",
+          "endpoint": "{{server_ip}}:{{server_port}}"
+        }
+        """;
 
     private const string DefaultOpenVpnClientConfigTemplate =
         """
