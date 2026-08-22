@@ -108,6 +108,29 @@ public class AuthControllerTests
     }
 
     [Fact]
+    public async Task GenerateToken_WhenAppRevoked_ReturnsUnauthorized()
+    {
+        _appService
+            .Setup(s => s.GetApplicationByClientIdAsync("client", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ClientApplication
+            {
+                ClientId = "client",
+                ClientSecret = "secret",
+                IsRevoked = true,
+            });
+
+        var controller = CreateController();
+        var result = await controller.GenerateToken(
+            new TokenRequest { ClientId = "client", ClientSecret = "secret" },
+            CancellationToken.None);
+
+        var unauthorized = Assert.IsType<UnauthorizedObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<TokenResponse>>(unauthorized.Value);
+        Assert.False(response.Success);
+        Assert.Equal("Invalid credentials", response.Message);
+    }
+
+    [Fact]
     public async Task Login_DelegatesToUserLoginService()
     {
         var loginResponse = new LoginResponse { UserId = 1, Token = "jwt" };

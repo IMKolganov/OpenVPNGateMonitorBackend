@@ -17,7 +17,7 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
         
         if (existClientApplication != null)
         {
-            throw new Exception("ClientApplication already exists");
+            throw new InvalidOperationException("An API client with this name already exists.");
         }
 
         var clientApplication = new ClientApplication()
@@ -68,9 +68,13 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
         var clientApplication = await clientApplicationQueryService.GetByClientId(clientId, ct);
 
         if (clientApplication == null)
-        {
-            throw new InvalidOperationException("ClientApplication not found");
-        }
+            return false;
+
+        if (clientApplication.IsSystem)
+            throw new InvalidOperationException("System API clients cannot be revoked.");
+
+        if (clientApplication.IsRevoked)
+            return true;
 
         clientApplication.IsRevoked = true;
         

@@ -41,10 +41,10 @@ public class ApplicationServiceTests
 
         var sut = new ApplicationService(query.Object, command.Object);
 
-        var ex = await Assert.ThrowsAsync<Exception>(
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
             () => sut.RegisterApplicationAsync("MyApp", CancellationToken.None));
 
-        Assert.Equal("ClientApplication already exists", ex.Message);
+        Assert.Equal("An API client with this name already exists.", ex.Message);
         command.Verify(c => c.Add(It.IsAny<ClientApplication>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -61,5 +61,70 @@ public class ApplicationServiceTests
         var result = await sut.GetApplicationByClientIdAsync("cid", CancellationToken.None);
 
         Assert.Same(app, result);
+    }
+
+    [Fact]
+    public async Task RevokeApplicationAsync_When_NotFound_ReturnsFalse()
+    {
+        var query = new Mock<IClientApplicationQueryService>();
+        query.Setup(q => q.GetByClientId("missing", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ClientApplication?)null);
+        var command = new Mock<ICommandService<ClientApplication, int>>();
+
+        var sut = new ApplicationService(query.Object, command.Object);
+
+        var result = await sut.RevokeApplicationAsync("missing", CancellationToken.None);
+
+        Assert.False(result);
+        command.Verify(c => c.Update(It.IsAny<ClientApplication>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RevokeApplicationAsync_When_System_Throws()
+    {
+        var app = new ClientApplication { ClientId = "sys", Name = "Bot", IsSystem = true };
+        var query = new Mock<IClientApplicationQueryService>();
+        query.Setup(q => q.GetByClientId("sys", It.IsAny<CancellationToken>())).ReturnsAsync(app);
+        var command = new Mock<ICommandService<ClientApplication, int>>();
+
+        var sut = new ApplicationService(query.Object, command.Object);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => sut.RevokeApplicationAsync("sys", CancellationToken.None));
+
+        Assert.Equal("System API clients cannot be revoked.", ex.Message);
+    }
+
+    [Fact]
+    public async Task RevokeApplicationAsync_When_AlreadyRevoked_ReturnsTrueWithoutUpdate()
+    {
+        var app = new ClientApplication { ClientId = "cid", Name = "X", IsRevoked = true };
+        var query = new Mock<IClientApplicationQueryService>();
+        query.Setup(q => q.GetByClientId("cid", It.IsAny<CancellationToken>())).ReturnsAsync(app);
+        var command = new Mock<ICommandService<ClientApplication, int>>();
+
+        var sut = new ApplicationService(query.Object, command.Object);
+
+        var result = await sut.RevokeApplicationAsync("cid", CancellationToken.None);
+
+        Assert.True(result);
+        command.Verify(c => c.Update(It.IsAny<ClientApplication>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RevokeApplicationAsync_When_Active_RevokesAndReturnsTrue()
+    {
+        var app = new ClientApplication { ClientId = "cid", Name = "X", IsRevoked = false };
+        var query = new Mock<IClientApplicationQueryService>();
+        query.Setup(q => q.GetByClientId("cid", It.IsAny<CancellationToken>())).ReturnsAsync(app);
+        var command = new Mock<ICommandService<ClientApplication, int>>();
+
+        var sut = new ApplicationService(query.Object, command.Object);
+
+        var result = await sut.RevokeApplicationAsync("cid", CancellationToken.None);
+
+        Assert.True(result);
+        Assert.True(app.IsRevoked);
+        command.Verify(c => c.Update(app, true, It.IsAny<CancellationToken>()), Times.Once);
     }
 }

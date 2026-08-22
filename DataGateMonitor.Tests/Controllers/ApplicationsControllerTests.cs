@@ -199,5 +199,39 @@ namespace DataGateMonitor.Tests.Controllers
                 s => s.RevokeApplicationAsync(request.ClientId, ct),
                 Times.Once);
         }
+
+        [Fact]
+        public async Task RegisterApplication_WhenDuplicateName_ReturnsConflict()
+        {
+            var request = new RegisterApplicationRequest { Name = "TestApp" };
+
+            appServiceMock
+                .Setup(s => s.RegisterApplicationAsync(request.Name, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("An API client with this name already exists."));
+
+            var result = await controller.RegisterApplication(request, CancellationToken.None);
+
+            var conflict = Assert.IsType<ConflictObjectResult>(result.Result);
+            var response = Assert.IsType<ApiResponse<RegisterApplicationResponse>>(conflict.Value);
+            Assert.False(response.Success);
+            Assert.Equal("An API client with this name already exists.", response.Message);
+        }
+
+        [Fact]
+        public async Task RevokeApplication_WhenSystem_ReturnsBadRequest()
+        {
+            var request = new RevokeApplicationRequest { ClientId = "system-client" };
+
+            appServiceMock
+                .Setup(s => s.RevokeApplicationAsync(request.ClientId, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("System API clients cannot be revoked."));
+
+            var result = await controller.RevokeApplication(request, CancellationToken.None);
+
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequest.Value);
+            Assert.False(response.Success);
+            Assert.Equal("System API clients cannot be revoked.", response.Message);
+        }
     }
 }

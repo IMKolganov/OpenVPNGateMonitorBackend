@@ -14,7 +14,9 @@ public class ApplicationMapping : IRegister
             .Map(d => d.ClientId, s => s.ClientId)
             .Map(d => d.Name, s => s.Name)
             .Map(d => d.IsRevoked, s => s.IsRevoked)
-            .Map(d => d.IsSystem, s => s.IsSystem);
+            .Map(d => d.IsSystem, s => s.IsSystem)
+            .Map(d => d.CreateDate, s => s.CreateDate)
+            .Map(d => d.LastUpdate, s => s.LastUpdate);
 
         config.NewConfig<List<ClientApplication>, ApplicationsResponse>()
             .Map(d => d.Applications, s => s);

@@ -11,8 +11,7 @@ namespace DataGateMonitor.Controllers;
 
 [Route("api/applications")]
 [ApiController]
-[Authorize]
-[Authorize(Roles = "Admin,App")]
+[Authorize(Roles = "Admin")]
 public class ApplicationsController(IApplicationService appService) : BaseController
 {
     [HttpPost("register")]
@@ -20,10 +19,17 @@ public class ApplicationsController(IApplicationService appService) : BaseContro
         RegisterApplicationRequest request, 
         CancellationToken cancellationToken)
     {
-        var newApp = await appService.RegisterApplicationAsync(request.Name, cancellationToken);
-        
-        return Ok(ApiResponse<RegisterApplicationResponse>.SuccessResponse(
-            newApp.Adapt<RegisterApplicationResponse>()));
+        try
+        {
+            var newApp = await appService.RegisterApplicationAsync(request.Name, cancellationToken);
+
+            return Ok(ApiResponse<RegisterApplicationResponse>.SuccessResponse(
+                newApp.Adapt<RegisterApplicationResponse>()));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ApiResponse<RegisterApplicationResponse>.ErrorResponse(ex.Message));
+        }
     }
 
     [HttpGet("get-all")]
@@ -49,11 +55,18 @@ public class ApplicationsController(IApplicationService appService) : BaseContro
         [FromBody] RevokeApplicationRequest request, 
         CancellationToken cancellationToken)
     {
-        var result = await appService.RevokeApplicationAsync(request.ClientId, cancellationToken);
-        
-        if (!result)
-            return NotFound(ApiResponse<string>.ErrorResponse("Application not found"));
+        try
+        {
+            var result = await appService.RevokeApplicationAsync(request.ClientId, cancellationToken);
 
-        return Ok(ApiResponse<string>.SuccessResponse("Application revoked"));
+            if (!result)
+                return NotFound(ApiResponse<string>.ErrorResponse("Application not found"));
+
+            return Ok(ApiResponse<string>.SuccessResponse("Application revoked"));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<string>.ErrorResponse(ex.Message));
+        }
     }
 }

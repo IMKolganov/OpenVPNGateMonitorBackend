@@ -73,7 +73,7 @@ public class AuthController(
         CancellationToken cancellationToken)
     {
         var app = await appService.GetApplicationByClientIdAsync(request.ClientId, cancellationToken);
-        if (app == null)
+        if (app == null || app.IsRevoked)
         {
             return Unauthorized(ApiResponse<TokenResponse>.ErrorResponse("Invalid credentials"));
         }
