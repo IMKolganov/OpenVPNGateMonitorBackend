@@ -259,11 +259,13 @@ public class VpnDataService(
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
 
-        var ip = await TryGetNodePublicIpAsync(server.Id, VpnServerType.Xray, ct) ?? string.Empty;
+        var ip = await TryGetNodePublicIpAsync(server.Id, VpnServerType.Xray, ct);
+        if (string.IsNullOrWhiteSpace(ip))
+            ip = VpnServerApiUrlHelper.TryHostFromApiUrl(server.ApiUrl);
         await openVpnServerOvpnFileConfigCommandService.Add(new VpnServerOvpnFileConfig
         {
             VpnServerId = server.Id,
-            VpnServerIp = ip,
+            VpnServerIp = ip?.Trim() ?? string.Empty,
             VpnServerPort = 443,
             ConfigTemplate = DefaultXrayClientLinkTemplate,
         }, true, ct);
