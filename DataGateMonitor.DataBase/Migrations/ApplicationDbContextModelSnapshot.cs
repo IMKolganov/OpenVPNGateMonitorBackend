@@ -3423,7 +3423,8 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.HasIndex("IsOnline");
 
                     b.HasIndex("ServerName")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("\"IsDeleted\" = FALSE");
 
                     b.HasIndex("ServerType");
 
@@ -3957,6 +3958,9 @@ namespace DataGateMonitor.DataBase.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTimeOffset?>("LastRuntimeAppliedAtUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<DateTimeOffset>("LastUpdate")
                         .ValueGeneratedOnAdd()

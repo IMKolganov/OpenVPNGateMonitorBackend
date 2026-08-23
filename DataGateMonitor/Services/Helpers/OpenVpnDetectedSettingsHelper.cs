@@ -12,6 +12,26 @@ internal static class OpenVpnDetectedSettingsHelper
 {
     public static readonly TimeSpan DefaultAutoDetectTimeout = TimeSpan.FromSeconds(5);
 
+    public sealed class DetectedClientSettings
+    {
+        public int? Port { get; init; }
+        public string? Proto { get; init; }
+        public string? Cipher { get; init; }
+        public string? DataCiphers { get; init; }
+        public string? Auth { get; init; }
+        public string? TlsVersionMin { get; init; }
+        public string? ClientVerb { get; init; }
+
+        public bool HasAny =>
+            Port.HasValue
+            || !string.IsNullOrWhiteSpace(Proto)
+            || !string.IsNullOrWhiteSpace(Cipher)
+            || !string.IsNullOrWhiteSpace(DataCiphers)
+            || !string.IsNullOrWhiteSpace(Auth)
+            || !string.IsNullOrWhiteSpace(TlsVersionMin)
+            || !string.IsNullOrWhiteSpace(ClientVerb);
+    }
+
     public static async Task TryApplyAsync(
         int vpnServerId,
         VpnServerOvpnFileConfig config,
@@ -31,14 +51,13 @@ internal static class OpenVpnDetectedSettingsHelper
 
             ApplyPublicIpIfEmpty(config, diagnostics.OpenVpn.PublicIp);
 
-            if (!TryExtractPortProto(diagnostics.OpenVpn, out var port, out var proto))
+            if (!TryExtractDetectedSettings(diagnostics.OpenVpn, out var detected) || !detected.HasAny)
                 return;
 
-            if (port is > 0 and <= 65535)
-                config.VpnServerPort = port.Value;
+            if (detected.Port is > 0 and <= 65535)
+                config.VpnServerPort = detected.Port.Value;
 
-            if (!string.IsNullOrWhiteSpace(proto))
-                config.ConfigTemplate = ReplaceProtoDirective(config.ConfigTemplate, proto);
+            config.ConfigTemplate = ApplyClientDirectives(config.ConfigTemplate, detected);
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
@@ -65,8 +84,21 @@ internal static class OpenVpnDetectedSettingsHelper
 
     public static bool TryExtractPortProto(object openVpnInfo, out int? port, out string? proto)
     {
-        port = null;
-        proto = null;
+        var ok = TryExtractDetectedSettings(openVpnInfo, out var detected);
+        port = detected.Port;
+        proto = detected.Proto;
+        return ok && (port.HasValue || !string.IsNullOrWhiteSpace(proto));
+    }
+
+    public static bool TryExtractDetectedSettings(object openVpnInfo, out DetectedClientSettings settings)
+    {
+        int? port = null;
+        string? proto = null;
+        string? cipher = null;
+        string? dataCiphers = null;
+        string? auth = null;
+        string? tlsVersionMin = null;
+        string? clientVerb = null;
 
         var root = JObject.FromObject(openVpnInfo, Newtonsoft.Json.JsonSerializer.Create(ProjectJson.WebSettings));
         if (TryGetPropertyIgnoreCase(root, "config", out var cfgToken) && cfgToken is JObject cfg)
@@ -84,26 +116,120 @@ internal static class OpenVpnDetectedSettingsHelper
                     port = parsedPort;
             }
 
-            if (TryGetPropertyIgnoreCase(cfg, "proto", out var protoToken) && protoToken is { Type: JTokenType.String })
-            {
-                var p = protoToken.Value<string>()?.Trim().ToLowerInvariant();
-                if (p is "tcp" or "udp")
-                    proto = p;
-            }
+            proto = ReadString(cfg, "proto")?.Trim().ToLowerInvariant();
+            if (proto is not ("tcp" or "udp"))
+                proto = null;
+
+            cipher = ReadString(cfg, "cipher");
+            dataCiphers = ReadString(cfg, "dataCiphers") ?? ReadString(cfg, "data_ciphers");
+            auth = ReadString(cfg, "auth");
+            tlsVersionMin = ReadString(cfg, "tlsVersionMin") ?? ReadString(cfg, "tls_version_min");
+            clientVerb = ReadString(cfg, "clientVerb") ?? ReadString(cfg, "client_verb");
         }
 
-        return port.HasValue || !string.IsNullOrWhiteSpace(proto);
+        settings = new DetectedClientSettings
+        {
+            Port = port,
+            Proto = proto,
+            Cipher = cipher,
+            DataCiphers = dataCiphers,
+            Auth = auth,
+            TlsVersionMin = tlsVersionMin,
+            ClientVerb = clientVerb
+        };
+
+        return settings.HasAny;
     }
 
-    public static string ReplaceProtoDirective(string template, string proto)
+    public static string ApplyClientDirectives(string template, DetectedClientSettings settings)
     {
         if (string.IsNullOrWhiteSpace(template))
             return template;
 
-        if (Regex.IsMatch(template, @"^\s*proto\s+\S+", RegexOptions.IgnoreCase | RegexOptions.Multiline))
-            return Regex.Replace(template, @"^\s*proto\s+\S+", $"proto {proto}", RegexOptions.IgnoreCase | RegexOptions.Multiline);
+        var result = template;
+        if (!string.IsNullOrWhiteSpace(settings.Proto))
+            result = ReplaceOrInsertDirective(result, "proto", settings.Proto!);
 
-        return $"proto {proto}\n{template}";
+        if (!string.IsNullOrWhiteSpace(settings.Cipher))
+            result = ReplaceOrInsertDirective(result, "cipher", settings.Cipher!);
+
+        if (!string.IsNullOrWhiteSpace(settings.DataCiphers))
+            result = ReplaceOrInsertDirective(result, "data-ciphers", settings.DataCiphers!);
+        else if (!string.IsNullOrWhiteSpace(settings.Cipher))
+            result = RemoveDirective(result, "data-ciphers");
+
+        if (!string.IsNullOrWhiteSpace(settings.Auth))
+            result = ReplaceOrInsertDirective(result, "auth", settings.Auth!);
+
+        if (!string.IsNullOrWhiteSpace(settings.TlsVersionMin))
+            result = ReplaceOrInsertDirective(result, "tls-version-min", settings.TlsVersionMin!);
+
+        if (!string.IsNullOrWhiteSpace(settings.ClientVerb))
+            result = ReplaceOrInsertDirective(result, "verb", settings.ClientVerb!);
+
+        return result;
+    }
+
+    public static string ReplaceProtoDirective(string template, string proto) =>
+        ReplaceOrInsertDirective(template, "proto", proto);
+
+    public static string ApplyCipherDirectives(string template, string? cipher, string? dataCiphers)
+    {
+        var result = template;
+        if (!string.IsNullOrWhiteSpace(cipher))
+            result = ReplaceOrInsertDirective(result, "cipher", cipher.Trim());
+        if (!string.IsNullOrWhiteSpace(dataCiphers))
+            result = ReplaceOrInsertDirective(result, "data-ciphers", dataCiphers.Trim());
+        else if (!string.IsNullOrWhiteSpace(cipher))
+            result = RemoveDirective(result, "data-ciphers");
+        return result;
+    }
+
+    private static string? ReadString(JObject cfg, string name)
+    {
+        if (!TryGetPropertyIgnoreCase(cfg, name, out var token) || token is not { Type: JTokenType.String })
+            return null;
+        var value = token.Value<string>()?.Trim();
+        return string.IsNullOrWhiteSpace(value) ? null : value;
+    }
+
+    private static string RemoveDirective(string template, string name)
+    {
+        var pattern = $@"^\s*{Regex.Escape(name)}\s+\S+.*\r?\n?";
+        return Regex.Replace(template, pattern, string.Empty, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+    }
+
+    private static string ReplaceOrInsertDirective(string template, string name, string value)
+    {
+        var pattern = $@"^\s*{Regex.Escape(name)}\s+\S+.*$";
+        if (Regex.IsMatch(template, pattern, RegexOptions.IgnoreCase | RegexOptions.Multiline))
+            return Regex.Replace(
+                template,
+                pattern,
+                $"{name} {value}",
+                RegexOptions.IgnoreCase | RegexOptions.Multiline);
+
+        if (string.Equals(name, "data-ciphers", StringComparison.OrdinalIgnoreCase) &&
+            Regex.IsMatch(template, @"^\s*cipher\s+\S+", RegexOptions.IgnoreCase | RegexOptions.Multiline))
+        {
+            return Regex.Replace(
+                template,
+                @"(^\s*cipher\s+\S+.*$)",
+                $"$1\n{name} {value}",
+                RegexOptions.IgnoreCase | RegexOptions.Multiline);
+        }
+
+        if (string.Equals(name, "tls-version-min", StringComparison.OrdinalIgnoreCase) &&
+            Regex.IsMatch(template, @"^\s*remote-cert-tls\s+\S+", RegexOptions.IgnoreCase | RegexOptions.Multiline))
+        {
+            return Regex.Replace(
+                template,
+                @"(^\s*remote-cert-tls\s+\S+.*$)",
+                $"$1\n{name} {value}",
+                RegexOptions.IgnoreCase | RegexOptions.Multiline);
+        }
+
+        return $"{name} {value}\n{template}";
     }
 
     private static bool TryGetPropertyIgnoreCase(JObject obj, string propertyName, out JToken? value)

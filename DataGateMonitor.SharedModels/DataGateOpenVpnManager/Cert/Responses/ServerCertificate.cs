@@ -14,4 +14,9 @@ public class ServerCertificate
     public string KeyPath { get; set; } = string.Empty;
     public DateTimeOffset  ExpiryDate { get; set; }
     public DateTimeOffset? RevokeDate { get; set; }
+
+    /// <summary>
+    /// Xray DNS identity IP when present on Xray nodes; unused for classic OpenVPN certs.
+    /// </summary>
+    public string? IdentityIp { get; set; }
 }

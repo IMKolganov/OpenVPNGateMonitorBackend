@@ -97,6 +97,7 @@ public sealed class XrayNodeApiClient(
             {
                 Email = c.Email,
                 RemoteAddress = c.RemoteAddress,
+                ProxyRealIp = c.ProxyRealIp,
                 Username = c.Username,
                 BytesReceived = c.BytesReceived,
                 BytesSent = c.BytesSent,

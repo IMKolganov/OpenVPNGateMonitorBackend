@@ -5,6 +5,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api;
@@ -27,6 +28,7 @@ namespace DataGateMonitor.Controllers;
 [Route("api/open-vpn-servers")]
 [Authorize]
 public class VpnServersController(IVpnDataService vpnDataService,
+    IVpnServerDiscoveryService vpnServerDiscoveryService,
     IVpnServerOverviewQuery openVpnServerOverviewQuery, IVpnServerQueryService openVpnServerQueryService,
     IVpnServerTagQueryService openVpnServerTagQueryService,
     IOpenVpnBackgroundService openVpnBackgroundService,
@@ -37,10 +39,15 @@ public class VpnServersController(IVpnDataService vpnDataService,
     IStatusCacheGenerationService statusCacheGenerationService,
     IStatusStreamLogStore statusStreamLogStore,
     IVpnServerPostSetupService vpnServerPostSetupService,
-    IConnectedClientsCounterStore connectedClientsCounterStore) : BaseController
+    IConnectedClientsCounterStore connectedClientsCounterStore,
+    IVpnServerOvpnFileConfigQueryService ovpnFileConfigQueryService) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
 
+    /// <summary>
+    /// Legacy Android ≤1.0.4 list. Omits Xray and UDP OpenVPN nodes because those clients
+    /// treat every WSS entry as TCP and reconnect against UDP-only listeners.
+    /// </summary>
     [HttpGet("get-all-with-status")]
     public async Task<ActionResult> GetAllServersWithStatus(
         [FromQuery] bool includeDeleted = false,
@@ -61,7 +68,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
         }
 
         var scopeKey = restrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all";
-        var cacheKey = $"v1:open-vpn-servers:get-all-with-status:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var cacheKey = $"v1:open-vpn-servers:get-all-with-status:legacyTcpOpenVpnOnly:ovpnProto:includeDeleted={includeDeleted}:scope={scopeKey}";
         var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
             includeDeleted,
             requireQuotaPlanAssignment: false,
@@ -80,6 +87,9 @@ public class VpnServersController(IVpnDataService vpnDataService,
                 VpnServerWithStatuses = result
             };
             await FillTagsForOverviewResponse(baseResponse, token);
+            baseResponse.VpnServerWithStatuses = await FilterLegacyTcpOpenVpnOverviewAsync(
+                baseResponse.VpnServerWithStatuses,
+                token);
 
             // Legacy mobile clients parse strict camelCase + openVpn* keys.
             var envelope = new LegacyVpnServerWithStatusesEnvelope
@@ -165,6 +175,9 @@ public class VpnServersController(IVpnDataService vpnDataService,
         return Ok(ApiResponse<VpnMicroserviceDiagnosticsDto>.SuccessResponse(info));
     }
 
+    /// <summary>
+    /// Legacy list (same audience as <see cref="GetAllServersWithStatus"/>). Hides Xray and UDP OpenVPN.
+    /// </summary>
     [HttpGet("get-all")]
     public async Task<ActionResult<ApiResponse<VpnServersResponse>>> GetAllServers(
         [FromQuery] bool includeDeleted = false,
@@ -185,7 +198,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
         }
 
         var scopeKey = restrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all";
-        var cacheKey = $"v1:open-vpn-servers:get-all:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var cacheKey = $"v1:open-vpn-servers:get-all:legacyTcpOpenVpnOnly:ovpnProto:includeDeleted={includeDeleted}:scope={scopeKey}";
         var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
             includeDeleted,
             requireQuotaPlanAssignment: false,
@@ -208,6 +221,8 @@ public class VpnServersController(IVpnDataService vpnDataService,
                 for (var i = 0; i < response.VpnServers.Count; i++)
                     response.VpnServers[i].Tags = tagNamesByServer.GetValueOrDefault(serversList[i].Id, []);
             }
+
+            response.VpnServers = await FilterLegacyTcpOpenVpnServersAsync(response.VpnServers, token);
             return ApiResponse<VpnServersResponse>.SuccessResponse(response);
         }
 
@@ -251,6 +266,82 @@ public class VpnServersController(IVpnDataService vpnDataService,
         var response = newServer.Adapt<VpnServerResponse>();
         response.VpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(newServer.Id, ct);
         return Ok(ApiResponse<VpnServerResponse>.SuccessResponse(response));
+    }
+
+    /// <summary>VPN node self-announce. Creates or refreshes a pending discovery row for admin approve/deny.</summary>
+    [AllowAnonymous]
+    [HttpPost("discover")]
+    public async Task<ActionResult<ApiResponse<AnnounceVpnServerResponse>>> Discover(
+        [FromBody] AnnounceVpnServerRequest request, CancellationToken ct)
+    {
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        if (!vpnServerDiscoveryService.TryAcquireAnnounceSlot(clientIp))
+        {
+            return StatusCode(StatusCodes.Status429TooManyRequests,
+                ApiResponse<AnnounceVpnServerResponse>.ErrorResponse(VpnServerDiscoveryService.RateLimitMessage));
+        }
+
+        try
+        {
+            var result = await vpnServerDiscoveryService.AnnounceAsync(request, ct);
+            return Ok(ApiResponse<AnnounceVpnServerResponse>.SuccessResponse(result));
+        }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<AnnounceVpnServerResponse>.ErrorResponse(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpGet("discoveries/pending")]
+    public async Task<ActionResult<ApiResponse<VpnServerDiscoveriesResponse>>> ListPendingDiscoveries(CancellationToken ct)
+    {
+        var result = await vpnServerDiscoveryService.ListPendingAsync(ct);
+        return Ok(ApiResponse<VpnServerDiscoveriesResponse>.SuccessResponse(result));
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpPost("discoveries/{discoveryId:int}/approve")]
+    public async Task<ActionResult<ApiResponse<VpnServerDiscoveryResponse>>> ApproveDiscovery(
+        [FromRoute] int discoveryId,
+        [FromBody] ApproveVpnServerDiscoveryRequest request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await vpnServerDiscoveryService.ApproveAsync(discoveryId, request, ct);
+            return Ok(ApiResponse<VpnServerDiscoveryResponse>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex) when (ex.Message == VpnServerDiscoveryService.NotFoundMessage)
+        {
+            return NotFound(ApiResponse<VpnServerDiscoveryResponse>.ErrorResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<VpnServerDiscoveryResponse>.ErrorResponse(ex.Message));
+        }
+    }
+
+    [Authorize(Roles = "Admin,App")]
+    [HttpPost("discoveries/{discoveryId:int}/deny")]
+    public async Task<ActionResult<ApiResponse<VpnServerDiscoveryResponse>>> DenyDiscovery(
+        [FromRoute] int discoveryId,
+        [FromBody] DenyVpnServerDiscoveryRequest? request,
+        CancellationToken ct)
+    {
+        try
+        {
+            var result = await vpnServerDiscoveryService.DenyAsync(discoveryId, request, ct);
+            return Ok(ApiResponse<VpnServerDiscoveryResponse>.SuccessResponse(result));
+        }
+        catch (InvalidOperationException ex) when (ex.Message == VpnServerDiscoveryService.NotFoundMessage)
+        {
+            return NotFound(ApiResponse<VpnServerDiscoveryResponse>.ErrorResponse(ex.Message));
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<VpnServerDiscoveryResponse>.ErrorResponse(ex.Message));
+        }
     }
 
     [Authorize(Roles = "Admin,App")]
@@ -367,6 +458,45 @@ public class VpnServersController(IVpnDataService vpnDataService,
             FinishedAtUtc = status.FinishedAtUtc,
             Details = status.Details.ToDictionary(x => x.Key, x => x.Value)
         };
+
+    private async Task<List<VpnServerWithStatusDto>> FilterLegacyTcpOpenVpnOverviewAsync(
+        List<VpnServerWithStatusDto> items,
+        CancellationToken ct)
+    {
+        if (items.Count == 0)
+            return items;
+
+        var ids = items
+            .Select(item => item.VpnServerResponses?.VpnServer?.Id)
+            .Where(id => id is > 0)
+            .Select(id => id!.Value)
+            .Distinct()
+            .ToList();
+        var templates = await ovpnFileConfigQueryService.GetConfigTemplatesByVpnServerIds(ids, ct);
+        return items
+            .Where(item => item.VpnServerResponses?.VpnServer is { } server
+                && LegacyOpenVpnV1ServerFilter.IsVisibleToLegacyTcpOpenVpnClient(
+                    server.ServerType,
+                    templates.GetValueOrDefault(server.Id)))
+            .ToList();
+    }
+
+    private async Task<List<VpnServerDto>> FilterLegacyTcpOpenVpnServersAsync(
+        List<VpnServerDto> servers,
+        CancellationToken ct)
+    {
+        if (servers.Count == 0)
+            return servers;
+
+        var templates = await ovpnFileConfigQueryService.GetConfigTemplatesByVpnServerIds(
+            servers.Select(s => s.Id).ToList(),
+            ct);
+        return servers
+            .Where(server => LegacyOpenVpnV1ServerFilter.IsVisibleToLegacyTcpOpenVpnClient(
+                server.ServerType,
+                templates.GetValueOrDefault(server.Id)))
+            .ToList();
+    }
 
     private async Task FillTagsForOverviewResponse(VpnServerWithStatusesResponse response, CancellationToken ct)
     {

@@ -14,17 +14,16 @@ public class ApplicationMapping : IRegister
             .Map(d => d.ClientId, s => s.ClientId)
             .Map(d => d.Name, s => s.Name)
             .Map(d => d.IsRevoked, s => s.IsRevoked)
-            .Map(d => d.IsSystem, s => s.IsSystem);
+            .Map(d => d.IsSystem, s => s.IsSystem)
+            .Map(d => d.CreateDate, s => s.CreateDate)
+            .Map(d => d.LastUpdate, s => s.LastUpdate)
+            .Ignore(d => d.ClientSecret);
 
         config.NewConfig<List<ClientApplication>, ApplicationsResponse>()
             .Map(d => d.Applications, s => s);
         #endregion
 
-        #region "register"
-        config.NewConfig<ClientApplication, RegisterApplicationResponse>()
-            .Map(d => d.Name, s => s.Name)
-            .Map(d => d.ClientId, s => s.ClientId)
-            .Map(d => d.ClientSecret, s => s.ClientSecret);
-        #endregion
+        // Do not Mapster ClientApplication → RegisterApplicationResponse: ClientSecret in DB is bcrypt;
+        // plaintext is returned only via RegisteredClientApplication in ApplicationsController.
     }
 }

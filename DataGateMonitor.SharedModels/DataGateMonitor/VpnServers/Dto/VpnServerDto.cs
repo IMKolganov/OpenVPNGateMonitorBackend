@@ -36,6 +36,12 @@ public class VpnServerDto
 
 	public List<string> Tags { get; set; } = new List<string>();
 
+	public int? GroupId { get; set; }
+
+	public string? GroupName { get; set; }
+
+	public int SortOrder { get; set; }
+
 	public DateTimeOffset? XrayClientsPolledAt { get; set; }
 
 	public string? XrayClientsPollError { get; set; }

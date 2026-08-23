@@ -126,6 +126,28 @@ public class GlobalExceptionMiddlewareTests
     }
 
     [Fact]
+    public async Task InvokeAsync_WhenDbUniqueVpnServerName_Returns409_WithoutSqlLeak()
+    {
+        var context = CreateContext();
+        var pg = new Npgsql.PostgresException(
+            "duplicate key value violates unique constraint \"IX_VpnServers_ServerName\"",
+            severity: "ERROR",
+            invariantSeverity: "ERROR",
+            sqlState: "23505");
+        RequestDelegate next = _ => throw new Microsoft.EntityFrameworkCore.DbUpdateException("Save failed", pg);
+        var (middleware, _) = CreateMiddleware(next);
+
+        await middleware.InvokeAsync(context);
+
+        Assert.Equal(StatusCodes.Status409Conflict, context.Response.StatusCode);
+        var body = await ReadResponseBodyAsync(context.Response);
+        var json = JObject.Parse(body);
+        Assert.Equal("A VPN server with the same name already exists.", json["message"]?.Value<string>());
+        Assert.Equal("A VPN server with the same name already exists.", json["detail"]?.Value<string>());
+        Assert.DoesNotContain("SQLSTATE", body, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task InvokeAsync_WhenNextThrowsGenericException_Returns500_AndGenericMessage()
     {
         var context = CreateContext();

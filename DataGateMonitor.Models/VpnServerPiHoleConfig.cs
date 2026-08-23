@@ -16,4 +16,7 @@ public class VpnServerPiHoleConfig : BaseEntity<int>
 
     /// <summary>Only store queries from clients whose IP starts with this prefix (e.g. 10.51.30.). Empty = no filter.</summary>
     public string ClientSubnetPrefix { get; set; } = string.Empty;
+
+    /// <summary>When dashboard ApplyRuntime last pushed Pi-hole config to the VPN node.</summary>
+    public DateTimeOffset? LastRuntimeAppliedAtUtc { get; set; }
 }

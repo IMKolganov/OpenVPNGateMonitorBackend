@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using DataGateMonitor.Services.Api.Auth;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
@@ -27,6 +28,7 @@ namespace DataGateMonitor.Controllers;
 public class AuthController(
     IConfiguration config,
     IApplicationService appService,
+    IAppClientTokenRateLimiter appClientTokenRateLimiter,
     IMicroserviceTokenService microserviceTokenService,
     IUserRegistrationService userRegistrationService,
     IUserLoginService userLoginService,
@@ -42,16 +44,16 @@ public class AuthController(
     IAdminTotpService adminTotpService,
     ICurrentUserService currentUserService,
     IAdminIdleSessionTracker adminIdleSessionTracker,
+    IAdminIdleTimeoutProvider adminIdleTimeoutProvider,
     IUserSessionService userSessionService) : BaseController
 {
     [AllowAnonymous]
     [HttpGet("session-policy")]
     [ProducesResponseType(typeof(ApiResponse<AuthSessionPolicyResponse>), StatusCodes.Status200OK)]
-    public ActionResult<ApiResponse<AuthSessionPolicyResponse>> GetSessionPolicy()
+    public async Task<ActionResult<ApiResponse<AuthSessionPolicyResponse>>> GetSessionPolicy(
+        CancellationToken cancellationToken)
     {
-        var minutes = config.GetValue<int?>("Jwt:AdminIdleTimeoutMinutes") ?? 15;
-        if (minutes <= 0)
-            minutes = 15;
+        var minutes = await adminIdleTimeoutProvider.GetMinutesAsync(cancellationToken);
 
         return Ok(ApiResponse<AuthSessionPolicyResponse>.SuccessResponse(new AuthSessionPolicyResponse
         {
@@ -68,21 +70,24 @@ public class AuthController(
         return NoContent();
     }
 
+    [AllowAnonymous]
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request,
         CancellationToken cancellationToken)
     {
-        var app = await appService.GetApplicationByClientIdAsync(request.ClientId, cancellationToken);
-        if (app == null)
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        if (!appClientTokenRateLimiter.TryAcquire(clientIp, request.ClientId))
         {
-            return Unauthorized(ApiResponse<TokenResponse>.ErrorResponse("Invalid credentials"));
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                ApiResponse<TokenResponse>.ErrorResponse(AppClientTokenRateLimiter.RateLimitMessage));
         }
 
-        var isValid = app.IsSystem
-            ? BCrypt.Net.BCrypt.Verify(request.ClientSecret, app.ClientSecret)
-            : app.ClientSecret == request.ClientSecret;
-
-        if (!isValid)
+        var app = await appService.AuthenticateClientAsync(
+            request.ClientId,
+            request.ClientSecret,
+            cancellationToken);
+        if (app == null)
         {
             return Unauthorized(ApiResponse<TokenResponse>.ErrorResponse("Invalid credentials"));
         }

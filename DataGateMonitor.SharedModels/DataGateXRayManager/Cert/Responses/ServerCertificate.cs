@@ -12,4 +12,9 @@ public class ServerCertificate
     public string? CertificatePath { get; set; }
     public string? KeyPath { get; set; }
     public string? Message { get; set; }
+
+    /// <summary>
+    /// DNS identity source IP (OpenVPN VirtualAddress analogue) when <c>XRAY_DNS_IDENTITY_*</c> is enabled.
+    /// </summary>
+    public string? IdentityIp { get; set; }
 }

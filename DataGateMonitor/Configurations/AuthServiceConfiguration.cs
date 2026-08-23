@@ -48,11 +48,13 @@ public static class AuthServiceConfiguration
         services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuth"));
         
         services.AddScoped<IApplicationService, ApplicationService>();
+        services.AddSingleton<IAppClientTokenRateLimiter, AppClientTokenRateLimiter>();
         services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
         
         services.AddScoped<IUserQuotaPlanService, UserQuotaPlanService>();
 
         services.AddMemoryCache();
+        services.AddSingleton<IAdminIdleTimeoutProvider, AdminIdleTimeoutProvider>();
         services.AddSingleton<IAdminIdleSessionTracker, AdminIdleSessionTracker>();
         services.Configure<EmailSenderSettings>(configuration.GetSection("EmailSender"));
         services.AddScoped<SmtpEmailSenderService>();

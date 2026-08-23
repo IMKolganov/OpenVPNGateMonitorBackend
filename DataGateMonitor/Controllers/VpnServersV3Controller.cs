@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerGroupTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
@@ -27,6 +28,7 @@ public class VpnServersV3Controller(
     IVpnServerQueryService openVpnServerQueryService,
     IVpnServerQuotaPlanGroupsQuery quotaPlanGroupsQuery,
     IVpnServerTagQueryService openVpnServerTagQueryService,
+    IVpnServerGroupQueryService vpnServerGroupQueryService,
     IUserQuotaPlanQueryService userQuotaPlanQueryService,
     IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService,
     IQuotaPlanQueryService quotaPlanQueryService,
@@ -69,11 +71,17 @@ public class VpnServersV3Controller(
             var ids = serversList.Select(s => s.Id).ToList();
             var groups = await quotaPlanGroupsQuery.GetGroupsByVpnServerIdsAsync(ids, token);
             var tagNamesByServer = await openVpnServerTagQueryService.GetTagNamesByVpnServerIds(ids, token);
+            var groupNames = await LoadGroupNamesAsync(token);
 
             foreach (var server in serversList)
             {
                 var dto = server.Adapt<VpnServerDto>();
                 dto.Tags = tagNamesByServer.GetValueOrDefault(server.Id, []);
+                dto.GroupId = server.VpnServerGroupId;
+                dto.SortOrder = server.SortOrder;
+                dto.GroupName = server.VpnServerGroupId is int gid
+                    ? groupNames.GetValueOrDefault(gid)
+                    : null;
                 var v2 = dto.Adapt<VpnServerV2Dto>();
                 v2.QuotaPlanGroups = groups.GetValueOrDefault(server.Id, []);
                 v2.IsAccessibleForUserQuotaPlan =
@@ -122,16 +130,21 @@ public class VpnServersV3Controller(
             var ids = result.Select(x => x.VpnServerResponses.VpnServer.Id).ToList();
             var groups = await quotaPlanGroupsQuery.GetGroupsByVpnServerIdsAsync(ids, token);
             var tagNamesByServer = await openVpnServerTagQueryService.GetTagNamesByVpnServerIds(ids, token);
+            var groupNames = await LoadGroupNamesAsync(token);
 
             foreach (var item in result)
             {
                 var id = item.VpnServerResponses.VpnServer.Id;
-                item.VpnServerResponses.VpnServer.Tags = tagNamesByServer.GetValueOrDefault(id, []);
+                var srcDto = item.VpnServerResponses.VpnServer;
+                srcDto.Tags = tagNamesByServer.GetValueOrDefault(id, []);
+                srcDto.GroupName = srcDto.GroupId is int gid
+                    ? groupNames.GetValueOrDefault(gid)
+                    : null;
                 var v2 = new VpnServerWithStatusV2Dto
                 {
                     VpnServerResponses = new VpnServerV2Response
                     {
-                        VpnServer = item.VpnServerResponses.VpnServer.Adapt<VpnServerV2Dto>()
+                        VpnServer = srcDto.Adapt<VpnServerV2Dto>()
                     },
                     VpnServerStatusLogResponse = item.VpnServerStatusLogResponse,
                     CountConnectedClients = item.CountConnectedClients,
@@ -214,6 +227,12 @@ public class VpnServersV3Controller(
             AllowedServerIds: allowed,
             CacheScopeKey: $"plan:{uqp.QuotaPlanId}",
             Context: context);
+    }
+
+    private async Task<Dictionary<int, string>> LoadGroupNamesAsync(CancellationToken ct)
+    {
+        var groups = await vpnServerGroupQueryService.GetAll(ct);
+        return groups.ToDictionary(g => g.Id, g => g.Name);
     }
 
     private sealed record QuotaAccess(

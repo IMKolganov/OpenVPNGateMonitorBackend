@@ -15,9 +15,37 @@ internal static class VpnServerApiUrlHelper
     {
         if (IsUsableEndpoint(nodePublicIp))
             return Truncate(nodePublicIp!.Trim());
-        if (IsUsableEndpoint(configVpnServerIp))
-            return Truncate(configVpnServerIp!.Trim());
+        var configHost = SanitizeExportEndpointHost(configVpnServerIp);
+        if (IsUsableEndpoint(configHost))
+            return Truncate(configHost);
         return Truncate(TryHostFromApiUrl(apiUrl) ?? string.Empty);
+    }
+
+    /// <summary>Hostname for VLESS export — strips <c>https://</c>, paths, and inline <c>:port</c> mistakes.</summary>
+    public static string SanitizeExportEndpointHost(string? value)
+    {
+        var v = (value ?? "").Trim();
+        if (v.Length == 0)
+            return string.Empty;
+
+        v = v.TrimEnd('/');
+
+        if (v.Contains("//", StringComparison.Ordinal)
+            || v.StartsWith("http:", StringComparison.OrdinalIgnoreCase))
+        {
+            var host = TryHostFromApiUrl(v);
+            if (!string.IsNullOrWhiteSpace(host))
+                return Truncate(host);
+        }
+
+        if (!v.Contains('/') && v.Count(c => c == ':') == 1)
+        {
+            var idx = v.IndexOf(':');
+            if (idx > 0 && int.TryParse(v.AsSpan(idx + 1), out var p) && p is > 0 and <= 65535)
+                return Truncate(v[..idx]);
+        }
+
+        return Truncate(v);
     }
 
     public static string? TryHostFromApiUrl(string? apiUrl)
@@ -35,6 +63,8 @@ internal static class VpnServerApiUrlHelper
             return false;
         var v = value.Trim();
         if (v is "0.0.0.0" or "::" or "-" or "N/A")
+            return false;
+        if (v.Contains("//", StringComparison.Ordinal))
             return false;
 
         // Reject loopback / unspecified placeholders often stored when IP detection fails.

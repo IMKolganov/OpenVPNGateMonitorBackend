@@ -9,6 +9,7 @@ using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.TelegramBot.Interfaces;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
+using DataGateMonitor.SharedModels.DataGateMonitor.Auth.Responses;
 using DataGateMonitor.SharedModels.DataGateMonitor.FreeTierEnforcement.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.FreeTierEnforcement.Enums;
 using DataGateMonitor.SharedModels.DataGateMonitor.FreeTierEnforcement.Responses;
@@ -38,7 +39,8 @@ public class FreeTierUnsubscribedNotificationsTests
         Mock<IUserQueryService>? users = null,
         Mock<IEmailSenderService>? email = null,
         Mock<ISystemTransactionalEmailService>? templates = null,
-        Mock<ISentEmailLogService>? sentLog = null)
+        Mock<ISentEmailLogService>? sentLog = null,
+        Mock<ITelegramAccountLinkService>? accountLink = null)
     {
         var loc = localization ?? new Mock<ILocalizationService>();
         loc.Setup(l => l.GetTextForTelegramUser(
@@ -57,8 +59,13 @@ public class FreeTierUnsubscribedNotificationsTests
             (email ?? new Mock<IEmailSenderService>()).Object,
             (templates ?? new Mock<ISystemTransactionalEmailService>()).Object,
             (sentLog ?? new Mock<ISentEmailLogService>()).Object,
+            new Lazy<ITelegramAccountLinkService>(() => (accountLink ?? new Mock<ITelegramAccountLinkService>()).Object),
             cache ?? new MemoryCache(new MemoryCacheOptions()),
-            Options.Create(new TelegramChannelSettings { RequiredChannelUsername = "datagateapp" }),
+            Options.Create(new TelegramChannelSettings
+            {
+                RequiredChannelUsername = "datagateapp",
+                BotUsername = "DataGateVPNBot",
+            }),
             Mock.Of<ILogger<FreeTierUnsubscribedUserReminderService>>());
     }
 
@@ -128,9 +135,23 @@ public class FreeTierUnsubscribedNotificationsTests
         users.Setup(u => u.GetById(150, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new User { Id = 150, DisplayName = "Tatyana", Email = "t@example.com" });
 
+        var accountLink = new Mock<ITelegramAccountLinkService>();
+        accountLink.Setup(a => a.RequestLinkCodeAsync(150, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RequestTelegramAccountLinkCodeResponse
+            {
+                Code = "ABCD2345",
+                ExpiresInSeconds = 900,
+            });
+
         var templates = new Mock<ISystemTransactionalEmailService>();
         templates.Setup(t => t.GetFreeTierChannelSubscribeReminderAsync(
-                "Tatyana", "@datagateapp", "https://t.me/datagateapp", It.IsAny<CancellationToken>()))
+                "Tatyana",
+                "@datagateapp",
+                "https://t.me/datagateapp",
+                "ABCD2345",
+                "https://t.me/DataGateVPNBot?start=link_ABCD2345",
+                15,
+                It.IsAny<CancellationToken>()))
             .ReturnsAsync(("subj", "<html>body</html>"));
 
         var email = new Mock<IEmailSenderService>();
@@ -142,12 +163,14 @@ public class FreeTierUnsubscribedNotificationsTests
             users: users,
             email: email,
             templates: templates,
-            sentLog: sentLog);
+            sentLog: sentLog,
+            accountLink: accountLink);
 
         var result = await sut.ForceRemindAsync("150", FreeTierChannelSubscribeRemindChannel.Email, CancellationToken.None);
 
         Assert.True(result.Success);
         Assert.Equal("t@example.com", result.Email);
+        Assert.Contains("ABCD2345", result.Message);
         email.Verify(e => e.SendAsync("t@example.com", "subj", "<html>body</html>", It.IsAny<CancellationToken>()), Times.Once);
         sentLog.Verify(l => l.LogAsync(150, "t@example.com", "subj", "<html>body</html>", true, null, null, It.IsAny<CancellationToken>()), Times.Once);
     }
@@ -203,7 +226,62 @@ public class FreeTierUnsubscribedNotificationsTests
         Assert.Contains("#150 Татьяна Еленина | google | tatyana@example.com | TG:— | Helsinki 3", text);
         Assert.Contains("#7 Alice | google+telegram | alice@gmail.com | TG:111 | eu1", text);
         Assert.Contains("/remind_channel_email", text);
-        Assert.Contains("TG #id", text);
+        Assert.Contains("Buttons (TG # / Email #): /unsubscribed_vpn_users", text);
+        Assert.DoesNotContain("tap TG #id / Email #id below", text);
+    }
+
+    [Fact]
+    public async Task ForceRemind_Telegram_WhenUserHasNoTelegram_FailsWithoutSending()
+    {
+        var sender = new Mock<ITelegramDirectMessageSender>(MockBehavior.Strict);
+        var links = new Mock<IUserIdentityLinkQueryService>();
+        links.Setup(l => l.GetListByUserId(150, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new UserIdentityLink { Provider = "google", ExternalId = "g", UserId = 150 }]);
+
+        var users = new Mock<IUserQueryService>();
+        users.Setup(u => u.GetById(150, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new User { Id = 150, DisplayName = "GoogleOnly", Email = "g@example.com" });
+
+        var sut = CreateReminderSut(
+            new Mock<ISettingsService>(MockBehavior.Strict),
+            sender,
+            links: links,
+            users: users);
+
+        var result = await sut.ForceRemindAsync("150", FreeTierChannelSubscribeRemindChannel.Telegram, CancellationToken.None);
+
+        Assert.False(result.Success);
+        Assert.Contains("no linked Telegram", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("/remind_channel_email 150", result.Message);
+        sender.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task ForceRemind_Telegram_TreatsUnknownIdAsTelegramId()
+    {
+        var sender = new Mock<ITelegramDirectMessageSender>();
+        sender.Setup(s => s.TrySendMessageAsync(999001, It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(true);
+
+        var links = new Mock<IUserIdentityLinkQueryService>();
+        links.Setup(l => l.GetListByUserId(999001, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
+        var users = new Mock<IUserQueryService>();
+        users.Setup(u => u.GetById(999001, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((User?)null);
+
+        var sut = CreateReminderSut(
+            new Mock<ISettingsService>(MockBehavior.Strict),
+            sender,
+            links: links,
+            users: users);
+
+        var result = await sut.ForceRemindAsync("999001", FreeTierChannelSubscribeRemindChannel.Telegram, CancellationToken.None);
+
+        Assert.True(result.Success);
+        Assert.Contains("TG:999001", result.Message);
+        sender.Verify(s => s.TrySendMessageAsync(999001, It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]

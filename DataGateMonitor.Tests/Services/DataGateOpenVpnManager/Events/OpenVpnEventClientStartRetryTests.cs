@@ -68,11 +68,76 @@ public class OpenVpnEventClientStartRetryTests
     }
 
     [Fact]
-    public void OpenVpnHubConnectionDefaults_MicroserviceAndEventFactoriesShareReconnectSchedule()
+    public async Task StopAsync_DuringRetryBackoff_CancelsStartListening()
     {
-        Assert.Equal(6, OpenVpnHubConnectionDefaults.AutomaticReconnectDelays.Length);
-        Assert.Equal(TimeSpan.Zero, OpenVpnHubConnectionDefaults.AutomaticReconnectDelays[0]);
-        Assert.Equal(TimeSpan.FromSeconds(60), OpenVpnHubConnectionDefaults.AutomaticReconnectDelays[^1]);
-        Assert.Equal(TimeSpan.FromSeconds(5), OpenVpnHubConnectionDefaults.StartFailureRetryDelay);
+        var server = OpenVpnHubTestHelpers.OpenVpnServer();
+        var proxy = new FakeHubConnectionProxy();
+        proxy.StartAsyncOverride = _ => throw new InvalidOperationException("hub unreachable");
+
+        var delayEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var releaseDelay = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+
+        var client = new OpenVpnEventClient(
+            server,
+            NullLogger<OpenVpnEventClient>.Instance,
+            Mock.Of<IHubContext<OpenVpnEventHub>>(),
+            OpenVpnHubTestHelpers.CreateTokenService(),
+            OpenVpnHubTestHelpers.CreateScopeFactory(Mock.Of<IOpenVpnMicroserviceNotificationService>()),
+            new SingleProxyEventHubConnectionFactory(proxy),
+            startRetryDelay: TimeSpan.FromSeconds(30),
+            retryDelayAsync: async (_, ct) =>
+            {
+                delayEntered.TrySetResult();
+                await using var reg = ct.Register(() => releaseDelay.TrySetResult());
+                await releaseDelay.Task.WaitAsync(ct);
+            });
+
+        var startTask = client.StartListeningAsync(CancellationToken.None);
+        await delayEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        await client.StopAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => startTask);
+        Assert.Equal("Disconnected", client.GetStatus().ConnectionStatus.State);
+    }
+
+    /// <summary>
+    /// Mis-registered OpenVPN ApiUrl pointing at Xray :9443 keeps failing JWT audience;
+    /// DeleteVpnServer → StopAsync must cancel the retry loop (not leave zombie negotiate).
+    /// </summary>
+    [Fact]
+    public async Task StopAsync_DuringRetry_ToWrongXrayApiUrl_StopsAudienceFailures()
+    {
+        var server = OpenVpnHubTestHelpers.OpenVpnServer(
+            id: 91,
+            apiUrl: "https://xs1-pol.datagateapp.com:9443/");
+        var proxy = new FakeHubConnectionProxy();
+        proxy.StartAsyncOverride = _ =>
+            throw new InvalidOperationException("IDX10214: Audience validation failed");
+
+        var delayEntered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        var client = new OpenVpnEventClient(
+            server,
+            NullLogger<OpenVpnEventClient>.Instance,
+            Mock.Of<IHubContext<OpenVpnEventHub>>(),
+            OpenVpnHubTestHelpers.CreateTokenService(),
+            OpenVpnHubTestHelpers.CreateScopeFactory(Mock.Of<IOpenVpnMicroserviceNotificationService>()),
+            new SingleProxyEventHubConnectionFactory(proxy),
+            startRetryDelay: TimeSpan.FromSeconds(30),
+            retryDelayAsync: async (_, ct) =>
+            {
+                delayEntered.TrySetResult();
+                await Task.Delay(Timeout.Infinite, ct);
+            });
+
+        var startTask = client.StartListeningAsync(CancellationToken.None);
+        await delayEntered.Task.WaitAsync(TimeSpan.FromSeconds(5));
+
+        // Same path as OpenVpnEventClientFactory.Remove / DeleteVpnServer
+        await client.StopAsync();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => startTask);
+        Assert.True(proxy.StartCallCount >= 1);
+        Assert.Equal("Disconnected", client.GetStatus().ConnectionStatus.State);
     }
 }

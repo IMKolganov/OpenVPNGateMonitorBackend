@@ -43,9 +43,22 @@ public class VpnServerConfiguration : BaseEntityConfiguration<VpnServer, int>
 
         entity.Property(e => e.XrayClientsPollError).HasMaxLength(2000);
 
+        entity.Property(e => e.VpnServerGroupId);
+
+        entity.Property(e => e.SortOrder)
+            .IsRequired()
+            .HasDefaultValue(0);
+
+        entity.HasOne<VpnServerGroup>()
+            .WithMany()
+            .HasForeignKey(e => e.VpnServerGroupId)
+            .OnDelete(DeleteBehavior.SetNull);
+
         // Indexes
+        // Soft-deleted rows must not reserve the name — allow recreate with the same ServerName.
         entity.HasIndex(e => e.ServerName)
-            .IsUnique();
+            .IsUnique()
+            .HasFilter("\"IsDeleted\" = FALSE");
 
         entity.HasIndex(e => e.IsOnline);
 
@@ -59,6 +72,9 @@ public class VpnServerConfiguration : BaseEntityConfiguration<VpnServer, int>
         entity.HasIndex(e => e.IsDeleted);
 
         entity.HasIndex(e => e.ServerType);
+
+        entity.HasIndex(e => e.VpnServerGroupId);
+        entity.HasIndex(e => new { e.VpnServerGroupId, e.SortOrder });
 
         // Seed data
         entity.HasData(VpnServerSeedData.Data);

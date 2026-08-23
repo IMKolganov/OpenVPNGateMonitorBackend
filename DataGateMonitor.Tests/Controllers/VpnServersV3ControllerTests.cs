@@ -6,6 +6,7 @@ using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerGroupTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
@@ -23,6 +24,7 @@ public class VpnServersV3ControllerTests
     private readonly Mock<IVpnServerQueryService> _serverQuery = new();
     private readonly Mock<IVpnServerQuotaPlanGroupsQuery> _quotaGroups = new();
     private readonly Mock<IVpnServerTagQueryService> _tagQuery = new();
+    private readonly Mock<IVpnServerGroupQueryService> _groupQuery = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
     private readonly Mock<IQuotaPlanAllowedServerQueryService> _quotaAllowed = new();
     private readonly Mock<IQuotaPlanQueryService> _quotaPlanQuery = new();
@@ -31,11 +33,15 @@ public class VpnServersV3ControllerTests
 
     private VpnServersV3Controller CreateController(ClaimsPrincipal user)
     {
+        _groupQuery.Setup(g => g.GetAll(It.IsAny<CancellationToken>()))
+            .ReturnsAsync([]);
+
         return new VpnServersV3Controller(
             _overviewQuery.Object,
             _serverQuery.Object,
             _quotaGroups.Object,
             _tagQuery.Object,
+            _groupQuery.Object,
             _userQuotaPlan.Object,
             _quotaAllowed.Object,
             _quotaPlanQuery.Object,

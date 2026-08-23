@@ -15,10 +15,12 @@ using DataGateMonitor.Services.OpenVpnManagementInterfaces.Interfaces;
 using DataGateMonitor.Services.Others;
 using DataGateMonitor.Services.QuotaPlans;
 using DataGateMonitor.Services.Tags;
+using DataGateMonitor.Services.VpnServerGroups;
 using DataGateMonitor.Services.UserRoles;
 using DataGateMonitor.Services.Users;
 using DataGateMonitor.Services.Users.Interfaces;
 using DataGateMonitor.Services.DataGateXRayManager.ClientLinks;
+using DataGateMonitor.Services.DataGateXRayManager.Events;
 using DataGateMonitor.Services.VpnAccess;
 using DataGateMonitor.Services.Api.MobileCrashIngest;
 using DataGateMonitor.Services.Api.WindowsCrashIngest;
@@ -101,6 +103,7 @@ public static class ServiceConfiguration
         services.AddScoped<IXrayVpnServerStatusLogService, XrayVpnServerStatusLogService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
+        services.AddScoped<IVpnServerDiscoveryService, VpnServerDiscoveryService>();
         services.AddSingleton<IVpnServerPostSetupService, VpnServerPostSetupService>();
         services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();
 
@@ -119,6 +122,7 @@ public static class ServiceConfiguration
             services.AddScoped<ITrafficDailyRollupRunner, TrafficDailyRollupRunner>();
             services.AddHostedService(provider => provider.GetRequiredService<OpenVpnBackgroundService>());
             services.AddHostedService<OpenVpnEventBackgroundService>();
+            services.AddHostedService<XrayDnsEventBackgroundService>();
             services.AddHostedService<OpenVpnStatusStreamPublisher>();
             services.AddHostedService<OpenVpnProxyTrafficFlowBackgroundService>();
             services.AddHostedService<TrafficDailyRollupBackgroundService>();
@@ -129,9 +133,11 @@ public static class ServiceConfiguration
         services.AddScoped<IVpnEventLogService, VpnEventLogService>();
         services.AddScoped<IVpnDnsQueryLogService, VpnDnsQueryLogService>();
         services.AddSingleton<IOpenVpnEventClientFactory, OpenVpnEventClientFactory>();
+        services.AddSingleton<IXrayDnsEventClientFactory, XrayDnsEventClientFactory>();
 
         services.AddScoped<IVpnServerOvpnFileConfigService, VpnServerOvpnFileConfigService>();
         services.AddScoped<IVpnServerPiHoleConfigService, VpnServerPiHoleConfigService>();
+        services.AddScoped<IVpnServerOpenVpnProcessService, VpnServerOpenVpnProcessService>();
         services.AddScoped<ISettingsService, SettingsService>();
         
         services.AddHttpClient<IExternalIpAddressService, ExternalIpAddressService>(client =>
@@ -145,6 +151,9 @@ public static class ServiceConfiguration
         services.AddScoped<IUserPasswordHistoryService, UserPasswordHistoryService>();
         services.AddScoped<IUserMergeService, UserMergeService>();
         services.AddScoped<ITelegramAccountLinkService, TelegramAccountLinkService>();
+        // MS.DI does not auto-wrap Lazy<T>; needed to break TelegramAccountLink ↔ free-tier reminder cycle.
+        services.AddScoped(sp => new Lazy<ITelegramAccountLinkService>(
+            () => sp.GetRequiredService<ITelegramAccountLinkService>()));
         services.AddScoped<IFreeTierAccessComplianceService, FreeTierAccessComplianceService>();
         services.AddScoped<IFreeTierOpenVpnSessionEnforcementService, FreeTierOpenVpnSessionEnforcementService>();
         services.AddScoped<IOpenVpnDisconnectExecutor, OpenVpnDisconnectExecutor>();
@@ -157,6 +166,7 @@ public static class ServiceConfiguration
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
         services.AddScoped<IQuotaPlanAllowedServerService, QuotaPlanAllowedServerService>();
         services.AddScoped<ITagService, TagService>();
+        services.AddScoped<IVpnServerGroupService, VpnServerGroupService>();
         
         services.AddScoped<IUserCredentialQueryService, UserCredentialQueryService>();
         services.AddScoped<ICrashReportParser, CrashReportParser>();

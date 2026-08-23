@@ -71,7 +71,13 @@ public sealed class SystemTransactionalEmailService(IQueryService<EmailBroadcast
     }
 
     public async Task<(string Subject, string BodyHtml)> GetFreeTierChannelSubscribeReminderAsync(
-        string displayName, string requiredChannel, string channelUrl, CancellationToken ct)
+        string displayName,
+        string requiredChannel,
+        string channelUrl,
+        string? linkCode,
+        string? linkBotUrl,
+        int linkCodeTtlMinutes,
+        CancellationToken ct)
     {
         var entity = await templateQuery.FirstOrDefault(
             t => t.Name == SystemEmailTemplateNames.FreeTierChannelSubscribeReminder,
@@ -85,10 +91,11 @@ public sealed class SystemTransactionalEmailService(IQueryService<EmailBroadcast
                 ? TransactionalEmailHtml.DefaultFreeTierChannelSubscribeReminderSubject
                 : entity.Subject.Trim();
             return (subject, TransactionalEmailHtml.ApplyFreeTierChannelSubscribeReminderPlaceholders(
-                body, displayName, requiredChannel, channelUrl));
+                body, displayName, requiredChannel, channelUrl, linkCode, linkBotUrl, linkCodeTtlMinutes));
         }
 
         return (TransactionalEmailHtml.DefaultFreeTierChannelSubscribeReminderSubject,
-            TransactionalEmailHtml.BuildFreeTierChannelSubscribeReminder(displayName, requiredChannel, channelUrl));
+            TransactionalEmailHtml.BuildFreeTierChannelSubscribeReminder(
+                displayName, requiredChannel, channelUrl, linkCode, linkBotUrl, linkCodeTtlMinutes));
     }
 }

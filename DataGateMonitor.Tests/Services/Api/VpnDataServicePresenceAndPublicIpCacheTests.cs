@@ -26,6 +26,7 @@ public class VpnDataServicePresenceAndPublicIpCacheTests
         h.Presence.Verify(p => p.MarkAllDisconnectedAsync(9, It.IsAny<CancellationToken>()), Times.Once);
         h.PublicIpLookup.Verify(p => p.Invalidate(9), Times.Once);
         h.MicroserviceFactory.Verify(f => f.Invalidate(9), Times.Once);
+        h.EventFactory.Verify(f => f.Remove(9), Times.Once);
     }
 
     [Fact]

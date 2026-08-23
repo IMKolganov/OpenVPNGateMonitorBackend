@@ -6,6 +6,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Users;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others.Notifications.OvpnFileApi;
 using DataGateMonitor.Services.VpnAccess;
 using DataGateMonitor.SharedModels.DataGateMonitor.OpenVpnFiles.Requests;
@@ -158,7 +159,8 @@ public sealed class XrayClientLinkService(
 
         var exportConfig = await GetExportConfigAsync(request.VpnServerId, ct);
         var friendlyName = await MakeFriendlyName(request.VpnServerId, request.CommonName, ct);
-        var (serverIp, serverPort) = NormalizeServerEndpoint(exportConfig.VpnServerIp, exportConfig.VpnServerPort);
+        var sanitizedIp = VpnServerApiUrlHelper.SanitizeExportEndpointHost(exportConfig.VpnServerIp);
+        var (serverIp, serverPort) = NormalizeServerEndpoint(sanitizedIp, exportConfig.VpnServerPort);
         if (serverIp != exportConfig.VpnServerIp || serverPort != exportConfig.VpnServerPort)
             logger.LogWarning(
                 "VpnServerOvpnFileConfig endpoint normalized (host had :port while VpnServerPort was also set). VpnServerId={Id}, before {BeforeIp} port {BeforePort}, after {AfterIp} port {AfterPort}.",

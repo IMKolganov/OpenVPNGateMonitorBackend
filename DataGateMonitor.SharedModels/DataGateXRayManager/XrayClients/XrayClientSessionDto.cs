@@ -5,6 +5,13 @@ public sealed class XrayClientSessionDto
 {
     public string Email { get; set; } = string.Empty;
     public string RemoteAddress { get; set; } = string.Empty;
+
+    /// <summary>
+    /// When <see cref="RemoteAddress"/> is loopback/private (WSS proxy peer), the real client IP:port
+    /// resolved on the Xray node, e.g. <c>203.0.113.5:443</c>.
+    /// </summary>
+    public string? ProxyRealIp { get; set; }
+
     public string? Username { get; set; }
     public long BytesReceived { get; set; }
     public long BytesSent { get; set; }

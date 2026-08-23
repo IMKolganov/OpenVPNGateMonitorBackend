@@ -2,21 +2,24 @@ using Microsoft.Extensions.Caching.Memory;
 
 namespace DataGateMonitor.Services.Api.Auth.Login;
 
-public sealed class AdminIdleSessionTracker(IConfiguration configuration, IMemoryCache memoryCache)
+public sealed class AdminIdleSessionTracker(
+    IAdminIdleTimeoutProvider idleTimeoutProvider,
+    IMemoryCache memoryCache)
     : IAdminIdleSessionTracker
 {
     private const string AdminRole = "Admin";
 
-    public TimeSpan IdleTimeout { get; } = ResolveIdleTimeout(configuration);
+    public TimeSpan IdleTimeout => TimeSpan.FromMinutes(idleTimeoutProvider.GetMinutes());
 
     public void Touch(int userId)
     {
         if (userId <= 0) return;
 
+        var timeout = IdleTimeout;
         var cacheKey = CacheKey(userId);
         memoryCache.Set(cacheKey, DateTimeOffset.UtcNow, new MemoryCacheEntryOptions
         {
-            AbsoluteExpirationRelativeToNow = IdleTimeout.Add(IdleTimeout),
+            AbsoluteExpirationRelativeToNow = timeout.Add(timeout),
         });
     }
 
@@ -38,15 +41,6 @@ public sealed class AdminIdleSessionTracker(IConfiguration configuration, IMemor
 
     public static bool IsAdminRole(string? role) =>
         string.Equals(role, AdminRole, StringComparison.OrdinalIgnoreCase);
-
-    private static TimeSpan ResolveIdleTimeout(IConfiguration configuration)
-    {
-        var minutes = configuration.GetValue<int?>("Jwt:AdminIdleTimeoutMinutes") ?? 15;
-        if (minutes <= 0)
-            minutes = 15;
-
-        return TimeSpan.FromMinutes(minutes);
-    }
 
     private static string CacheKey(int userId) => $"admin-session-idle:{userId}";
 }

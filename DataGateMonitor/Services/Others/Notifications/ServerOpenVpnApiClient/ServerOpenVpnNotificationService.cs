@@ -1,3 +1,4 @@
+using DataGateMonitor.Models.Helpers;
 using DataGateMonitor.SharedModels.Notifications.Requests;
 using DataGateMonitor.SharedModels.Enums;
 
@@ -39,10 +40,25 @@ public class ServerOpenVpnNotificationService(INotificationService notifications
         => Notify(ApplicationNotificationKind.OpenVpnServerNoResponse, "server.no-response", "No response from VPN server",
             Detail(serverId, serverName), serverId, NotificationSeverity.Warning, ErrorChannels, ct);
 
+    public Task NotifyDiscovered(int discoveryId, string? suggestedName, string apiUrl, CancellationToken ct)
+    {
+        var namePart = string.IsNullOrEmpty(suggestedName) ? "" : $"; Name={suggestedName}";
+        var message = $"DiscoveryId={discoveryId}{namePart}; ApiUrl={apiUrl}";
+        return Notify(
+            ApplicationNotificationKind.OpenVpnServerDiscovered,
+            NotificationTypes.ServerDiscovered,
+            "VPN server discovered",
+            message,
+            serverId: null,
+            NotificationSeverity.Info,
+            InfoChannels,
+            ct);
+    }
+
     private static string Detail(int serverId, string? serverName)
         => $"ServerId={serverId}" + (string.IsNullOrEmpty(serverName) ? "" : $"; Name={serverName}");
 
-    private Task Notify(ApplicationNotificationKind preferenceKind, string type, string title, string message, int serverId, NotificationSeverity severity,
+    private Task Notify(ApplicationNotificationKind preferenceKind, string type, string title, string message, int? serverId, NotificationSeverity severity,
         string[] channels, CancellationToken ct)
         => notifications.NotifyAdmins(new NotifyAdminsRequest
         {

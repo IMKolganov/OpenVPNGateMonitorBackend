@@ -2,6 +2,7 @@
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.Registers;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.Applications.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Applications.Responses;
@@ -33,10 +34,10 @@ namespace DataGateMonitor.Tests.Controllers
                 Name = "TestApp"
             };
 
-            var newApp = new ClientApplication
+            var stored = new ClientApplication
             {
                 ClientId = "client123",
-                ClientSecret = "secret123",
+                ClientSecret = "$2a$11$hashed-not-returned",
                 Name = "TestApp",
                 IsRevoked = false,
                 IsSystem = false
@@ -44,7 +45,11 @@ namespace DataGateMonitor.Tests.Controllers
 
             appServiceMock
                 .Setup(s => s.RegisterApplicationAsync(request.Name, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(newApp);
+                .ReturnsAsync(new RegisteredClientApplication
+                {
+                    Application = stored,
+                    PlaintextClientSecret = "plaintext-once",
+                });
 
             var ct = CancellationToken.None;
 
@@ -59,8 +64,10 @@ namespace DataGateMonitor.Tests.Controllers
             Assert.Equal("Success", response.Message);
 
             Assert.NotNull(response.Data);
-            Assert.Equal(newApp.ClientId, response.Data.ClientId);
-            Assert.Equal(newApp.Name, response.Data.Name);
+            Assert.Equal(stored.ClientId, response.Data.ClientId);
+            Assert.Equal(stored.Name, response.Data.Name);
+            Assert.Equal("plaintext-once", response.Data.ClientSecret);
+            Assert.NotEqual(stored.ClientSecret, response.Data.ClientSecret);
 
             appServiceMock.Verify(
                 s => s.RegisterApplicationAsync(request.Name, ct),
@@ -198,6 +205,57 @@ namespace DataGateMonitor.Tests.Controllers
             appServiceMock.Verify(
                 s => s.RevokeApplicationAsync(request.ClientId, ct),
                 Times.Once);
+        }
+
+        [Fact]
+        public async Task RegisterApplication_WhenEmptyName_ReturnsBadRequest()
+        {
+            var request = new RegisterApplicationRequest { Name = "  " };
+
+            appServiceMock
+                .Setup(s => s.RegisterApplicationAsync(request.Name, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ArgumentException("API client name is required."));
+
+            var result = await controller.RegisterApplication(request, CancellationToken.None);
+
+            var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+            var response = Assert.IsType<ApiResponse<RegisterApplicationResponse>>(bad.Value);
+            Assert.False(response.Success);
+            Assert.Equal("API client name is required.", response.Message);
+        }
+
+        [Fact]
+        public async Task RegisterApplication_WhenDuplicateName_ReturnsConflict()
+        {
+            var request = new RegisterApplicationRequest { Name = "TestApp" };
+
+            appServiceMock
+                .Setup(s => s.RegisterApplicationAsync(request.Name, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("An API client with this name already exists."));
+
+            var result = await controller.RegisterApplication(request, CancellationToken.None);
+
+            var conflict = Assert.IsType<ConflictObjectResult>(result.Result);
+            var response = Assert.IsType<ApiResponse<RegisterApplicationResponse>>(conflict.Value);
+            Assert.False(response.Success);
+            Assert.Equal("An API client with this name already exists.", response.Message);
+        }
+
+        [Fact]
+        public async Task RevokeApplication_WhenSystem_ReturnsBadRequest()
+        {
+            var request = new RevokeApplicationRequest { ClientId = "system-client" };
+
+            appServiceMock
+                .Setup(s => s.RevokeApplicationAsync(request.ClientId, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidOperationException("System API clients cannot be revoked."));
+
+            var result = await controller.RevokeApplication(request, CancellationToken.None);
+
+            var badRequest = Assert.IsType<BadRequestObjectResult>(result.Result);
+            var response = Assert.IsType<ApiResponse<string>>(badRequest.Value);
+            Assert.False(response.Success);
+            Assert.Equal("System API clients cannot be revoked.", response.Message);
         }
     }
 }
