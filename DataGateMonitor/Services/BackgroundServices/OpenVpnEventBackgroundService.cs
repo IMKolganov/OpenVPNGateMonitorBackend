@@ -34,6 +34,18 @@ public sealed class OpenVpnEventBackgroundService(
                     .Where(x => !x.IsDisable && x.ServerType == VpnServerType.OpenVpn)
                     .ToList();
 
+                var activeIds = servers.Select(x => x.Id).ToHashSet();
+                foreach (var cached in eventClientFactory.GetAllClients())
+                {
+                    var cachedId = cached.GetStatus().ConnectionStatus.ServerId;
+                    if (!activeIds.Contains(cachedId))
+                    {
+                        logger.LogInformation(
+                            "Pruning OpenVPN event client for deleted/disabled server {ServerId}", cachedId);
+                        eventClientFactory.Remove(cachedId);
+                    }
+                }
+
                 foreach (var server in servers)
                 {
                     try
@@ -41,6 +53,12 @@ public sealed class OpenVpnEventBackgroundService(
                         var client = eventClientFactory.Create(server);
                         await client.StartListeningAsync(cancellationToken);
                         logger.LogDebug("Event listener active for server {ServerId} ({ApiUrl})", server.Id, server.ApiUrl);
+                    }
+                    catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+                    {
+                        // Client StopAsync after delete/update — continue with remaining servers.
+                        logger.LogInformation(
+                            "OpenVPN event listener stopped for server {ServerId} (removed from cache)", server.Id);
                     }
                     catch (Exception ex)
                     {
