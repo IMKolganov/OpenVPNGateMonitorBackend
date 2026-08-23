@@ -23,11 +23,7 @@ public class ApplicationMapping : IRegister
             .Map(d => d.Applications, s => s);
         #endregion
 
-        #region "register"
-        config.NewConfig<ClientApplication, RegisterApplicationResponse>()
-            .Map(d => d.Name, s => s.Name)
-            .Map(d => d.ClientId, s => s.ClientId)
-            .Map(d => d.ClientSecret, s => s.ClientSecret);
-        #endregion
+        // Do not Mapster ClientApplication → RegisterApplicationResponse: ClientSecret in DB is bcrypt;
+        // plaintext is returned only via RegisteredClientApplication in ApplicationsController.
     }
 }

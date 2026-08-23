@@ -9,6 +9,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
 using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.SharedModels.Enums;
@@ -39,7 +40,11 @@ public class OpenVpnBackgroundServiceTests
             .ReturnsAsync([server]);
 
         var notificationService = new Mock<IServerOpenVpnNotificationService>();
-        var serviceProvider = BuildServiceProvider(queryService.Object, notificationService.Object);
+        var presence = new Mock<IVpnServerClientPresenceService>(MockBehavior.Strict);
+        var serviceProvider = BuildServiceProvider(
+            queryService.Object,
+            notificationService.Object,
+            presence.Object);
 
         var factory = new VpnServerProcessorFactory(serviceProvider);
         InjectProcessor(factory, server.Id, server.ServerType, new FakeProcessor());
@@ -63,6 +68,10 @@ public class OpenVpnBackgroundServiceTests
             CreateConfiguration());
 
         await InvokeRunOpenVpnTaskAsync(sut, 60, CancellationToken.None);
+
+        presence.Verify(
+            p => p.MarkAllDisconnectedAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()),
+            Times.Never);
 
         var eventTypes = entries
             .Select(GetEventType)
@@ -113,7 +122,13 @@ public class OpenVpnBackgroundServiceTests
             .ReturnsAsync([disabledServer]);
 
         var notificationService = new Mock<IServerOpenVpnNotificationService>();
-        var serviceProvider = BuildServiceProvider(queryService.Object, notificationService.Object);
+        var presence = new Mock<IVpnServerClientPresenceService>();
+        presence.Setup(p => p.MarkAllDisconnectedAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        var serviceProvider = BuildServiceProvider(
+            queryService.Object,
+            notificationService.Object,
+            presence.Object);
 
         var logStore = new Mock<IStatusStreamLogStore>();
         var entries = new List<StatusStreamLogEntry>();
@@ -143,16 +158,21 @@ public class OpenVpnBackgroundServiceTests
         Assert.Contains("cycle-completed", eventTypes);
         Assert.DoesNotContain("server-start", eventTypes);
         Assert.DoesNotContain("server-success", eventTypes);
+        presence.Verify(
+            p => p.MarkAllDisconnectedAsync(disabledServer.Id, It.IsAny<CancellationToken>()),
+            Times.Once);
         ResetOpenVpnBackgroundServiceInstanceCount();
     }
 
     private static ServiceProvider BuildServiceProvider(
         IVpnServerQueryService vpnServerQueryService,
-        IServerOpenVpnNotificationService notificationService)
+        IServerOpenVpnNotificationService notificationService,
+        IVpnServerClientPresenceService presenceService)
     {
         var services = new ServiceCollection();
         services.AddScoped(_ => vpnServerQueryService);
         services.AddScoped(_ => notificationService);
+        services.AddScoped(_ => presenceService);
         return services.BuildServiceProvider();
     }
 

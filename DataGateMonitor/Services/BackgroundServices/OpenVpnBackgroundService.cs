@@ -113,11 +113,15 @@ public class OpenVpnBackgroundService : BackgroundService, IOpenVpnBackgroundSer
             // Disabled rows are never polled — still publish Idle so the status stream is not empty and
             // clients do not treat "missing server" as Pending for the whole fleet.
             // Also clear hanging IsConnected sessions (disable may have been set outside UpdateVpnServer).
-            var presence = scope.ServiceProvider.GetRequiredService<IVpnServerClientPresenceService>();
-            foreach (var skipped in openVpnServers.Where(s => s.IsDisable))
+            var disabledList = openVpnServers.Where(s => s.IsDisable).ToList();
+            if (disabledList.Count > 0)
             {
-                _statusManager.UpdateStatus(skipped.Id, ServiceStatus.Idle, nextRunSeconds);
-                await presence.MarkAllDisconnectedAsync(skipped.Id, cancellationToken);
+                var presence = scope.ServiceProvider.GetRequiredService<IVpnServerClientPresenceService>();
+                foreach (var skipped in disabledList)
+                {
+                    _statusManager.UpdateStatus(skipped.Id, ServiceStatus.Idle, nextRunSeconds);
+                    await presence.MarkAllDisconnectedAsync(skipped.Id, cancellationToken);
+                }
             }
 
             var serversToPoll = openVpnServers.Where(x => x.IsDisable != true).ToList();
