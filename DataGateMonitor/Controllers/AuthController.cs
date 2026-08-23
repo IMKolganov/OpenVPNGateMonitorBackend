@@ -2,7 +2,6 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
-using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
@@ -84,17 +83,11 @@ public class AuthController(
                 ApiResponse<TokenResponse>.ErrorResponse(AppClientTokenRateLimiter.RateLimitMessage));
         }
 
-        var app = await appService.GetApplicationByClientIdAsync(request.ClientId, cancellationToken);
-        if (app == null || app.IsRevoked)
-        {
-            return Unauthorized(ApiResponse<TokenResponse>.ErrorResponse("Invalid credentials"));
-        }
-
-        var isValid = app.IsSystem
-            ? BCrypt.Net.BCrypt.Verify(request.ClientSecret, app.ClientSecret)
-            : FixedTimeEqualsUtf8(app.ClientSecret, request.ClientSecret);
-
-        if (!isValid)
+        var app = await appService.AuthenticateClientAsync(
+            request.ClientId,
+            request.ClientSecret,
+            cancellationToken);
+        if (app == null)
         {
             return Unauthorized(ApiResponse<TokenResponse>.ErrorResponse("Invalid credentials"));
         }
@@ -127,13 +120,6 @@ public class AuthController(
                 Token = tokenHandler.WriteToken(token),
                 Expiration = tokenDescriptor.Expires ?? DateTimeOffset.UtcNow
             }));
-    }
-
-    private static bool FixedTimeEqualsUtf8(string? stored, string? provided)
-    {
-        var storedHash = SHA256.HashData(Encoding.UTF8.GetBytes(stored ?? string.Empty));
-        var providedHash = SHA256.HashData(Encoding.UTF8.GetBytes(provided ?? string.Empty));
-        return CryptographicOperations.FixedTimeEquals(storedHash, providedHash);
     }
 
     [HttpGet("public-key/{pin:int}")]

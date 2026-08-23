@@ -21,10 +21,18 @@ public class ApplicationsController(IApplicationService appService) : BaseContro
     {
         try
         {
-            var newApp = await appService.RegisterApplicationAsync(request.Name, cancellationToken);
+            var registered = await appService.RegisterApplicationAsync(request.Name, cancellationToken);
+            var app = registered.Application;
 
             return Ok(ApiResponse<RegisterApplicationResponse>.SuccessResponse(
-                newApp.Adapt<RegisterApplicationResponse>()));
+                new RegisterApplicationResponse
+                {
+                    Name = app.Name,
+                    ClientId = app.ClientId,
+                    ClientSecret = registered.PlaintextClientSecret,
+                    IsRevoked = app.IsRevoked,
+                    IsSystem = app.IsSystem,
+                }));
         }
         catch (ArgumentException ex)
         {

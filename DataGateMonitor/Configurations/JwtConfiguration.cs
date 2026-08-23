@@ -24,7 +24,7 @@ public static class JwtConfiguration
                     // ValidIssuer = "OpenVPNGateBackend",
                     // ValidateAudience = true,
                     // ValidAudience = "OpenVPNGateFrontend",
-                    
+
                     ValidateIssuerSigningKey = true,
                     IssuerSigningKey = new SymmetricSecurityKey(key),
                     ValidateIssuer = false,
@@ -59,7 +59,11 @@ public static class JwtConfiguration
                         // Fail without attaching the exception so JwtBearer/ Serilog do not emit stack traces (Wazuh).
                         context.Fail("Access token expired.");
                         return Task.CompletedTask;
-                    }
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        await JwtBearerEventHandlers.RejectRevokedAppClientAsync(context);
+                    },
                 };
             });
         services.AddSingleton<IMicroserviceTokenService, MicroserviceTokenService>();

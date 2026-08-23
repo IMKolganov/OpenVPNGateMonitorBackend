@@ -104,7 +104,7 @@ public class AuthControllerTests
     public async Task GenerateToken_WhenAppMissing_ReturnsUnauthorized()
     {
         _appService
-            .Setup(s => s.GetApplicationByClientIdAsync("client", It.IsAny<CancellationToken>()))
+            .Setup(s => s.AuthenticateClientAsync("client", "secret", It.IsAny<CancellationToken>()))
             .ReturnsAsync((ClientApplication?)null);
 
         var controller = CreateController();
@@ -121,13 +121,8 @@ public class AuthControllerTests
     public async Task GenerateToken_WhenAppRevoked_ReturnsUnauthorized()
     {
         _appService
-            .Setup(s => s.GetApplicationByClientIdAsync("client", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ClientApplication
-            {
-                ClientId = "client",
-                ClientSecret = "secret",
-                IsRevoked = true,
-            });
+            .Setup(s => s.AuthenticateClientAsync("client", "secret", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ClientApplication?)null);
 
         var controller = CreateController();
         var result = await controller.GenerateToken(
@@ -192,7 +187,7 @@ public class AuthControllerTests
         Assert.False(response.Success);
         Assert.Equal(AppClientTokenRateLimiter.RateLimitMessage, response.Message);
         _appService.Verify(
-            s => s.GetApplicationByClientIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            s => s.AuthenticateClientAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -200,11 +195,11 @@ public class AuthControllerTests
     public async Task GenerateToken_WhenCredentialsValid_ReturnsToken()
     {
         _appService
-            .Setup(s => s.GetApplicationByClientIdAsync("client", It.IsAny<CancellationToken>()))
+            .Setup(s => s.AuthenticateClientAsync("client", "secret", It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ClientApplication
             {
                 ClientId = "client",
-                ClientSecret = "secret",
+                ClientSecret = "$2a$hashed",
                 IsRevoked = false,
                 IsSystem = false,
             });

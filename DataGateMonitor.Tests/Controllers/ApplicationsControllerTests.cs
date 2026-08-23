@@ -2,6 +2,7 @@
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.Registers;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.Applications.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.Applications.Responses;
@@ -33,10 +34,10 @@ namespace DataGateMonitor.Tests.Controllers
                 Name = "TestApp"
             };
 
-            var newApp = new ClientApplication
+            var stored = new ClientApplication
             {
                 ClientId = "client123",
-                ClientSecret = "secret123",
+                ClientSecret = "$2a$11$hashed-not-returned",
                 Name = "TestApp",
                 IsRevoked = false,
                 IsSystem = false
@@ -44,7 +45,11 @@ namespace DataGateMonitor.Tests.Controllers
 
             appServiceMock
                 .Setup(s => s.RegisterApplicationAsync(request.Name, It.IsAny<CancellationToken>()))
-                .ReturnsAsync(newApp);
+                .ReturnsAsync(new RegisteredClientApplication
+                {
+                    Application = stored,
+                    PlaintextClientSecret = "plaintext-once",
+                });
 
             var ct = CancellationToken.None;
 
@@ -59,8 +64,10 @@ namespace DataGateMonitor.Tests.Controllers
             Assert.Equal("Success", response.Message);
 
             Assert.NotNull(response.Data);
-            Assert.Equal(newApp.ClientId, response.Data.ClientId);
-            Assert.Equal(newApp.Name, response.Data.Name);
+            Assert.Equal(stored.ClientId, response.Data.ClientId);
+            Assert.Equal(stored.Name, response.Data.Name);
+            Assert.Equal("plaintext-once", response.Data.ClientSecret);
+            Assert.NotEqual(stored.ClientSecret, response.Data.ClientSecret);
 
             appServiceMock.Verify(
                 s => s.RegisterApplicationAsync(request.Name, ct),
