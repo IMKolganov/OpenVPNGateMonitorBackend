@@ -12,6 +12,8 @@ using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.VpnManagerReleases;
+using DataGateMonitor.Tests.Services.VpnManagerReleases;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -47,7 +49,8 @@ public class VpnServersV3ControllerTests
             _quotaPlanQuery.Object,
             _cache,
             _statusCacheGeneration.Object,
-            Mock.Of<IConnectedClientsCounterStore>())
+            Mock.Of<IConnectedClientsCounterStore>(),
+            new NoOpVpnManagerUpdateStatusEnricher())
         {
             ControllerContext = new ControllerContext
             {

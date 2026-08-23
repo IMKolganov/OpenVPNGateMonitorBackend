@@ -3,6 +3,7 @@ using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.Helpers;
+using DataGateMonitor.Services.VpnManagerReleases;
 
 namespace DataGateMonitor.Services.BackgroundServices;
 
@@ -31,6 +32,9 @@ public class OpenVpnServerProcessor(
 
             logger.LogInformation("Fetching and saving conflog for {Url}", openVpnServer.ApiUrl);
             await scope.ServiceProvider.GetRequiredService<IVpnServerConflogService>().FetchAndSaveIfChangedByServerIdAsync(openVpnServer.Id, ct);
+
+            await scope.ServiceProvider.GetRequiredService<IVpnServerManagerVersionPersister>()
+                .TryPersistAsync(openVpnServer, ct);
 
             // Set IsOnline = true (server-side update, no entity tracking)
             var now = DateTimeOffset.UtcNow;

@@ -3394,6 +3394,10 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasPrecision(9, 6)
                         .HasColumnType("double precision");
 
+                    b.Property<string>("ManagerVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("ServerName")
                         .IsRequired()
                         .HasColumnType("text");

@@ -7,6 +7,7 @@ using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.VpnManagerReleases;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -29,7 +30,8 @@ public class VpnServersV2Controller(
     IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService,
     IApiMemoryCacheService apiMemoryCacheService,
     IStatusCacheGenerationService statusCacheGenerationService,
-    IConnectedClientsCounterStore connectedClientsCounterStore) : BaseController
+    IConnectedClientsCounterStore connectedClientsCounterStore,
+    IVpnManagerUpdateStatusEnricher vpnManagerUpdateStatusEnricher) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
 
@@ -126,6 +128,7 @@ public class VpnServersV2Controller(
                 restrictToQuotaPlanId,
                 token);
             await VpnServerConnectedCountOverlay.ApplyAsync(result, connectedClientsCounterStore, token);
+            await vpnManagerUpdateStatusEnricher.EnrichAsync(result, token);
             var response = new VpnServerWithStatusesV2Response();
             if (result.Count == 0)
                 return ApiResponse<VpnServerWithStatusesV2Response>.SuccessResponse(response);
@@ -148,7 +151,11 @@ public class VpnServersV2Controller(
                     CountConnectedClients = item.CountConnectedClients,
                     CountSessions = item.CountSessions,
                     TotalBytesIn = item.TotalBytesIn,
-                    TotalBytesOut = item.TotalBytesOut
+                    TotalBytesOut = item.TotalBytesOut,
+                    InstalledManagerVersion = item.InstalledManagerVersion,
+                    LatestManagerVersion = item.LatestManagerVersion,
+                    IsManagerUpdateAvailable = item.IsManagerUpdateAvailable,
+                    ManagerReleaseUrl = item.ManagerReleaseUrl
                 };
                 v2.VpnServerResponses.VpnServer.QuotaPlanGroups = groups.GetValueOrDefault(id, []);
                 v2.VpnServerResponses.VpnServer.IsAccessibleForUserQuotaPlan =

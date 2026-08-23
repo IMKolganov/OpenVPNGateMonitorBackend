@@ -27,6 +27,7 @@ using DataGateMonitor.Services.Api.WindowsCrashIngest;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.Services.Performance;
+using DataGateMonitor.Services.VpnManagerReleases;
 using DataGateMonitor.Data.Interceptors;
 using DataGateMonitor.Services.XrayNode;
 using System.Net;
@@ -106,6 +107,19 @@ public static class ServiceConfiguration
         services.AddScoped<IVpnServerDiscoveryService, VpnServerDiscoveryService>();
         services.AddSingleton<IVpnServerPostSetupService, VpnServerPostSetupService>();
         services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();
+
+        services.Configure<VpnManagerReleasesOptions>(configuration.GetSection(VpnManagerReleasesOptions.SectionName));
+        services.AddHttpClient(VpnManagerReleaseLatestService.HttpClientName, (sp, client) =>
+        {
+            var opts = sp.GetRequiredService<Microsoft.Extensions.Options.IOptions<VpnManagerReleasesOptions>>().Value;
+            client.BaseAddress = new Uri("https://api.github.com/");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(
+                string.IsNullOrWhiteSpace(opts.UserAgent) ? "DataGateMonitor" : opts.UserAgent.Trim());
+            client.Timeout = TimeSpan.FromSeconds(15);
+        });
+        services.AddSingleton<IVpnManagerReleaseLatestService, VpnManagerReleaseLatestService>();
+        services.AddScoped<IVpnManagerUpdateStatusEnricher, VpnManagerUpdateStatusEnricher>();
+        services.AddScoped<IVpnServerManagerVersionPersister, VpnServerManagerVersionPersister>();
 
         services.AddSingleton<VpnServerStatusManager>();
         services.AddSingleton<VpnServerProcessorFactory>();

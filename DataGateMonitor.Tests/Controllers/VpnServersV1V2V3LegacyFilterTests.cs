@@ -16,6 +16,8 @@ using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.VpnManagerReleases;
+using DataGateMonitor.Tests.Services.VpnManagerReleases;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
@@ -137,7 +139,8 @@ public class VpnServersV1V2V3LegacyFilterTests
             Mock.Of<IStatusStreamLogStore>(),
             Mock.Of<IVpnServerPostSetupService>(),
             Mock.Of<IConnectedClientsCounterStore>(),
-            _ovpnConfigQuery.Object)
+            _ovpnConfigQuery.Object,
+            new NoOpVpnManagerUpdateStatusEnricher())
         {
             ControllerContext = Context(user)
         };
@@ -152,7 +155,8 @@ public class VpnServersV1V2V3LegacyFilterTests
             _quotaAllowed.Object,
             NewCache(),
             _statusCacheGeneration.Object,
-            Mock.Of<IConnectedClientsCounterStore>())
+            Mock.Of<IConnectedClientsCounterStore>(),
+            new NoOpVpnManagerUpdateStatusEnricher())
         {
             ControllerContext = Context(user)
         };
@@ -169,7 +173,8 @@ public class VpnServersV1V2V3LegacyFilterTests
             _quotaPlanQuery.Object,
             NewCache(),
             _statusCacheGeneration.Object,
-            Mock.Of<IConnectedClientsCounterStore>())
+            Mock.Of<IConnectedClientsCounterStore>(),
+            new NoOpVpnManagerUpdateStatusEnricher())
         {
             ControllerContext = Context(user)
         };

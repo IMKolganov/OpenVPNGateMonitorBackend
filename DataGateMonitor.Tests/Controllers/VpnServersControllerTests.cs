@@ -20,6 +20,8 @@ using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.StatusStreamLogs;
+using DataGateMonitor.Services.VpnManagerReleases;
+using DataGateMonitor.Tests.Services.VpnManagerReleases;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
@@ -68,7 +70,8 @@ public class VpnServersControllerTests
             _statusStreamLogStore.Object,
             _vpnServerPostSetupService.Object,
             Mock.Of<IConnectedClientsCounterStore>(),
-            _ovpnConfigQuery.Object);
+            _ovpnConfigQuery.Object,
+            new NoOpVpnManagerUpdateStatusEnricher());
         _ovpnConfigQuery
             .Setup(q => q.GetConfigTemplatesByVpnServerIds(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<int, string>());

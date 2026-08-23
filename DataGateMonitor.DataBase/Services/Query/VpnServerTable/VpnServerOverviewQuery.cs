@@ -149,7 +149,10 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
                         BytesIn = latest.BytesIn,
                         BytesOut = latest.BytesOut,
                         Version = latest.Version
-                    }
+                    },
+                InstalledManagerVersion = string.IsNullOrWhiteSpace(s.ManagerVersion)
+                    ? null
+                    : s.ManagerVersion.Trim()
             });
         }
 

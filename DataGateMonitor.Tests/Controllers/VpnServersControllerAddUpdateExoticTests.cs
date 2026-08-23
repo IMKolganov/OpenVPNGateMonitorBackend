@@ -15,6 +15,8 @@ using PostSetupState = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetup
 using PostSetupStatus = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetupStatus;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.VpnManagerReleases;
+using DataGateMonitor.Tests.Services.VpnManagerReleases;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
@@ -57,7 +59,8 @@ public class VpnServersControllerAddUpdateExoticTests
             _statusStreamLogStore.Object,
             _postSetup.Object,
             Mock.Of<IConnectedClientsCounterStore>(),
-            Mock.Of<IVpnServerOvpnFileConfigQueryService>());
+            Mock.Of<IVpnServerOvpnFileConfigQueryService>(),
+            new NoOpVpnManagerUpdateStatusEnricher());
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

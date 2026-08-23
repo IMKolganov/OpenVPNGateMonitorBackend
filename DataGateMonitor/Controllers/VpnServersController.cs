@@ -16,6 +16,7 @@ using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.StatusStreamLogs;
+using DataGateMonitor.Services.VpnManagerReleases;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
@@ -40,7 +41,8 @@ public class VpnServersController(IVpnDataService vpnDataService,
     IStatusStreamLogStore statusStreamLogStore,
     IVpnServerPostSetupService vpnServerPostSetupService,
     IConnectedClientsCounterStore connectedClientsCounterStore,
-    IVpnServerOvpnFileConfigQueryService ovpnFileConfigQueryService) : BaseController
+    IVpnServerOvpnFileConfigQueryService ovpnFileConfigQueryService,
+    IVpnManagerUpdateStatusEnricher vpnManagerUpdateStatusEnricher) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
 
@@ -81,6 +83,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
             var result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
                 includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId, token);
             await VpnServerConnectedCountOverlay.ApplyAsync(result, connectedClientsCounterStore, token);
+            await vpnManagerUpdateStatusEnricher.EnrichAsync(result, token);
 
             var baseResponse = new VpnServerWithStatusesResponse
             {
@@ -144,7 +147,8 @@ public class VpnServersController(IVpnDataService vpnDataService,
             return denyStatus;
 
         var serverInfo = await openVpnServerOverviewQuery.GetVpnServerWithStatusAsync(request.VpnServerId, ct);
-        var response = serverInfo.Adapt<VpnServerWithStatusResponse>();
+        await vpnManagerUpdateStatusEnricher.EnrichAsync([serverInfo], ct);
+        var response = new VpnServerWithStatusResponse { VpnServerWithStatus = serverInfo };
         if (response.VpnServerWithStatus?.VpnServerResponses?.VpnServer != null)
             response.VpnServerWithStatus.VpnServerResponses.VpnServer.Tags = await openVpnServerTagQueryService.GetTagNamesByVpnServerId(request.VpnServerId, ct);
         return Ok(ApiResponse<VpnServerWithStatusResponse>.SuccessResponse(response));
