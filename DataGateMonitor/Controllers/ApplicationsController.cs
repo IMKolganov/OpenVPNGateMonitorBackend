@@ -26,6 +26,10 @@ public class ApplicationsController(IApplicationService appService) : BaseContro
             return Ok(ApiResponse<RegisterApplicationResponse>.SuccessResponse(
                 newApp.Adapt<RegisterApplicationResponse>()));
         }
+        catch (ArgumentException ex)
+        {
+            return BadRequest(ApiResponse<RegisterApplicationResponse>.ErrorResponse(ex.Message));
+        }
         catch (InvalidOperationException ex)
         {
             return Conflict(ApiResponse<RegisterApplicationResponse>.ErrorResponse(ex.Message));

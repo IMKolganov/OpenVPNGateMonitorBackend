@@ -1,7 +1,9 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Moq;
 using DataGateMonitor.Controllers;
+using DataGateMonitor.Services.Api.Auth;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
@@ -55,9 +57,10 @@ public class AuthControllerTests
             .Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>()))
             .ReturnsAsync(20);
 
-        return new AuthController(
+        var controller = new AuthController(
             config,
             _appService.Object,
+            Mock.Of<IAppClientTokenRateLimiter>(r => r.TryAcquire(It.IsAny<string?>(), It.IsAny<string?>()) == true),
             _microserviceTokenService.Object,
             _userRegistrationService.Object,
             _userLoginService.Object,
@@ -75,6 +78,13 @@ public class AuthControllerTests
             _adminIdleSessionTracker.Object,
             _adminIdleTimeoutProvider.Object,
             _userSessionService.Object);
+
+        controller.ControllerContext = new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext(),
+        };
+
+        return controller;
     }
 
     [Fact]
@@ -128,6 +138,86 @@ public class AuthControllerTests
         var response = Assert.IsType<ApiResponse<TokenResponse>>(unauthorized.Value);
         Assert.False(response.Success);
         Assert.Equal("Invalid credentials", response.Message);
+    }
+
+    [Fact]
+    public async Task GenerateToken_WhenRateLimited_ReturnsTooManyRequests()
+    {
+        var rateLimiter = new Mock<IAppClientTokenRateLimiter>();
+        rateLimiter.Setup(r => r.TryAcquire(It.IsAny<string?>(), It.IsAny<string?>())).Returns(false);
+
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Jwt:Secret"] = "VeryStrongTestSecretKey1234567890",
+            })
+            .Build();
+
+        _adminIdleTimeoutProvider
+            .Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(20);
+
+        var controller = new AuthController(
+            config,
+            _appService.Object,
+            rateLimiter.Object,
+            _microserviceTokenService.Object,
+            _userRegistrationService.Object,
+            _userLoginService.Object,
+            _userQueryService.Object,
+            _emailConfirmationService.Object,
+            _telegramAccountLinkService.Object,
+            _freeTierComplianceService.Object,
+            _exchange.Object,
+            _tokenService.Object,
+            _adminForgotPasswordService.Object,
+            _telegramLoginCodeService.Object,
+            _tvLoginSessionService.Object,
+            _adminTotpService.Object,
+            _currentUserService.Object,
+            _adminIdleSessionTracker.Object,
+            _adminIdleTimeoutProvider.Object,
+            _userSessionService.Object)
+        {
+            ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() },
+        };
+
+        var result = await controller.GenerateToken(
+            new TokenRequest { ClientId = "client", ClientSecret = "secret" },
+            CancellationToken.None);
+
+        var tooMany = Assert.IsType<ObjectResult>(result.Result);
+        Assert.Equal(StatusCodes.Status429TooManyRequests, tooMany.StatusCode);
+        var response = Assert.IsType<ApiResponse<TokenResponse>>(tooMany.Value);
+        Assert.False(response.Success);
+        Assert.Equal(AppClientTokenRateLimiter.RateLimitMessage, response.Message);
+        _appService.Verify(
+            s => s.GetApplicationByClientIdAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task GenerateToken_WhenCredentialsValid_ReturnsToken()
+    {
+        _appService
+            .Setup(s => s.GetApplicationByClientIdAsync("client", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ClientApplication
+            {
+                ClientId = "client",
+                ClientSecret = "secret",
+                IsRevoked = false,
+                IsSystem = false,
+            });
+
+        var controller = CreateController();
+        var result = await controller.GenerateToken(
+            new TokenRequest { ClientId = "client", ClientSecret = "secret" },
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<TokenResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.False(string.IsNullOrEmpty(response.Data!.Token));
     }
 
     [Fact]

@@ -48,6 +48,7 @@ public static class AuthServiceConfiguration
         services.Configure<GoogleAuthSettings>(configuration.GetSection("GoogleAuth"));
         
         services.AddScoped<IApplicationService, ApplicationService>();
+        services.AddSingleton<IAppClientTokenRateLimiter, AppClientTokenRateLimiter>();
         services.AddScoped<IGoogleTokenValidator, GoogleTokenValidator>();
         
         services.AddScoped<IUserQuotaPlanService, UserQuotaPlanService>();

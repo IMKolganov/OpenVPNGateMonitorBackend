@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using DataGateMonitor.Controllers;
+using DataGateMonitor.Services.Api.Auth;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
@@ -59,6 +60,7 @@ public class AuthControllerSessionAndTotpTests
         var controller = new AuthController(
             config,
             _appService.Object,
+            Mock.Of<IAppClientTokenRateLimiter>(r => r.TryAcquire(It.IsAny<string?>(), It.IsAny<string?>()) == true),
             _microserviceTokenService.Object,
             _userRegistrationService.Object,
             _userLoginService.Object,

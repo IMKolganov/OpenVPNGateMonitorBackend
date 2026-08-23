@@ -49,6 +49,20 @@ public class ApplicationServiceTests
     }
 
     [Fact]
+    public async Task RegisterApplicationAsync_When_NameBlank_ThrowsArgumentException()
+    {
+        var query = new Mock<IClientApplicationQueryService>();
+        var command = new Mock<ICommandService<ClientApplication, int>>();
+        var sut = new ApplicationService(query.Object, command.Object);
+
+        var ex = await Assert.ThrowsAsync<ArgumentException>(
+            () => sut.RegisterApplicationAsync("  ", CancellationToken.None));
+
+        Assert.Equal("API client name is required.", ex.Message);
+        command.Verify(c => c.Add(It.IsAny<ClientApplication>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
     public async Task GetApplicationByClientIdAsync_Returns_FromQuery()
     {
         var app = new ClientApplication { Id = 2, Name = "X", ClientId = "cid" };

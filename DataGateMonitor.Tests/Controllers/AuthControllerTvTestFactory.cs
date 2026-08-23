@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
+using DataGateMonitor.Services.Api.Auth;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
@@ -37,6 +38,7 @@ internal static class AuthControllerTvTestFactory
         var controller = new AuthController(
             config,
             Mock.Of<IApplicationService>(),
+            Mock.Of<IAppClientTokenRateLimiter>(r => r.TryAcquire(It.IsAny<string?>(), It.IsAny<string?>()) == true),
             Mock.Of<IMicroserviceTokenService>(),
             Mock.Of<IUserRegistrationService>(),
             Mock.Of<IUserLoginService>(),

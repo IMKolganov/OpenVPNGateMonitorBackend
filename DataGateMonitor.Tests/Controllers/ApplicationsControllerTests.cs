@@ -201,6 +201,23 @@ namespace DataGateMonitor.Tests.Controllers
         }
 
         [Fact]
+        public async Task RegisterApplication_WhenEmptyName_ReturnsBadRequest()
+        {
+            var request = new RegisterApplicationRequest { Name = "  " };
+
+            appServiceMock
+                .Setup(s => s.RegisterApplicationAsync(request.Name, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new ArgumentException("API client name is required."));
+
+            var result = await controller.RegisterApplication(request, CancellationToken.None);
+
+            var bad = Assert.IsType<BadRequestObjectResult>(result.Result);
+            var response = Assert.IsType<ApiResponse<RegisterApplicationResponse>>(bad.Value);
+            Assert.False(response.Success);
+            Assert.Equal("API client name is required.", response.Message);
+        }
+
+        [Fact]
         public async Task RegisterApplication_WhenDuplicateName_ReturnsConflict()
         {
             var request = new RegisterApplicationRequest { Name = "TestApp" };

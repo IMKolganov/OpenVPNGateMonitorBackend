@@ -2,9 +2,11 @@ using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
+using DataGateMonitor.Services.Api.Auth;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
@@ -27,6 +29,7 @@ namespace DataGateMonitor.Controllers;
 public class AuthController(
     IConfiguration config,
     IApplicationService appService,
+    IAppClientTokenRateLimiter appClientTokenRateLimiter,
     IMicroserviceTokenService microserviceTokenService,
     IUserRegistrationService userRegistrationService,
     IUserLoginService userLoginService,
@@ -68,10 +71,19 @@ public class AuthController(
         return NoContent();
     }
 
+    [AllowAnonymous]
     [HttpPost("token")]
     public async Task<ActionResult<ApiResponse<TokenResponse>>> GenerateToken([FromBody] TokenRequest request,
         CancellationToken cancellationToken)
     {
+        var clientIp = HttpContext.Connection.RemoteIpAddress?.ToString();
+        if (!appClientTokenRateLimiter.TryAcquire(clientIp, request.ClientId))
+        {
+            return StatusCode(
+                StatusCodes.Status429TooManyRequests,
+                ApiResponse<TokenResponse>.ErrorResponse(AppClientTokenRateLimiter.RateLimitMessage));
+        }
+
         var app = await appService.GetApplicationByClientIdAsync(request.ClientId, cancellationToken);
         if (app == null || app.IsRevoked)
         {
@@ -80,7 +92,7 @@ public class AuthController(
 
         var isValid = app.IsSystem
             ? BCrypt.Net.BCrypt.Verify(request.ClientSecret, app.ClientSecret)
-            : app.ClientSecret == request.ClientSecret;
+            : FixedTimeEqualsUtf8(app.ClientSecret, request.ClientSecret);
 
         if (!isValid)
         {
@@ -115,6 +127,13 @@ public class AuthController(
                 Token = tokenHandler.WriteToken(token),
                 Expiration = tokenDescriptor.Expires ?? DateTimeOffset.UtcNow
             }));
+    }
+
+    private static bool FixedTimeEqualsUtf8(string? stored, string? provided)
+    {
+        var storedHash = SHA256.HashData(Encoding.UTF8.GetBytes(stored ?? string.Empty));
+        var providedHash = SHA256.HashData(Encoding.UTF8.GetBytes(provided ?? string.Empty));
+        return CryptographicOperations.FixedTimeEquals(storedHash, providedHash);
     }
 
     [HttpGet("public-key/{pin:int}")]

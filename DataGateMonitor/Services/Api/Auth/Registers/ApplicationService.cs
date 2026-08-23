@@ -11,10 +11,18 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
     ICommandService<ClientApplication, int> clientApplicationCommandService
     ) : IApplicationService
 {
+    public const int MaxClientNameLength = 128;
+
     public async Task<ClientApplication> RegisterApplicationAsync(string name, CancellationToken ct)
     {
-        var existClientApplication = await clientApplicationQueryService.GetByName(name, ct);
-        
+        var normalized = (name ?? string.Empty).Trim();
+        if (string.IsNullOrEmpty(normalized))
+            throw new ArgumentException("API client name is required.");
+        if (normalized.Length > MaxClientNameLength)
+            throw new ArgumentException($"API client name must be at most {MaxClientNameLength} characters.");
+
+        var existClientApplication = await clientApplicationQueryService.GetByName(normalized, ct);
+
         if (existClientApplication != null)
         {
             throw new InvalidOperationException("An API client with this name already exists.");
@@ -22,7 +30,7 @@ public class ApplicationService(IClientApplicationQueryService clientApplication
 
         var clientApplication = new ClientApplication()
         {
-            Name = name
+            Name = normalized
         };
 
         await clientApplicationCommandService.Add(clientApplication, true, ct);
