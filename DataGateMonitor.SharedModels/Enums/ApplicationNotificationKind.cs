@@ -63,4 +63,7 @@ public enum ApplicationNotificationKind
 
     /// <summary>Issued OpenVPN client certificate has expired on the node PKI.</summary>
     OvpnCertExpired = 32,
+
+    /// <summary>VPN node announced itself; admin should approve or deny adding it to the server list.</summary>
+    OpenVpnServerDiscovered = 33,
 }
