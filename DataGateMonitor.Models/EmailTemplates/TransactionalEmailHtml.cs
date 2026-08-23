@@ -13,7 +13,8 @@ public static class TransactionalEmailHtml
     public const string DefaultConfirmationSubject = "Confirm your email — DataGate";
     public const string DefaultAdminPasswordResetSubject = "Administrator password reset — DataGate";
     public const string DefaultFreeTierGraceDisconnectedSubject = "You were disconnected from the VPN — DataGate";
-    public const string DefaultFreeTierChannelSubscribeReminderSubject = "Please subscribe to our Telegram channel — DataGate";
+    public const string DefaultFreeTierChannelSubscribeReminderSubject =
+        "Subscribe to our Telegram channel and link your account — DataGate";
     public const string DefaultConfirmEmailPageUrl = "https://datagateapp.com/confirm-email";
 
     private const string MailVersionLabel = "1.0.3";
@@ -133,18 +134,50 @@ public static class TransactionalEmailHtml
             .Replace("{{PLAN_NAME}}", Escape(planName), StringComparison.Ordinal)
             .Replace("{{REQUIRED_CHANNEL}}", Escape(requiredChannel), StringComparison.Ordinal);
 
-    public static string BuildFreeTierChannelSubscribeReminder(string displayName, string requiredChannel, string channelUrl)
-        => BuildDocument(
+    public static string BuildFreeTierChannelSubscribeReminder(
+        string displayName,
+        string requiredChannel,
+        string channelUrl,
+        string? linkCode = null,
+        string? linkBotUrl = null,
+        int linkCodeTtlMinutes = 15)
+    {
+        var hasLink = !string.IsNullOrWhiteSpace(linkCode) && !string.IsNullOrWhiteSpace(linkBotUrl);
+        if (hasLink)
+        {
+            var code = linkCode!.Trim().ToUpperInvariant();
+            var ttl = linkCodeTtlMinutes > 0 ? linkCodeTtlMinutes : 15;
+            return BuildDocument(
+                pageTitle: "DataGate — subscribe and link Telegram",
+                emailTitle: "Subscribe to our channel and link Telegram",
+                emailTagline: "Free/Default VPN needs a Telegram channel subscription or a linked Google/password ↔ Telegram account.",
+                includeDownloadButton: false,
+                emailLead: string.IsNullOrWhiteSpace(displayName) ? "Hello," : $"Hello {Escape(displayName)},",
+                bodyParagraphs:
+                [
+                    "To keep using Free/Default VPN access, please subscribe to our official Telegram channel and link your Google (or password) account with Telegram.",
+                    $"Channel: <strong>{Escape(requiredChannel)}</strong><br/><a href=\"{Escape(channelUrl)}\" target=\"_blank\" rel=\"noopener noreferrer\">{Escape(channelUrl)}</a>",
+                    $"Open the button below — Telegram opens our bot and applies link code <strong>{Escape(code)}</strong> automatically (valid <strong>{Escape(ttl.ToString(CultureInfo.InvariantCulture))}</strong> min). Or send <code>/link_account {Escape(code)}</code> to the bot.",
+                    "If you need help: <a href=\"https://t.me/KolganovIvan\" target=\"_blank\" rel=\"noopener noreferrer\"><b>@KolganovIvan</b></a>",
+                ],
+                codeLabel: "Link code",
+                codeValueHtml: Escape(code),
+                signoff: "— The DataGate team",
+                actionButtonHref: linkBotUrl,
+                actionButtonLabel: "Open Telegram and link account");
+        }
+
+        return BuildDocument(
             pageTitle: "DataGate — subscribe to Telegram channel",
             emailTitle: "Please subscribe to our channel",
-            emailTagline: "Free/Default VPN access requires an active Telegram channel subscription.",
+            emailTagline: "Free/Default VPN access requires an active Telegram channel subscription or a linked account.",
             includeDownloadButton: false,
             emailLead: string.IsNullOrWhiteSpace(displayName) ? "Hello," : $"Hello {Escape(displayName)},",
             bodyParagraphs:
             [
-                "To keep using Free/Default VPN access, please subscribe to our official Telegram channel.",
+                "To keep using Free/Default VPN access, please subscribe to our official Telegram channel (or link your Google/password account with Telegram in the app).",
                 $"Channel: <strong>{Escape(requiredChannel)}</strong><br/><a href=\"{Escape(channelUrl)}\" target=\"_blank\" rel=\"noopener noreferrer\">{Escape(channelUrl)}</a>",
-                "After you subscribe, reconnect to the VPN if you were disconnected.",
+                "After you subscribe or link accounts, reconnect to the VPN if you were disconnected.",
                 "If you need help: <a href=\"https://t.me/KolganovIvan\" target=\"_blank\" rel=\"noopener noreferrer\"><b>@KolganovIvan</b></a>",
             ],
             codeLabel: "Required channel",
@@ -152,33 +185,84 @@ public static class TransactionalEmailHtml
             signoff: "— The DataGate team",
             actionButtonHref: channelUrl,
             actionButtonLabel: "Open Telegram channel");
+    }
 
     public static string BuildFreeTierChannelSubscribeReminderWithPlaceholders()
         => BuildDocument(
-            pageTitle: "DataGate — subscribe to Telegram channel",
-            emailTitle: "Please subscribe to our channel",
-            emailTagline: "Free/Default VPN access requires an active Telegram channel subscription.",
+            pageTitle: "DataGate — subscribe and link Telegram",
+            emailTitle: "Subscribe to our channel and link Telegram",
+            emailTagline: "Free/Default VPN needs a Telegram channel subscription or a linked Google/password ↔ Telegram account.",
             includeDownloadButton: false,
             emailLead: "Hello {{DISPLAY_NAME}},",
             bodyParagraphs:
             [
-                "To keep using Free/Default VPN access, please subscribe to our official Telegram channel.",
+                "To keep using Free/Default VPN access, please subscribe to our official Telegram channel and link your Google (or password) account with Telegram.",
                 "Channel: <strong>{{REQUIRED_CHANNEL}}</strong><br/><a href=\"{{CHANNEL_URL}}\" target=\"_blank\" rel=\"noopener noreferrer\">{{CHANNEL_URL}}</a>",
-                "After you subscribe, reconnect to the VPN if you were disconnected.",
+                "<!--BEGIN_LINK_ACCOUNT-->Open the button below — Telegram opens our bot and applies link code <strong>{{LINK_CODE}}</strong> automatically (valid <strong>{{LINK_TTL_MINUTES}}</strong> min). Or send <code>/link_account {{LINK_CODE}}</code> to the bot.<!--END_LINK_ACCOUNT-->",
                 "If you need help: <a href=\"https://t.me/KolganovIvan\" target=\"_blank\" rel=\"noopener noreferrer\"><b>@KolganovIvan</b></a>",
             ],
-            codeLabel: "Required channel",
-            codeValueHtml: "{{REQUIRED_CHANNEL}}",
+            codeLabel: "{{CODE_LABEL}}",
+            codeValueHtml: "{{CODE_VALUE}}",
             signoff: "— The DataGate team",
-            actionButtonHref: "{{CHANNEL_URL}}",
-            actionButtonLabel: "Open Telegram channel");
+            actionButtonHref: "{{ACTION_URL}}",
+            actionButtonLabel: "{{ACTION_LABEL}}");
 
     public static string ApplyFreeTierChannelSubscribeReminderPlaceholders(
-        string bodyHtml, string displayName, string requiredChannel, string channelUrl)
-        => bodyHtml
+        string bodyHtml,
+        string displayName,
+        string requiredChannel,
+        string channelUrl,
+        string? linkCode = null,
+        string? linkBotUrl = null,
+        int linkCodeTtlMinutes = 15)
+    {
+        var hasLink = !string.IsNullOrWhiteSpace(linkCode) && !string.IsNullOrWhiteSpace(linkBotUrl);
+        var html = bodyHtml
             .Replace("{{DISPLAY_NAME}}", Escape(displayName), StringComparison.Ordinal)
             .Replace("{{REQUIRED_CHANNEL}}", Escape(requiredChannel), StringComparison.Ordinal)
             .Replace("{{CHANNEL_URL}}", Escape(channelUrl), StringComparison.Ordinal);
+
+        if (hasLink)
+        {
+            var code = linkCode!.Trim().ToUpperInvariant();
+            var ttl = linkCodeTtlMinutes > 0 ? linkCodeTtlMinutes : 15;
+            html = html
+                .Replace("<!--BEGIN_LINK_ACCOUNT-->", string.Empty, StringComparison.Ordinal)
+                .Replace("<!--END_LINK_ACCOUNT-->", string.Empty, StringComparison.Ordinal)
+                .Replace("{{LINK_CODE}}", Escape(code), StringComparison.Ordinal)
+                .Replace("{{LINK_TTL_MINUTES}}", Escape(ttl.ToString(CultureInfo.InvariantCulture)), StringComparison.Ordinal)
+                .Replace("{{CODE_LABEL}}", "Link code", StringComparison.Ordinal)
+                .Replace("{{CODE_VALUE}}", Escape(code), StringComparison.Ordinal)
+                .Replace("{{ACTION_URL}}", Escape(linkBotUrl), StringComparison.Ordinal)
+                .Replace("{{ACTION_LABEL}}", "Open Telegram and link account", StringComparison.Ordinal);
+        }
+        else
+        {
+            html = RemoveMarkedBlock(html, "<!--BEGIN_LINK_ACCOUNT-->", "<!--END_LINK_ACCOUNT-->");
+            html = html
+                .Replace("{{LINK_CODE}}", string.Empty, StringComparison.Ordinal)
+                .Replace("{{LINK_TTL_MINUTES}}", string.Empty, StringComparison.Ordinal)
+                .Replace("{{CODE_LABEL}}", "Required channel", StringComparison.Ordinal)
+                .Replace("{{CODE_VALUE}}", Escape(requiredChannel), StringComparison.Ordinal)
+                .Replace("{{ACTION_URL}}", Escape(channelUrl), StringComparison.Ordinal)
+                .Replace("{{ACTION_LABEL}}", "Open Telegram channel", StringComparison.Ordinal);
+        }
+
+        return html;
+    }
+
+    private static string RemoveMarkedBlock(string html, string beginMarker, string endMarker)
+    {
+        var start = html.IndexOf(beginMarker, StringComparison.Ordinal);
+        if (start < 0)
+            return html;
+
+        var end = html.IndexOf(endMarker, start, StringComparison.Ordinal);
+        if (end < 0)
+            return html;
+
+        return html.Remove(start, end + endMarker.Length - start);
+    }
 
     public static string ApplyConfirmationPlaceholders(string bodyHtml, string code, int ttlMinutes)
     {

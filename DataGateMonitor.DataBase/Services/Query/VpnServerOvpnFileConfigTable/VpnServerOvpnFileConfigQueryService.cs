@@ -16,7 +16,20 @@ public class VpnServerOvpnFileConfigQueryService(
         CancellationToken ct)
         => q.Query()
             .FirstOrDefaultAsync(x => x.VpnServerId == vpnServerId, ct);
-    
+
+    public async Task<Dictionary<int, string>> GetConfigTemplatesByVpnServerIds(
+        IReadOnlyCollection<int> vpnServerIds,
+        CancellationToken ct)
+    {
+        if (vpnServerIds.Count == 0)
+            return [];
+
+        return await q.Query()
+            .Where(x => vpnServerIds.Contains(x.VpnServerId))
+            .Select(x => new { x.VpnServerId, x.ConfigTemplate })
+            .ToDictionaryAsync(x => x.VpnServerId, x => x.ConfigTemplate, ct);
+    }
+
     public Task<bool> AnyByVpnServerId(int vpnServerId, CancellationToken ct)
         => q.Any(x => x.VpnServerId == vpnServerId, ct: ct);
     public Task<IPagedResult<VpnServerOvpnFileConfig>> GetPage(int page, int pageSize, CancellationToken ct)

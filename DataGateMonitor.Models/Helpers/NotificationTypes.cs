@@ -20,6 +20,8 @@ public static class NotificationTypes
     public const string OvpnCertExpiryWarning = "ovpn.cert.expiry.warning";
     public const string OvpnCertExpired       = "ovpn.cert.expired";
 
+    public const string ServerDiscovered = "server.discovered";
+
     public const string PiHoleCollectorUnhealthy = "pihole.collector.unhealthy";
     public const string PiHoleCollectorRecovered = "pihole.collector.recovered";
 

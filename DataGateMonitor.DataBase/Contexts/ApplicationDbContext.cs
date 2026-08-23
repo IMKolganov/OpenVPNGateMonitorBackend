@@ -57,6 +57,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<QuotaPlanAllowedServer> QuotaPlanAllowedServers { get; set; } = null!;
     public DbSet<Tag> Tags { get; set; } = null!;
     public DbSet<VpnServerTag> VpnServerTags { get; set; } = null!;
+    public DbSet<VpnServerGroup> VpnServerGroups { get; set; } = null!;
     public DbSet<VpnServerConflog> VpnServerConflogs { get; set; } = null!;
     public DbSet<SentEmailLog> SentEmailLogs { get; set; } = null!;
     public DbSet<EmailBroadcastTemplate> EmailBroadcastTemplates { get; set; } = null!;
@@ -64,6 +65,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<WindowsCrashReport> WindowsCrashReports { get; set; } = null!;
     public DbSet<FreeTierDisconnectLog> FreeTierDisconnectLogs { get; set; } = null!;
     public DbSet<TvLoginSession> TvLoginSessions { get; set; } = null!;
+    public DbSet<VpnServerDiscovery> VpnServerDiscoveries { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -102,6 +104,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new QuotaPlanAllowedServerConfiguration());
         modelBuilder.ApplyConfiguration(new TagConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerTagConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerGroupConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerConflogConfiguration());
         modelBuilder.ApplyConfiguration(new SentEmailLogConfiguration());
         modelBuilder.ApplyConfiguration(new EmailBroadcastTemplateConfiguration());
@@ -114,6 +117,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new UserPasswordHistoryConfiguration());
         modelBuilder.ApplyConfiguration(new FreeTierDisconnectLogConfiguration());
         modelBuilder.ApplyConfiguration(new TvLoginSessionConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerDiscoveryConfiguration());
     }
     
     private void UpdateTimestamps()

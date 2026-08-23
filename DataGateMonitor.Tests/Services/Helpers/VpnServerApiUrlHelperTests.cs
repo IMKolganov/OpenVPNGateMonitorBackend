@@ -122,4 +122,24 @@ public class VpnServerApiUrlHelperTests
         var result = VpnServerApiUrlHelper.ResolveReportedRemoteIp(longIp, null, null);
         Assert.Equal(255, result.Length);
     }
+
+    [Theory]
+    [InlineData("https://xs1-hel.datagateapp.com", "xs1-hel.datagateapp.com")]
+    [InlineData("https://xs1-hel.datagateapp.com:9443/", "xs1-hel.datagateapp.com")]
+    [InlineData("xs1-hel.datagateapp.com:443", "xs1-hel.datagateapp.com")]
+    public void SanitizeExportEndpointHost_StripsSchemeAndPort(string input, string expected)
+    {
+        Assert.Equal(expected, VpnServerApiUrlHelper.SanitizeExportEndpointHost(input));
+    }
+
+    [Fact]
+    public void ResolveReportedRemoteIp_IgnoresMistakenHttpsConfig_UsesApiUrlHost()
+    {
+        var result = VpnServerApiUrlHelper.ResolveReportedRemoteIp(
+            nodePublicIp: null,
+            configVpnServerIp: "https://xs1-hel.datagateapp.com",
+            apiUrl: "https://xs1-hel.datagateapp.com:9443/");
+
+        Assert.Equal("xs1-hel.datagateapp.com", result);
+    }
 }

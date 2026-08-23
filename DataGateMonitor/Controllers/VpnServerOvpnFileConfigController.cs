@@ -34,6 +34,13 @@ public class VpnServerOvpnFileConfigController(
         if (request.VpnServerId <= 0)
             return BadRequest(ApiResponse<OvpnFileConfigResponse>.ErrorResponse("VpnServerId must be greater than 0."));
         if (string.IsNullOrWhiteSpace(request.VpnServerIp))
+        {
+            var resolved = await openVpnServerOvpnFileConfigService.ResolveXrayExportEndpointHostAsync(
+                request.VpnServerId, ct);
+            if (!string.IsNullOrWhiteSpace(resolved))
+                request.VpnServerIp = resolved;
+        }
+        if (string.IsNullOrWhiteSpace(request.VpnServerIp))
             return BadRequest(ApiResponse<OvpnFileConfigResponse>.ErrorResponse("VpnServerIp is required."));
 
         var config = await openVpnServerOvpnFileConfigService

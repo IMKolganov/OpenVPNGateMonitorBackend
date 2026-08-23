@@ -11,6 +11,9 @@ public static class PiHoleHealthServiceConfiguration
         services.AddScoped<IPiHoleHealthCheckRunner, PiHoleHealthCheckRunner>();
 
         if (databaseRuntime.IsConnectionConfigured)
+        {
             services.AddHostedService<PiHoleHealthBackgroundService>();
+            // Xray Pi-hole collection runs on the Xray node (like OpenVPN), not in the dashboard.
+        }
     }
 }

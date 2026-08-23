@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
@@ -21,22 +22,24 @@ public class VpnServerOvpnFileConfigServiceTests
         Mock<ILogger<VpnServerOvpnFileConfigService>> log,
         Mock<IVpnServerOvpnFileConfigQueryService> q,
         Mock<ICommandService<VpnServerOvpnFileConfig, int>> cmd,
+        Mock<IVpnServerQueryService> serverQ,
         Mock<IMicroserviceInfoService> microserviceInfo)
         CreateService(TimeSpan? openVpnAutoDetectTimeout = null)
     {
         var logger = new Mock<ILogger<VpnServerOvpnFileConfigService>>();
         var q = new Mock<IVpnServerOvpnFileConfigQueryService>(MockBehavior.Strict);
         var cmd = new Mock<ICommandService<VpnServerOvpnFileConfig, int>>(MockBehavior.Strict);
+        var serverQ = new Mock<IVpnServerQueryService>(MockBehavior.Loose);
         var microserviceInfo = new Mock<IMicroserviceInfoService>(MockBehavior.Loose);
         var svc = new VpnServerOvpnFileConfigService(
-            logger.Object, q.Object, cmd.Object, microserviceInfo.Object, openVpnAutoDetectTimeout);
-        return (svc, logger, q, cmd, microserviceInfo);
+            logger.Object, q.Object, cmd.Object, serverQ.Object, microserviceInfo.Object, openVpnAutoDetectTimeout);
+        return (svc, logger, q, cmd, serverQ, microserviceInfo);
     }
 
     [Fact]
     public async Task GetByServerId_Returns_Entity_When_Found()
     {
-        var (svc, _, q, _, _) = CreateService();
+        var (svc, _, q, _, serverQ, _) = CreateService();
         var entity = new VpnServerOvpnFileConfig { Id = 1, VpnServerId = 77, VpnServerIp = "1.2.3.4", VpnServerPort = 1194 };
         q.Setup(x => x.GetByVpnServerIdId(77, It.IsAny<CancellationToken>()))
             .ReturnsAsync(entity);
@@ -48,9 +51,44 @@ public class VpnServerOvpnFileConfigServiceTests
     }
 
     [Fact]
+    public async Task GetByServerId_Fills_Xray_Endpoint_From_ApiUrl_When_Config_Ip_Empty()
+    {
+        var (svc, _, q, _, serverQ, microserviceInfo) = CreateService();
+        const int serverId = 88;
+        var entity = new VpnServerOvpnFileConfig
+        {
+            Id = 2,
+            VpnServerId = serverId,
+            VpnServerIp = "",
+            VpnServerPort = 443,
+            ConfigTemplate = "{}"
+        };
+        q.Setup(x => x.GetByVpnServerIdId(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(entity);
+        serverQ.Setup(s => s.GetById(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnServer
+            {
+                Id = serverId,
+                ServerType = VpnServerType.Xray,
+                ApiUrl = "https://xs1-hel.datagateapp.com:9443/"
+            });
+        microserviceInfo.Setup(m => m.GetInfoAsync(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
+            {
+                ServerType = VpnServerType.Xray,
+                Xray = new DataGateMonitor.SharedModels.DataGateXRayManager.Info.RootXrayInfoResponse { PublicIp = "" }
+            });
+
+        var result = await svc.GetVpnServerOvpnFileConfigByServerId(serverId, CancellationToken.None);
+
+        Assert.Equal("xs1-hel.datagateapp.com", result.VpnServerIp);
+        q.VerifyAll();
+    }
+
+    [Fact]
     public async Task GetByServerId_Throws_When_NotFound()
     {
-        var (svc, _, q, _, _) = CreateService();
+        var (svc, _, q, _, _, _) = CreateService();
         q.Setup(x => x.GetByVpnServerIdId(42, It.IsAny<CancellationToken>()))
             .ReturnsAsync((VpnServerOvpnFileConfig?)null);
 
@@ -64,7 +102,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_Updates_Existing_Config()
     {
-        var (svc, _, q, cmd, _) = CreateService();
+        var (svc, _, q, cmd, _, _) = CreateService();
         var nowBefore = DateTimeOffset.UtcNow;
         var existing = new VpnServerOvpnFileConfig
         {
@@ -108,7 +146,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_Creates_New_When_Not_Exists()
     {
-        var (svc, _, q, cmd, _) = CreateService();
+        var (svc, _, q, cmd, _, _) = CreateService();
         var serverId = 200;
 
         // Will capture the entity passed to AddAsync
@@ -151,7 +189,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_Throws_When_ReFetch_Returns_Null()
     {
-        var (svc, _, q, cmd, _) = CreateService();
+        var (svc, _, q, cmd, _, _) = CreateService();
         var serverId = 300;
 
         q.SetupSequence(x => x.GetByVpnServerIdId(serverId, It.IsAny<CancellationToken>()))
@@ -180,7 +218,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_AutoDetect_Applies_OpenVpn_Port_Proto_And_PublicIp_When_Ip_Empty()
     {
-        var (svc, _, q, cmd, microserviceInfo) = CreateService();
+        var (svc, _, q, cmd, _, microserviceInfo) = CreateService();
         var serverId = 400;
         var existing = new VpnServerOvpnFileConfig
         {
@@ -234,7 +272,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_AutoDetect_Applies_OpenVpn_Port_And_Proto_From_MicroserviceInfo()
     {
-        var (svc, _, q, cmd, microserviceInfo) = CreateService();
+        var (svc, _, q, cmd, _, microserviceInfo) = CreateService();
         var serverId = 401;
         var existing = new VpnServerOvpnFileConfig
         {
@@ -286,9 +324,69 @@ public class VpnServerOvpnFileConfigServiceTests
     }
 
     [Fact]
+    public async Task AddOrUpdate_AutoDetect_Applies_OpenVpn_Cipher_Auth_Tls_And_DataCiphers_From_MicroserviceInfo()
+    {
+        var (svc, _, q, cmd, _, microserviceInfo) = CreateService();
+        var serverId = 402;
+        var existing = new VpnServerOvpnFileConfig
+        {
+            Id = 11,
+            VpnServerId = serverId,
+            VpnServerIp = "10.0.0.1",
+            VpnServerPort = 1194,
+            ConfigTemplate = "client\nproto udp\nremote-cert-tls server\ntls-version-min 1.0\ncipher AES-256-CBC\nauth SHA1\nverb 1\nremote server 1194"
+        };
+
+        microserviceInfo.Setup(m => m.GetInfoAsync(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new VpnMicroserviceDiagnosticsDto
+            {
+                ServerType = VpnServerType.OpenVpn,
+                OpenVpn = new RootOpenVpnInfoResponse
+                {
+                    Config = new ConfigInfoResponse
+                    {
+                        Port = "1194",
+                        Proto = "udp",
+                        Cipher = "AES-128-GCM",
+                        DataCiphers = "AES-128-GCM:AES-256-GCM:CHACHA20-POLY1305",
+                        Auth = "SHA256",
+                        TlsVersionMin = "1.2",
+                        ClientVerb = "3"
+                    }
+                }
+            });
+        q.SetupSequence(x => x.GetByVpnServerIdId(serverId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(existing)
+            .ReturnsAsync(existing);
+        cmd.Setup(c => c.Update(existing, true, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(1);
+
+        var incoming = new VpnServerOvpnFileConfig
+        {
+            VpnServerId = serverId,
+            VpnServerIp = "10.0.0.1",
+            VpnServerPort = 1194,
+            ConfigTemplate = "client\nproto udp\nremote-cert-tls server\ntls-version-min 1.0\ncipher AES-256-CBC\nauth SHA1\nverb 1\nremote server 1194"
+        };
+
+        var result = await svc.AddOrUpdateVpnServerOvpnFileConfigByServerId(incoming, true, CancellationToken.None);
+
+        Assert.Same(existing, result);
+        Assert.Contains("cipher AES-128-GCM", existing.ConfigTemplate);
+        Assert.DoesNotContain("AES-256-CBC", existing.ConfigTemplate);
+        Assert.Contains("data-ciphers AES-128-GCM:AES-256-GCM:CHACHA20-POLY1305", existing.ConfigTemplate);
+        Assert.Contains("auth SHA256", existing.ConfigTemplate);
+        Assert.Contains("tls-version-min 1.2", existing.ConfigTemplate);
+        Assert.Contains("verb 3", existing.ConfigTemplate);
+        microserviceInfo.Verify(m => m.GetInfoAsync(serverId, It.IsAny<CancellationToken>()), Times.Once);
+        q.VerifyAll();
+        cmd.VerifyAll();
+    }
+
+    [Fact]
     public async Task AddOrUpdate_AutoDetect_Keeps_Provided_Settings_When_InfoService_Throws()
     {
-        var (svc, _, q, cmd, microserviceInfo) = CreateService();
+        var (svc, _, q, cmd, _, microserviceInfo) = CreateService();
         var serverId = 500;
         var existing = new VpnServerOvpnFileConfig
         {
@@ -328,7 +426,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_Does_Not_Call_InfoService_When_AutoDetect_Disabled()
     {
-        var (svc, _, q, cmd, microserviceInfo) = CreateService();
+        var (svc, _, q, cmd, _, microserviceInfo) = CreateService();
         var serverId = 600;
         var existing = new VpnServerOvpnFileConfig
         {
@@ -363,7 +461,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_AutoDetect_TimesOut_And_Still_Updates_Config()
     {
-        var (svc, _, q, cmd, microserviceInfo) = CreateService(TimeSpan.FromMilliseconds(50));
+        var (svc, _, q, cmd, _, microserviceInfo) = CreateService(TimeSpan.FromMilliseconds(50));
         var serverId = 700;
         var existing = new VpnServerOvpnFileConfig
         {
@@ -413,7 +511,7 @@ public class VpnServerOvpnFileConfigServiceTests
     [Fact]
     public async Task AddOrUpdate_AutoDetect_Propagates_Caller_Cancellation()
     {
-        var (svc, _, q, cmd, microserviceInfo) = CreateService();
+        var (svc, _, q, cmd, _, microserviceInfo) = CreateService();
         var serverId = 800;
         using var cts = new CancellationTokenSource();
         cts.Cancel();

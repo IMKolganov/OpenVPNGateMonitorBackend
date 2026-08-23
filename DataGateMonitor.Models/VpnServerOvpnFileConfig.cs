@@ -25,7 +25,8 @@ resolv-retry infinite
 nobind
 remote-cert-tls server
 tls-version-min 1.2
-cipher AES-256-CBC
+cipher AES-128-GCM
+data-ciphers AES-128-GCM:CHACHA20-POLY1305
 auth SHA256
 auth-nocache
 verb 3
@@ -55,7 +56,8 @@ resolv-retry infinite
 nobind
 remote-cert-tls server
 tls-version-min 1.2
-cipher AES-256-CBC
+cipher AES-128-GCM
+data-ciphers AES-128-GCM:CHACHA20-POLY1305
 auth SHA256
 auth-nocache
 verb 3

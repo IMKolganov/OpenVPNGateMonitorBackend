@@ -6,6 +6,7 @@ using Moq;
 using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
@@ -43,6 +44,7 @@ public class VpnServersControllerAddUpdateExoticTests
     {
         _controller = new VpnServersController(
             _vpnDataService.Object,
+            Mock.Of<IVpnServerDiscoveryService>(),
             _overviewQuery.Object,
             _serverQuery.Object,
             _tagQuery.Object,
@@ -54,7 +56,8 @@ public class VpnServersControllerAddUpdateExoticTests
             _statusCacheGeneration.Object,
             _statusStreamLogStore.Object,
             _postSetup.Object,
-            Mock.Of<IConnectedClientsCounterStore>());
+            Mock.Of<IConnectedClientsCounterStore>(),
+            Mock.Of<IVpnServerOvpnFileConfigQueryService>());
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

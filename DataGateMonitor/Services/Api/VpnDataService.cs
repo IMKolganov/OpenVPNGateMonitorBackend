@@ -110,6 +110,15 @@ public class VpnDataService(
                     ct);
             }
 
+            // UpdateServerRequest does not carry list layout fields — preserve them.
+            server.VpnServerGroupId = previous.VpnServerGroupId;
+            server.SortOrder = previous.SortOrder;
+            server.CreateDate = previous.CreateDate;
+            server.IsDeleted = previous.IsDeleted;
+            server.DcoIsEnabled = previous.DcoIsEnabled;
+            server.XrayClientsPolledAt = previous.XrayClientsPolledAt;
+            server.XrayClientsPollError = previous.XrayClientsPollError;
+
             // Update this server
             server.LastUpdate = now;
             await openVpnServerCommandService.Update(server, saveChanges: true, ct);
@@ -169,8 +178,18 @@ public class VpnDataService(
         };
     }
 
+    /// <summary>Keep in sync with frontend <c>XRAY_EXPORT_TEMPLATE</c> and xray ClientLinkServiceDnsPlaceholderTests.</summary>
     private const string DefaultXrayClientLinkTemplate =
-        "{{vless_uri}}\r\n# {{friendly_name}}\r\nUUID: {{uuid}}\r\nEndpoint: {{server_ip}}:{{server_port}}\r\n";
+        """
+        {
+          "vless": "{{vless_uri}}",
+          "dnsServers": {{dns_servers_json}},
+          "dnsIdentityEnabled": {{dns_identity_enabled}},
+          "friendlyName": "{{friendly_name}}",
+          "uuid": "{{uuid}}",
+          "endpoint": "{{server_ip}}:{{server_port}}"
+        }
+        """;
 
     private const string DefaultOpenVpnClientConfigTemplate =
         """
@@ -183,7 +202,8 @@ public class VpnDataService(
         nobind
         remote-cert-tls server
         tls-version-min 1.2
-        cipher AES-256-CBC
+        cipher AES-128-GCM
+        data-ciphers AES-128-GCM:CHACHA20-POLY1305
         auth SHA256
         auth-nocache
         verb 3
@@ -240,11 +260,13 @@ public class VpnDataService(
         if (await openVpnServerOvpnFileConfigQueryService.AnyByVpnServerId(server.Id, ct))
             return false;
 
-        var ip = await TryGetNodePublicIpAsync(server.Id, VpnServerType.Xray, ct) ?? string.Empty;
+        var ip = await TryGetNodePublicIpAsync(server.Id, VpnServerType.Xray, ct);
+        if (string.IsNullOrWhiteSpace(ip))
+            ip = VpnServerApiUrlHelper.TryHostFromApiUrl(server.ApiUrl);
         await openVpnServerOvpnFileConfigCommandService.Add(new VpnServerOvpnFileConfig
         {
             VpnServerId = server.Id,
-            VpnServerIp = ip,
+            VpnServerIp = ip?.Trim() ?? string.Empty,
             VpnServerPort = 443,
             ConfigTemplate = DefaultXrayClientLinkTemplate,
         }, true, ct);

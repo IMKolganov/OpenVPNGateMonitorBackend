@@ -1,32 +1,144 @@
-using DataGateMonitor.Configurations;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Moq;
+using DataGateMonitor.Configurations;
+using DataGateMonitor.Models;
+using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
+using Xunit;
 
 namespace DataGateMonitor.Tests.Configurations;
 
-public sealed class JwtBearerEventHandlersTests
+public class JwtBearerEventHandlersTests
 {
-    [Fact]
-    public void IsExpectedClientTokenFailure_ReturnsTrue_ForExpiredToken() =>
-        Assert.True(JwtBearerEventHandlers.IsExpectedClientTokenFailure(new SecurityTokenExpiredException("expired")));
-
-    [Fact]
-    public void IsExpectedClientTokenFailure_ReturnsTrue_ForNotYetValidToken() =>
-        Assert.True(JwtBearerEventHandlers.IsExpectedClientTokenFailure(new SecurityTokenNotYetValidException("nbf")));
-
-    [Fact]
-    public void IsExpectedClientTokenFailure_ReturnsTrue_WhenWrappedInInnerException()
+    private static TokenValidatedContext CreateContext(
+        ClaimsPrincipal principal,
+        IApplicationService? appService)
     {
-        var inner = new SecurityTokenExpiredException("IDX10223: Lifetime validation failed.");
-        var outer = new InvalidOperationException("validate failed", inner);
+        var services = new ServiceCollection();
+        if (appService != null)
+            services.AddSingleton(appService);
 
-        Assert.True(JwtBearerEventHandlers.IsExpectedClientTokenFailure(outer));
+        var provider = services.BuildServiceProvider();
+        var http = new DefaultHttpContext { RequestServices = provider };
+
+        var scheme = new AuthenticationScheme(
+            JwtBearerDefaults.AuthenticationScheme,
+            JwtBearerDefaults.AuthenticationScheme,
+            typeof(JwtBearerHandler));
+
+        return new TokenValidatedContext(http, scheme, new JwtBearerOptions())
+        {
+            Principal = principal,
+        };
+    }
+
+    private static ClaimsPrincipal AppPrincipal(string? clientId)
+    {
+        var claims = new List<Claim> { new(ClaimTypes.Role, "App") };
+        if (clientId != null)
+            claims.Add(new Claim(ClaimTypes.Name, clientId));
+        return new ClaimsPrincipal(new ClaimsIdentity(claims, "Bearer"));
+    }
+
+    private static ClaimsPrincipal AdminPrincipal()
+        => new(new ClaimsIdentity(
+        [
+            new Claim(ClaimTypes.Role, "Admin"),
+            new Claim(ClaimTypes.Name, "admin-user"),
+        ], "Bearer"));
+
+    [Fact]
+    public async Task RejectRevokedAppClient_Ignores_NonApp_Roles()
+    {
+        var appService = new Mock<IApplicationService>(MockBehavior.Strict);
+        var context = CreateContext(AdminPrincipal(), appService.Object);
+
+        await JwtBearerEventHandlers.RejectRevokedAppClientAsync(context);
+
+        Assert.Null(context.Result);
+        appService.VerifyNoOtherCalls();
     }
 
     [Fact]
-    public void IsExpectedClientTokenFailure_ReturnsTrue_ForIdx10223Message()
+    public async Task RejectRevokedAppClient_Fails_When_App_Missing_ClientId()
     {
-        var ex = new Exception("IDX10223: Lifetime validation failed. The token is expired.");
+        var appService = new Mock<IApplicationService>(MockBehavior.Strict);
+        var context = CreateContext(AppPrincipal(null), appService.Object);
 
-        Assert.True(JwtBearerEventHandlers.IsExpectedClientTokenFailure(ex));
+        await JwtBearerEventHandlers.RejectRevokedAppClientAsync(context);
+
+        Assert.NotNull(context.Result);
+        Assert.False(context.Result!.Succeeded);
+        Assert.Equal(JwtBearerEventHandlers.AppClientRevokedFailure, context.Result.Failure?.Message);
+        appService.VerifyNoOtherCalls();
+    }
+
+    [Fact]
+    public async Task RejectRevokedAppClient_Fails_When_Client_NotFound()
+    {
+        var appService = new Mock<IApplicationService>();
+        appService
+            .Setup(s => s.GetApplicationByClientIdAsync("cid", It.IsAny<CancellationToken>()))
+            .ReturnsAsync((ClientApplication?)null);
+        var context = CreateContext(AppPrincipal("cid"), appService.Object);
+
+        await JwtBearerEventHandlers.RejectRevokedAppClientAsync(context);
+
+        Assert.NotNull(context.Result);
+        Assert.False(context.Result!.Succeeded);
+    }
+
+    [Fact]
+    public async Task RejectRevokedAppClient_Fails_When_Client_Revoked()
+    {
+        var appService = new Mock<IApplicationService>();
+        appService
+            .Setup(s => s.GetApplicationByClientIdAsync("cid", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ClientApplication { ClientId = "cid", IsRevoked = true });
+        var context = CreateContext(AppPrincipal("cid"), appService.Object);
+
+        await JwtBearerEventHandlers.RejectRevokedAppClientAsync(context);
+
+        Assert.NotNull(context.Result);
+        Assert.False(context.Result!.Succeeded);
+        Assert.Equal(JwtBearerEventHandlers.AppClientRevokedFailure, context.Result.Failure?.Message);
+    }
+
+    [Fact]
+    public async Task RejectRevokedAppClient_Allows_Active_App_Client()
+    {
+        var appService = new Mock<IApplicationService>();
+        appService
+            .Setup(s => s.GetApplicationByClientIdAsync("cid", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ClientApplication { ClientId = "cid", IsRevoked = false });
+        var context = CreateContext(AppPrincipal("cid"), appService.Object);
+
+        await JwtBearerEventHandlers.RejectRevokedAppClientAsync(context);
+
+        Assert.Null(context.Result);
+    }
+
+    [Fact]
+    public async Task RejectRevokedAppClient_Fails_When_AppService_Missing_From_DI()
+    {
+        var context = CreateContext(AppPrincipal("cid"), appService: null);
+
+        await JwtBearerEventHandlers.RejectRevokedAppClientAsync(context);
+
+        Assert.NotNull(context.Result);
+        Assert.False(context.Result!.Succeeded);
+    }
+
+    [Fact]
+    public void IsExpectedClientTokenFailure_Detects_Expired()
+    {
+        Assert.True(JwtBearerEventHandlers.IsExpectedClientTokenFailure(
+            new SecurityTokenExpiredException("expired")));
+        Assert.False(JwtBearerEventHandlers.IsExpectedClientTokenFailure(
+            new InvalidOperationException("boom")));
     }
 }

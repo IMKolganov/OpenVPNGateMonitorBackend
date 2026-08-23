@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using DataGateMonitor.Controllers;
+using DataGateMonitor.Services.Api.Auth;
 using DataGateMonitor.Services.Api.Auth.EmailConfirmation;
 using DataGateMonitor.Services.Api.Auth.ForgotPassword;
 using DataGateMonitor.Services.Api.Auth.Login;
@@ -39,6 +40,7 @@ public class AuthControllerSessionAndTotpTests
     private readonly Mock<IAdminTotpService> _adminTotpService = new();
     private readonly Mock<ICurrentUserService> _currentUserService = new();
     private readonly Mock<IAdminIdleSessionTracker> _adminIdleSessionTracker = new();
+    private readonly Mock<IAdminIdleTimeoutProvider> _adminIdleTimeoutProvider = new();
     private readonly Mock<IUserSessionService> _userSessionService = new();
 
     private AuthController CreateController(HttpContext? httpContext = null)
@@ -51,9 +53,14 @@ public class AuthControllerSessionAndTotpTests
             })
             .Build();
 
+        _adminIdleTimeoutProvider
+            .Setup(p => p.GetMinutesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(20);
+
         var controller = new AuthController(
             config,
             _appService.Object,
+            Mock.Of<IAppClientTokenRateLimiter>(r => r.TryAcquire(It.IsAny<string?>(), It.IsAny<string?>()) == true),
             _microserviceTokenService.Object,
             _userRegistrationService.Object,
             _userLoginService.Object,
@@ -69,6 +76,7 @@ public class AuthControllerSessionAndTotpTests
             _adminTotpService.Object,
             _currentUserService.Object,
             _adminIdleSessionTracker.Object,
+            _adminIdleTimeoutProvider.Object,
             _userSessionService.Object);
 
         if (httpContext != null)

@@ -67,7 +67,12 @@ public sealed class XrayVpnClientSyncService(
 
                 var username = string.IsNullOrWhiteSpace(c.Username) ? commonName : c.Username!;
 
-                var (country, region, city, lat, lon) = await ResolveGeoAsync(c.RemoteAddress, cancellationToken);
+                var proxyRealIp = string.IsNullOrWhiteSpace(c.ProxyRealIp) ? null : c.ProxyRealIp.Trim();
+                var persistProxyEnrichment = proxyRealIp is not null
+                    || !ClientEndpointHost.IsPrivateOrLoopbackEndpoint(c.RemoteAddress);
+                var endpointForGeo = proxyRealIp ?? c.RemoteAddress;
+
+                var (country, region, city, lat, lon) = await ResolveGeoAsync(endpointForGeo, cancellationToken);
 
                 await vpnServerClientUpsertService.UpsertAsync(
                     VpnServerClientUpsertPayload.FromClient(
@@ -78,6 +83,7 @@ public sealed class XrayVpnClientSyncService(
                             SessionId = sessionId,
                             CommonName = commonName,
                             RemoteIp = c.RemoteAddress,
+                            ProxyRealIp = proxyRealIp,
                             LocalIp = UnknownLocalIpPlaceholder,
                             BytesReceived = c.BytesReceived,
                             BytesSent = c.BytesSent,
@@ -91,6 +97,7 @@ public sealed class XrayVpnClientSyncService(
                             ExternalId = externalId,
                             IsConnected = true,
                         },
+                        persistProxyEnrichment: persistProxyEnrichment,
                         isConnected: true),
                     cancellationToken);
 
@@ -136,6 +143,9 @@ public sealed class XrayVpnClientSyncService(
     private async Task<(string? Country, string? Region, string? City, double? Latitude, double? Longitude)>
         ResolveGeoAsync(string remoteAddress, CancellationToken cancellationToken)
     {
+        if (ClientEndpointHost.IsPrivateOrLoopbackEndpoint(remoteAddress))
+            return (null, null, null, null, null);
+
         var host = ClientEndpointHost.TryGetHostForGeoLookup(remoteAddress);
         if (host is null || !ClientEndpointHost.IsNonLoopbackIpOrHost(host))
             return (null, null, null, null, null);

@@ -182,8 +182,8 @@ public class VpnServerService(
                 serverInfo.Version = await openVpnVersionService.GetVersionAsync(openVpnServer, ct);
             }
 
-            // load-stats returns server-level cumulative bytesin/bytesout.
-            // Note: when DCO (Data Channel Offload) is enabled, load-stats may return incorrect values.
+            // Server totals always come from status 3 CLIENT_LIST (kernel-fresh under DCO).
+            // load-stats is not used: with DCO it has no dco_get_peer_stats_multi pull.
             serverInfo.OpenVpnSummaryStats = await openVpnSummaryStatService.GetSummaryStatsAsync(openVpnServer, ct);
         }
         catch (Exception ex)
@@ -201,6 +201,15 @@ public class VpnServerService(
             logger.LogWarning($"VpnServerId: {openVpnServer.Id}. OpenVPN State is null. Cannot proceed.");
             throw new InvalidOperationException(
                 $"VpnServerId: {openVpnServer.Id}. OpenVPN State is null. Cannot proceed.");
+        }
+
+        if (serverInfo.OpenVpnSummaryStats?.DcoEnabled is { } dcoEnabled)
+        {
+            await openVpnServerCommandService.UpdateWhere(
+                s => s.Id == openVpnServer.Id,
+                u => u.SetProperty(x => x.DcoIsEnabled, dcoEnabled)
+                    .SetProperty(x => x.LastUpdate, DateTimeOffset.UtcNow),
+                ct);
         }
 
         var sessionId = VpnSessionIdGenerator.FromCommonNameRemoteConnectedSince(

@@ -15,4 +15,9 @@ public class MonitorServerCertificate
     public string KeyPath { get; set; } = string.Empty;
     public DateTimeOffset ExpiryDate { get; set; }
     public DateTimeOffset? RevokeDate { get; set; }
+
+    /// <summary>
+    /// Xray DNS identity source IP (Pi-hole ClientIp matcher). Null for OpenVPN or when identity is off.
+    /// </summary>
+    public string? IdentityIp { get; set; }
 }

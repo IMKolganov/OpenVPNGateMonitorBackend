@@ -22,9 +22,9 @@
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <!-- Backend consumes this library via NuGet (PackageReference) only. Bump <Version>, publish, then bump PackageReference in consuming projects. -->
-        <Version>1.0.50</Version>
-        <AssemblyVersion>1.0.50.0</AssemblyVersion>
-        <FileVersion>1.0.50.0</FileVersion>
+        <Version>1.0.59</Version>
+        <AssemblyVersion>1.0.59.0</AssemblyVersion>
+        <FileVersion>1.0.59.0</FileVersion>
         <PackageIcon>favicon.png</PackageIcon>
 
         <Deterministic>true</Deterministic>

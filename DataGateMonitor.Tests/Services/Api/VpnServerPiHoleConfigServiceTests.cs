@@ -3,21 +3,22 @@ using DataGateMonitor.DataBase.Repositories;
 using DataGateMonitor.DataBase.Repositories.Queries;
 using DataGateMonitor.DataBase.Services.Command;
 using DataGateMonitor.DataBase.Services.Query;
+using DataGateMonitor.DataBase.Services.Query.VpnDnsQueryLogTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerPiHoleConfigTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api;
+using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServerPiHole.Requests;
+using DataGateMonitor.SharedModels.Enums;
+using DataGateMonitor.Tests.Helpers;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
-using DataGateMonitor.DataBase.Services.Query.VpnDnsQueryLogTable;
-using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
-using DataGateMonitor.Tests.Helpers;
 
 namespace DataGateMonitor.Tests.Services.Api;
 
@@ -47,6 +48,26 @@ public class VpnServerPiHoleConfigServiceTests
         var read = await sut.GetForAdminAsync(harness.ServerId, CancellationToken.None);
         Assert.Equal(45, read.Config.PollIntervalSeconds);
         Assert.Equal("10.51.30.", read.Config.ClientSubnetPrefix);
+    }
+
+    [Fact]
+    public async Task UpsertAsync_NormalizesUndottedClientSubnetPrefix()
+    {
+        await using var harness = await CreateHarnessAsync();
+        var upsert = await harness.Sut.UpsertAsync(new UpsertVpnServerPiHoleConfigRequest
+        {
+            VpnServerId = harness.ServerId,
+            BaseUrl = "http://pi-hole:8080",
+            AppPassword = PiHoleTestFixtures.AppCredential,
+            PollIntervalSeconds = 60,
+            BatchSize = 200,
+            LookbackSeconds = 120,
+            ClientSubnetPrefix = "10.80.0"
+        }, CancellationToken.None);
+
+        Assert.Equal("10.80.0.", upsert.Config.ClientSubnetPrefix);
+        var read = await harness.Sut.GetForAdminAsync(harness.ServerId, CancellationToken.None);
+        Assert.Equal("10.80.0.", read.Config.ClientSubnetPrefix);
     }
 
     [Fact]
@@ -111,7 +132,13 @@ public class VpnServerPiHoleConfigServiceTests
         Assert.Equal("http://pi-hole:9090", runtime.BaseUrl);
     }
 
-    private static async Task<Harness> CreateHarnessAsync(bool isPiHoleEnabled = true)
+
+
+
+    private static async Task<Harness> CreateHarnessAsync(
+        bool isPiHoleEnabled = true,
+        VpnServerType serverType = VpnServerType.OpenVpn,
+        HttpMessageHandler? httpHandler = null)
     {
         var connection = new SqliteConnection("Data Source=:memory:");
         await connection.OpenAsync();
@@ -134,6 +161,7 @@ public class VpnServerPiHoleConfigServiceTests
             ServerName = "pi-hole-test",
             ApiUrl = "http://localhost",
             IsPiHoleEnabled = isPiHoleEnabled,
+            ServerType = serverType,
             CreateDate = now,
             LastUpdate = now
         };
@@ -157,13 +185,20 @@ public class VpnServerPiHoleConfigServiceTests
         dnsQuery.Setup(x => x.GetServerSummaryAsync(It.IsAny<int>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((0, null));
 
+        var httpClientFactory = new Mock<IHttpClientFactory>();
+        if (httpHandler is not null)
+        {
+            httpClientFactory.Setup(x => x.CreateClient(It.IsAny<string>()))
+                .Returns(() => new HttpClient(httpHandler, disposeHandler: false));
+        }
+
         var sut = new VpnServerPiHoleConfigService(
             vpnServerQuery.Object,
             piHoleConfigQuery,
             dnsQuery.Object,
             piHoleQuery,
             piHoleCommand,
-            new Mock<IHttpClientFactory>().Object,
+            httpClientFactory.Object,
             new Mock<IMicroserviceTokenService>().Object,
             NullLogger<VpnServerPiHoleConfigService>.Instance);
 
@@ -178,6 +213,7 @@ public class VpnServerPiHoleConfigServiceTests
     {
         public int ServerId { get; } = serverId;
         public VpnServerPiHoleConfigService Sut { get; } = sut;
+        public ApplicationDbContext Context => context;
 
         public async ValueTask DisposeAsync()
         {

@@ -34,6 +34,12 @@ public class VpnServerV2Dto
 
 	public List<string> Tags { get; set; } = new List<string>();
 
+	public int? GroupId { get; set; }
+
+	public string? GroupName { get; set; }
+
+	public int SortOrder { get; set; }
+
 	public List<QuotaPlanGroupDto> QuotaPlanGroups { get; set; } = new List<QuotaPlanGroupDto>();
 
 	public bool IsAccessibleForUserQuotaPlan { get; set; }

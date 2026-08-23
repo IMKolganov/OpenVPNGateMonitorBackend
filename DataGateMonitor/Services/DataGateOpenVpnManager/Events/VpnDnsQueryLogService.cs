@@ -1,6 +1,7 @@
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.DataBase.Services.Query;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
+using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.SharedModels.DataGateOpenVpnManager.PiHole.Requests;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,7 @@ public class VpnDnsQueryLogService(
     ICommandService<VpnDnsQueryLog, int> cmd,
     IQueryService<VpnDnsQueryLog, int> query,
     IIssuedOvpnFileQueryService issuedOvpnFileQueryService,
+    IIssuedXrayClientLinkQueryService issuedXrayClientLinkQueryService,
     ILogger<VpnDnsQueryLogService> logger) : IVpnDnsQueryLogService
 {
     public async Task<int> SaveBatchAsync(int vpnServerId, DnsQueryBatchRequest batch, CancellationToken ct)
@@ -28,29 +30,34 @@ public class VpnDnsQueryLogService(
         var now = DateTimeOffset.UtcNow;
         var rows = new List<VpnDnsQueryLog>();
 
-        foreach (var query in batch.Queries)
+        foreach (var queryItem in batch.Queries)
         {
-            if (existingSet.Contains(query.PiHoleQueryId))
+            if (existingSet.Contains(queryItem.PiHoleQueryId))
                 continue;
 
             string? externalId = null;
-            if (!string.IsNullOrWhiteSpace(query.CommonName))
+            if (!string.IsNullOrWhiteSpace(queryItem.CommonName))
             {
                 externalId = await issuedOvpnFileQueryService.GetExternalIdByCommonName(
-                    query.CommonName, vpnServerId, ct);
+                    queryItem.CommonName, vpnServerId, ct);
+                if (string.IsNullOrWhiteSpace(externalId))
+                {
+                    externalId = await issuedXrayClientLinkQueryService.GetExternalIdByCommonName(
+                        queryItem.CommonName, vpnServerId, ct);
+                }
             }
 
             rows.Add(new VpnDnsQueryLog
             {
                 VpnServerId = vpnServerId,
-                PiHoleQueryId = query.PiHoleQueryId,
-                CommonName = query.CommonName,
+                PiHoleQueryId = queryItem.PiHoleQueryId,
+                CommonName = queryItem.CommonName,
                 ExternalId = externalId,
-                ClientIp = query.ClientIp,
-                Domain = query.Domain,
-                QueryType = query.QueryType,
-                Status = query.Status,
-                QueriedAtUtc = query.QueriedAtUtc,
+                ClientIp = queryItem.ClientIp,
+                Domain = queryItem.Domain,
+                QueryType = queryItem.QueryType,
+                Status = queryItem.Status,
+                QueriedAtUtc = queryItem.QueriedAtUtc,
                 CreateDate = now,
                 LastUpdate = now
             });
