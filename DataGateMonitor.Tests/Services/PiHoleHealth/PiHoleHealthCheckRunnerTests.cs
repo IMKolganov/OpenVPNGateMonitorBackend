@@ -1,3 +1,4 @@
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api;
@@ -24,7 +25,7 @@ public class PiHoleHealthCheckRunnerTests
         };
 
         var vpnServers = new Mock<IVpnServerQueryService>();
-        vpnServers.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        vpnServers.Setup(x => x.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<VpnServer> { server });
 
         var piHoleConfig = new Mock<IVpnServerPiHoleConfigService>();
@@ -74,7 +75,7 @@ public class PiHoleHealthCheckRunnerTests
         };
 
         var vpnServers = new Mock<IVpnServerQueryService>();
-        vpnServers.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        vpnServers.Setup(x => x.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new List<VpnServer> { server });
 
         var piHoleConfig = new Mock<IVpnServerPiHoleConfigService>();

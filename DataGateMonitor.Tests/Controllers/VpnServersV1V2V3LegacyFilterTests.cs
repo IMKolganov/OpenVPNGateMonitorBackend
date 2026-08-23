@@ -8,6 +8,7 @@ using DataGateMonitor.Controllers;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerGroupTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
@@ -45,16 +46,21 @@ public class VpnServersV1V2V3LegacyFilterTests
     private readonly Mock<IVpnServerGroupQueryService> _groupQuery = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
     private readonly Mock<IQuotaPlanAllowedServerQueryService> _quotaAllowed = new();
+    private readonly Mock<IUserVpnServerAccessRuleQueryService> _accessRules = new();
     private readonly Mock<IQuotaPlanQueryService> _quotaPlanQuery = new();
     private readonly Mock<IStatusCacheGenerationService> _statusCacheGeneration = new();
 
     public VpnServersV1V2V3LegacyFilterTests()
     {
+        _accessRules
+            .Setup(r => r.GetOverridesByUserId(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UserVpnServerAccessOverrides.None);
+
         _overviewQuery
             .Setup(q => q.GetAllVpnServersWithStatusAsync(
                 It.IsAny<bool>(),
                 It.IsAny<bool>(),
-                It.IsAny<int?>(),
+                It.IsAny<int?>(),It.IsAny<UserVpnServerAccessOverrides?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(CreateInventory);
 
@@ -133,6 +139,7 @@ public class VpnServersV1V2V3LegacyFilterTests
             Mock.Of<IOpenVpnBackgroundService>(),
             Mock.Of<IMicroserviceInfoService>(),
             _userQuotaPlan.Object,
+            _accessRules.Object,
             Mock.Of<IVpnServerAccessQueryService>(),
             NewCache(),
             _statusCacheGeneration.Object,
@@ -153,6 +160,7 @@ public class VpnServersV1V2V3LegacyFilterTests
             _tagQuery.Object,
             _userQuotaPlan.Object,
             _quotaAllowed.Object,
+            _accessRules.Object,
             NewCache(),
             _statusCacheGeneration.Object,
             Mock.Of<IConnectedClientsCounterStore>(),
@@ -170,6 +178,7 @@ public class VpnServersV1V2V3LegacyFilterTests
             _groupQuery.Object,
             _userQuotaPlan.Object,
             _quotaAllowed.Object,
+            _accessRules.Object,
             _quotaPlanQuery.Object,
             NewCache(),
             _statusCacheGeneration.Object,

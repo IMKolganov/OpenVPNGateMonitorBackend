@@ -1,5 +1,6 @@
 using Mapster;
 using Microsoft.EntityFrameworkCore;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
@@ -14,19 +15,29 @@ public class VpnServerOverviewQuery(IUnitOfWork uow) : IVpnServerOverviewQuery
         bool includeDeleted = false,
         bool requireQuotaPlanAssignment = false,
         int? restrictToQuotaPlanId = null,
+        UserVpnServerAccessOverrides? personalOverrides = null,
         CancellationToken ct = default)
     {
+        var overrides = personalOverrides ?? UserVpnServerAccessOverrides.None;
         var serversBase = uow.GetQuery<VpnServer>().AsQueryable();
         var servers = includeDeleted ? serversBase : serversBase.Where(s => !s.IsDeleted);
         if (restrictToQuotaPlanId is int pid)
         {
             var allowed = uow.GetQuery<QuotaPlanAllowedServer>().AsQueryable();
-            servers = servers.Where(s => allowed.Any(a => a.VpnServerId == s.Id && a.QuotaPlanId == pid));
+            var personallyAllowed = overrides.AllowedVpnServerIds;
+            servers = servers.Where(s => allowed.Any(a => a.VpnServerId == s.Id && a.QuotaPlanId == pid)
+                                         || personallyAllowed.Contains(s.Id));
         }
         else if (requireQuotaPlanAssignment)
         {
             var allowed = uow.GetQuery<QuotaPlanAllowedServer>().AsQueryable();
             servers = servers.Where(s => allowed.Any(a => a.VpnServerId == s.Id));
+        }
+
+        if (overrides.DeniedVpnServerIds.Count > 0)
+        {
+            var denied = overrides.DeniedVpnServerIds;
+            servers = servers.Where(s => !denied.Contains(s.Id));
         }
 
         var serverList = await servers.AsNoTracking().OrderBy(s => s.Id).ToListAsync(ct);

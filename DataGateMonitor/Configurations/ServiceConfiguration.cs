@@ -179,6 +179,7 @@ public static class ServiceConfiguration
         services.AddScoped<IQuotaPlanService, QuotaPlanService>();
         services.AddScoped<IUserRoleManagementService, UserRoleManagementService>();
         services.AddScoped<IQuotaPlanAllowedServerService, QuotaPlanAllowedServerService>();
+        services.AddScoped<IUserVpnServerAccessRuleService, UserVpnServerAccessRuleService>();
         services.AddScoped<ITagService, TagService>();
         services.AddScoped<IVpnServerGroupService, VpnServerGroupService>();
         

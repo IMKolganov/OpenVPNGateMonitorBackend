@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using DataGateMonitor.DataBase.Services.Command.Interfaces;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices;
@@ -46,7 +47,7 @@ public class OpenVpnBackgroundServiceDisabledServersTests : IDisposable
         CreateSut(List<VpnServer> servers, MockBehavior presenceBehavior = MockBehavior.Loose)
     {
         var serverQ = new Mock<IVpnServerQueryService>();
-        serverQ.Setup(q => q.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        serverQ.Setup(q => q.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(servers);
 
         var presence = new Mock<IVpnServerClientPresenceService>(presenceBehavior);

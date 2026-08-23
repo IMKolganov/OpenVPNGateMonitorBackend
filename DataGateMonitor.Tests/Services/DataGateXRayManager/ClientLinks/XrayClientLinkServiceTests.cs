@@ -8,6 +8,7 @@ using DataGateMonitor.DataBase.Services.Query.IssuedXrayClientLinkTokenTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
@@ -343,6 +344,7 @@ public class XrayClientLinkServiceTests
             identityLinkQuery.Object,
             userQuotaPlanQuery.Object,
             quotaPlanAllowedServerQuery.Object,
+            new Mock<IUserVpnServerAccessRuleQueryService>(MockBehavior.Loose).Object,
             userQuery.Object);
 
         return new XrayClientLinkService(

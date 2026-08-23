@@ -7,6 +7,7 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Api.Auth.Handlers.Interfaces;
@@ -35,6 +36,7 @@ public class VpnServersController(IVpnDataService vpnDataService,
     IOpenVpnBackgroundService openVpnBackgroundService,
     IMicroserviceInfoService microserviceInfoService,
     IUserQuotaPlanQueryService userQuotaPlanQueryService,
+    IUserVpnServerAccessRuleQueryService userVpnServerAccessRuleQueryService,
     IVpnServerAccessQueryService vpnServerAccessQueryService,
     IApiMemoryCacheService apiMemoryCacheService,
     IStatusCacheGenerationService statusCacheGenerationService,
@@ -56,32 +58,23 @@ public class VpnServersController(IVpnDataService vpnDataService,
         CancellationToken ct = default,
         [FromQuery] bool withoutCache = false)
     {
-        int? restrictToQuotaPlanId;
-        if (HttpUserContext.IsPrivileged(User))
-        {
-            restrictToQuotaPlanId = null;
-        }
-        else
-        {
-            if (!HttpUserContext.TryGetUserId(User, out var userId))
-                return Unauthorized(ApiResponse<VpnServerWithStatusesResponse>.ErrorResponse("User id missing from token."));
-            var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
-            restrictToQuotaPlanId = uqp?.QuotaPlanId;
-        }
+        var scope = await ResolveQuotaScopeAsync(ct);
+        if (scope is null)
+            return Unauthorized(ApiResponse<VpnServerWithStatusesResponse>.ErrorResponse("User id missing from token."));
 
-        var scopeKey = restrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all";
-        var cacheKey = $"v1:open-vpn-servers:get-all-with-status:legacyTcpOpenVpnOnly:ovpnProto:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var cacheKey = $"v1:open-vpn-servers:get-all-with-status:legacyTcpOpenVpnOnly:ovpnProto:includeDeleted={includeDeleted}:scope={scope.CacheScopeKey}";
         var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
             includeDeleted,
             requireQuotaPlanAssignment: false,
-            restrictToQuotaPlanId,
+            scope.RestrictToQuotaPlanId,
+            scope.Overrides,
             ct);
         var dataStamp = stamp?.ToUnixTimeMilliseconds().ToString() ?? "empty";
         var stampKey = $"{dataStamp}:status:{statusCacheGenerationService.CurrentStamp}";
         async Task<string> BuildPayload(CancellationToken token)
         {
             var result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
-                includeDeleted, requireQuotaPlanAssignment: false, restrictToQuotaPlanId, token);
+                includeDeleted, requireQuotaPlanAssignment: false, scope.RestrictToQuotaPlanId, scope.Overrides, token);
             await VpnServerConnectedCountOverlay.ApplyAsync(result, connectedClientsCounterStore, token);
             await vpnManagerUpdateStatusEnricher.EnrichAsync(result, token);
 
@@ -188,25 +181,16 @@ public class VpnServersController(IVpnDataService vpnDataService,
         CancellationToken ct = default,
         [FromQuery] bool withoutCache = false)
     {
-        int? restrictToQuotaPlanId;
-        if (HttpUserContext.IsPrivileged(User))
-        {
-            restrictToQuotaPlanId = null;
-        }
-        else
-        {
-            if (!HttpUserContext.TryGetUserId(User, out var userId))
-                return Unauthorized(ApiResponse<VpnServersResponse>.ErrorResponse("User id missing from token."));
-            var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
-            restrictToQuotaPlanId = uqp?.QuotaPlanId;
-        }
+        var scope = await ResolveQuotaScopeAsync(ct);
+        if (scope is null)
+            return Unauthorized(ApiResponse<VpnServersResponse>.ErrorResponse("User id missing from token."));
 
-        var scopeKey = restrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all";
-        var cacheKey = $"v1:open-vpn-servers:get-all:legacyTcpOpenVpnOnly:ovpnProto:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var cacheKey = $"v1:open-vpn-servers:get-all:legacyTcpOpenVpnOnly:ovpnProto:includeDeleted={includeDeleted}:scope={scope.CacheScopeKey}";
         var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
             includeDeleted,
             requireQuotaPlanAssignment: false,
-            restrictToQuotaPlanId,
+            scope.RestrictToQuotaPlanId,
+            scope.Overrides,
             ct);
         var stampKey = stamp?.ToUnixTimeMilliseconds().ToString() ?? "empty";
 
@@ -215,7 +199,8 @@ public class VpnServersController(IVpnDataService vpnDataService,
             var serversList = await openVpnServerQueryService.GetAll(
                 includeDeleted,
                 requireQuotaPlanAssignment: false,
-                restrictToQuotaPlanId,
+                scope.RestrictToQuotaPlanId,
+                scope.Overrides,
                 token);
 
             var response = serversList.Adapt<VpnServersResponse>();
@@ -448,6 +433,26 @@ public class VpnServersController(IVpnDataService vpnDataService,
     {
         await statusStreamLogStore.ClearAsync(ct);
         return Ok(ApiResponse<string>.SuccessResponse("Status stream logs cleared."));
+    }
+
+    /// <returns><c>null</c> when the token carries no user id; otherwise the quota plan and personal rules to filter by.</returns>
+    private async Task<QuotaScope?> ResolveQuotaScopeAsync(CancellationToken ct)
+    {
+        if (HttpUserContext.IsPrivileged(User))
+            return new QuotaScope(null, UserVpnServerAccessOverrides.None);
+
+        if (!HttpUserContext.TryGetUserId(User, out var userId))
+            return null;
+
+        var overrides = await userVpnServerAccessRuleQueryService.GetOverridesByUserId(userId, ct);
+        var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
+        return new QuotaScope(uqp?.QuotaPlanId, overrides);
+    }
+
+    private sealed record QuotaScope(int? RestrictToQuotaPlanId, UserVpnServerAccessOverrides Overrides)
+    {
+        public string CacheScopeKey =>
+            (RestrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all") + Overrides.CacheScopeSuffix;
     }
 
     private static VpnServerPostSetupStatusResponse ToPostSetupStatusResponse(PostSetupStatus status) =>

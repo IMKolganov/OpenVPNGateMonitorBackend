@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using DataGateMonitor.Controllers;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
@@ -30,11 +31,15 @@ public class VpnServersV2ControllerTests
     private readonly Mock<IVpnServerTagQueryService> _tagQuery = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
     private readonly Mock<IQuotaPlanAllowedServerQueryService> _quotaAllowed = new();
+    private readonly Mock<IUserVpnServerAccessRuleQueryService> _accessRules = new();
     private readonly Mock<IStatusCacheGenerationService> _statusCacheGeneration = new();
     private readonly IApiMemoryCacheService _cache = new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions()));
 
     private VpnServersV2Controller CreateController(ClaimsPrincipal user)
     {
+        _accessRules.Setup(r => r.GetOverridesByUserId(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UserVpnServerAccessOverrides.None);
+
         var c = new VpnServersV2Controller(
             _overviewQuery.Object,
             _serverQuery.Object,
@@ -42,6 +47,7 @@ public class VpnServersV2ControllerTests
             _tagQuery.Object,
             _userQuotaPlan.Object,
             _quotaAllowed.Object,
+            _accessRules.Object,
             _cache,
             _statusCacheGeneration.Object,
             Mock.Of<IConnectedClientsCounterStore>(),
@@ -63,7 +69,7 @@ public class VpnServersV2ControllerTests
             "mock"));
         var controller = CreateController(user);
 
-        _serverQuery.Setup(s => s.GetAll(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+        _serverQuery.Setup(s => s.GetAll(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<int?>(), It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([new VpnServer { Id = 1, ServerName = "a" }]);
         _quotaGroups.Setup(g => g.GetGroupsByVpnServerIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Dictionary<int, List<QuotaPlanGroupDto>>());
@@ -93,7 +99,7 @@ public class VpnServersV2ControllerTests
         _quotaAllowed.Setup(q => q.GetVpnServerIdsByQuotaPlanId(7, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new HashSet<int> { 1 });
 
-        _serverQuery.Setup(s => s.GetAll(false, false, 7, It.IsAny<CancellationToken>()))
+        _serverQuery.Setup(s => s.GetAll(false, false, 7, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 new VpnServer { Id = 1, ServerName = "allowed" },
                 new VpnServer { Id = 2, ServerName = "other" }
@@ -117,6 +123,86 @@ public class VpnServersV2ControllerTests
     }
 
     [Fact]
+    public async Task GetAllServers_WithPersonalOverrides_MarksAccessibilityAndPassesOverridesToGetAll()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Role, "VpnUser"),
+                new Claim(ClaimTypes.NameIdentifier, "200")
+            ],
+            "mock"));
+        var controller = CreateController(user);
+
+        _accessRules.Setup(r => r.GetOverridesByUserId(200, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserVpnServerAccessOverrides([2], [1]));
+        _userQuotaPlan.Setup(u => u.GetActiveByUserId(200, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserQuotaPlan { Id = 1, UserId = 200, QuotaPlanId = 7 });
+        _quotaAllowed.Setup(q => q.GetVpnServerIdsByQuotaPlanId(7, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new HashSet<int> { 1, 3 });
+
+        _serverQuery.Setup(s => s.GetAll(false, false, 7, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new VpnServer { Id = 1, ServerName = "denied" },
+                new VpnServer { Id = 2, ServerName = "granted" },
+                new VpnServer { Id = 3, ServerName = "plan" }
+            ]);
+        _quotaGroups.Setup(g => g.GetGroupsByVpnServerIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<QuotaPlanGroupDto>>());
+        _tagQuery.Setup(t => t.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<string>>());
+
+        var result = await controller.GetAllServers(false, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var api = Assert.IsType<ApiResponse<VpnServersV2Response>>(ok.Value);
+        Assert.False(api.Data!.VpnServers.Single(x => x.Id == 1).IsAccessibleForUserQuotaPlan);
+        Assert.True(api.Data.VpnServers.Single(x => x.Id == 2).IsAccessibleForUserQuotaPlan);
+        Assert.True(api.Data.VpnServers.Single(x => x.Id == 3).IsAccessibleForUserQuotaPlan);
+        _serverQuery.Verify(
+            s => s.GetAll(false, false, 7,
+                It.Is<UserVpnServerAccessOverrides?>(o =>
+                    o != null
+                    && o.AllowedVpnServerIds.SetEquals(new[] { 2 })
+                    && o.DeniedVpnServerIds.SetEquals(new[] { 1 })),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task GetAllServers_WithPersonalDeny_WithoutPlan_MarksServerInaccessible()
+    {
+        var user = new ClaimsPrincipal(new ClaimsIdentity(
+            [
+                new Claim(ClaimTypes.Role, "VpnUser"),
+                new Claim(ClaimTypes.NameIdentifier, "201")
+            ],
+            "mock"));
+        var controller = CreateController(user);
+
+        _accessRules.Setup(r => r.GetOverridesByUserId(201, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new UserVpnServerAccessOverrides([], [2]));
+        _userQuotaPlan.Setup(u => u.GetActiveByUserId(201, It.IsAny<CancellationToken>()))
+            .ReturnsAsync((UserQuotaPlan?)null);
+
+        _serverQuery.Setup(s => s.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([
+                new VpnServer { Id = 1, ServerName = "ok" },
+                new VpnServer { Id = 2, ServerName = "blocked" }
+            ]);
+        _quotaGroups.Setup(g => g.GetGroupsByVpnServerIdsAsync(It.IsAny<IReadOnlyCollection<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<QuotaPlanGroupDto>>());
+        _tagQuery.Setup(t => t.GetTagNamesByVpnServerIds(It.IsAny<List<int>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<int, List<string>>());
+
+        var result = await controller.GetAllServers(false, CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var api = Assert.IsType<ApiResponse<VpnServersV2Response>>(ok.Value);
+        Assert.True(api.Data!.VpnServers.Single(x => x.Id == 1).IsAccessibleForUserQuotaPlan);
+        Assert.False(api.Data.VpnServers.Single(x => x.Id == 2).IsAccessibleForUserQuotaPlan);
+    }
+
+    [Fact]
     [Trait("Compatibility", "LegacyAndroid")]
     public async Task GetAllServers_WithVpnUserAndNoQuotaPlan_StillMarksServersAccessible_ForLegacyAndroidCompatibility()
     {
@@ -131,7 +217,7 @@ public class VpnServersV2ControllerTests
         _userQuotaPlan.Setup(u => u.GetActiveByUserId(101, It.IsAny<CancellationToken>()))
             .ReturnsAsync((UserQuotaPlan?)null);
 
-        _serverQuery.Setup(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        _serverQuery.Setup(s => s.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 new VpnServer { Id = 1, ServerName = "legacy-a" },
                 new VpnServer { Id = 2, ServerName = "legacy-b" }
@@ -159,7 +245,7 @@ public class VpnServersV2ControllerTests
             "mock"));
         var controller = CreateController(user);
 
-        _overviewQuery.Setup(o => o.GetAllVpnServersWithStatusAsync(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<int?>(), It.IsAny<CancellationToken>()))
+        _overviewQuery.Setup(o => o.GetAllVpnServersWithStatusAsync(It.IsAny<bool>(), It.IsAny<bool>(), It.IsAny<int?>(), It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 new VpnServerWithStatusDto
                 {

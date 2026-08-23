@@ -1,4 +1,5 @@
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.CertExpiry;
@@ -109,7 +110,7 @@ public sealed class CertExpiryManualCheckTests : IDisposable
     {
         var runner = CreateRunner();
         var tcs = new TaskCompletionSource<List<VpnServer>>();
-        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .Returns(tcs.Task);
 
         var first = runner.RunCheckAsync(new RunCertExpiryCheckRequest(), CancellationToken.None);
@@ -140,7 +141,7 @@ public sealed class CertExpiryManualCheckTests : IDisposable
 
     private void SetupServer(int serverId)
     {
-        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new VpnServer

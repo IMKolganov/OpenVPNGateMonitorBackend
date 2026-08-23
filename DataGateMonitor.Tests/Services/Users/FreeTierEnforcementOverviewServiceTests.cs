@@ -3,6 +3,7 @@ using DataGateMonitor.DataBase.Services.Query.QuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerClientTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
@@ -50,7 +51,7 @@ public class FreeTierEnforcementOverviewServiceTests
             new QuotaPlan { Id = 2, Name = QuotaPlanNames.Default },
             new QuotaPlan { Id = 3, Name = "Pro" },
         ]);
-        _vpnServerQueryService.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        _vpnServerQueryService.Setup(x => x.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([new VpnServer { Id = 100, ServerName = "srv-100" }]);
         _vpnServerClientQueryService.Setup(x => x.GetAllConnected(It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);

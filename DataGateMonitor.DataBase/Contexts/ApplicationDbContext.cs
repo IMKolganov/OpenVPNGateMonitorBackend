@@ -55,6 +55,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<QuotaPlan> QuotaPlans { get; set; } = null!;
     public DbSet<UserQuotaPlan> UserQuotaPlans { get; set; } = null!;
     public DbSet<QuotaPlanAllowedServer> QuotaPlanAllowedServers { get; set; } = null!;
+    public DbSet<UserVpnServerAccessRule> UserVpnServerAccessRules { get; set; } = null!;
     public DbSet<Tag> Tags { get; set; } = null!;
     public DbSet<VpnServerTag> VpnServerTags { get; set; } = null!;
     public DbSet<VpnServerGroup> VpnServerGroups { get; set; } = null!;
@@ -102,6 +103,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new QuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new UserQuotaPlanConfiguration());
         modelBuilder.ApplyConfiguration(new QuotaPlanAllowedServerConfiguration());
+        modelBuilder.ApplyConfiguration(new UserVpnServerAccessRuleConfiguration());
         modelBuilder.ApplyConfiguration(new TagConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerTagConfiguration());
         modelBuilder.ApplyConfiguration(new VpnServerGroupConfiguration());
