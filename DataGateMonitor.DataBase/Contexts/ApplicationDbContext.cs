@@ -65,6 +65,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     public DbSet<WindowsCrashReport> WindowsCrashReports { get; set; } = null!;
     public DbSet<FreeTierDisconnectLog> FreeTierDisconnectLogs { get; set; } = null!;
     public DbSet<TvLoginSession> TvLoginSessions { get; set; } = null!;
+    public DbSet<VpnServerDiscovery> VpnServerDiscoveries { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -116,6 +117,7 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
         modelBuilder.ApplyConfiguration(new UserPasswordHistoryConfiguration());
         modelBuilder.ApplyConfiguration(new FreeTierDisconnectLogConfiguration());
         modelBuilder.ApplyConfiguration(new TvLoginSessionConfiguration());
+        modelBuilder.ApplyConfiguration(new VpnServerDiscoveryConfiguration());
     }
     
     private void UpdateTimestamps()

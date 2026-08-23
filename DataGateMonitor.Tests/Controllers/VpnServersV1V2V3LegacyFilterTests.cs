@@ -124,6 +124,7 @@ public class VpnServersV1V2V3LegacyFilterTests
     private VpnServersController CreateV1(ClaimsPrincipal user) =>
         new(
             Mock.Of<IVpnDataService>(),
+            Mock.Of<IVpnServerDiscoveryService>(),
             _overviewQuery.Object,
             _serverQuery.Object,
             _tagQuery.Object,

@@ -103,6 +103,7 @@ public static class ServiceConfiguration
         services.AddScoped<IXrayVpnServerStatusLogService, XrayVpnServerStatusLogService>();
         
         services.AddScoped<IVpnDataService, VpnDataService>();
+        services.AddScoped<IVpnServerDiscoveryService, VpnServerDiscoveryService>();
         services.AddSingleton<IVpnServerPostSetupService, VpnServerPostSetupService>();
         services.AddScoped<IVpnServerStatisticsService, VpnServerStatisticsService>();
 

@@ -44,6 +44,7 @@ public class VpnServersControllerAddUpdateExoticTests
     {
         _controller = new VpnServersController(
             _vpnDataService.Object,
+            Mock.Of<IVpnServerDiscoveryService>(),
             _overviewQuery.Object,
             _serverQuery.Object,
             _tagQuery.Object,
