@@ -1,4 +1,6 @@
+using DataGateMonitor.DataBase.Contexts;
 using DataGateMonitor.Models.EmailTemplates;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -6,6 +8,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DataGateMonitor.DataBase.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260809200000_SeedFreeTierChannelSubscribeReminderEmailTemplate")]
     public partial class SeedFreeTierChannelSubscribeReminderEmailTemplate : Migration
     {
         /// <inheritdoc />

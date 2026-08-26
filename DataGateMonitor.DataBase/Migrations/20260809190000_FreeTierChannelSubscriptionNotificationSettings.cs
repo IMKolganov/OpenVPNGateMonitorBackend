@@ -1,3 +1,5 @@
+using DataGateMonitor.DataBase.Contexts;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -11,6 +13,8 @@ namespace DataGateMonitor.DataBase.Migrations
     /// Designer-less data migration: columnTypes required so EF can generate SQL
     /// without a BuildTargetModel that maps Settings.
     /// </remarks>
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260809190000_FreeTierChannelSubscriptionNotificationSettings")]
     public partial class FreeTierChannelSubscriptionNotificationSettings : Migration
     {
         /// <inheritdoc />

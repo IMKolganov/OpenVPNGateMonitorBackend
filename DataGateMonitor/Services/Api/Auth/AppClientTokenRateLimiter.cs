@@ -73,10 +73,6 @@ public sealed class AppClientTokenRateLimiter(IMemoryCache cache) : IAppClientTo
             }
 
             entry.Count++;
-            cache.Set(cacheKey, entry, new MemoryCacheEntryOptions
-            {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(WindowMinutes),
-            });
         }
     }
 

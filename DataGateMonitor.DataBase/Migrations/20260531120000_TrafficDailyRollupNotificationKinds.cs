@@ -1,3 +1,5 @@
+using DataGateMonitor.DataBase.Contexts;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -7,6 +9,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DataGateMonitor.DataBase.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260531120000_TrafficDailyRollupNotificationKinds")]
     public partial class TrafficDailyRollupNotificationKinds : Migration
     {
         /// <inheritdoc />
