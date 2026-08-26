@@ -2666,6 +2666,81 @@
         }
       }
     },
+    "/api/free-tier-enforcement/unsubscribed-vpn-digest": {
+      "get": {
+        "tags": [
+          "FreeTierEnforcement"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.FreeTierEnforcement.Responses.FreeTierUnsubscribedVpnDigestResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.FreeTierEnforcement.Responses.FreeTierUnsubscribedVpnDigestResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.FreeTierEnforcement.Responses.FreeTierUnsubscribedVpnDigestResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/free-tier-enforcement/remind-channel-subscribe/{target}": {
+      "post": {
+        "tags": [
+          "FreeTierEnforcement"
+        ],
+        "parameters": [
+          {
+            "name": "target",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "schema": {
+              "$ref": "#/components/schemas/FreeTierEnforcement.Enums.FreeTierChannelSubscribeRemindChannel"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.FreeTierEnforcement.Responses.FreeTierChannelSubscribeRemindResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.FreeTierEnforcement.Responses.FreeTierChannelSubscribeRemindResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.FreeTierEnforcement.Responses.FreeTierChannelSubscribeRemindResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/free-tier-enforcement/disconnect-log": {
       "get": {
         "tags": [
@@ -4151,6 +4226,227 @@
       "get": {
         "tags": [
           "OpenVpnFiles"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/performance/http-requests": {
+      "get": {
+        "tags": [
+          "Performance"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.Performance.PerformanceHttpRequestsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.Performance.PerformanceHttpRequestsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.Performance.PerformanceHttpRequestsResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Performance"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/performance/db-queries": {
+      "get": {
+        "tags": [
+          "Performance"
+        ],
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.Performance.PerformanceDbQueriesResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.Performance.PerformanceDbQueriesResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.Performance.PerformanceDbQueriesResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Performance"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/performance": {
+      "delete": {
+        "tags": [
+          "Performance"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/performance/healthcheck": {
+      "get": {
+        "tags": [
+          "Performance"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/performance/healthcheck-with-jwt": {
+      "get": {
+        "tags": [
+          "Performance"
         ],
         "responses": {
           "200": {
@@ -7813,6 +8109,401 @@
         }
       }
     },
+    "/api/user-vpn-server-access-rules/get-all": {
+      "get": {
+        "tags": [
+          "UserVpnServerAccessRule"
+        ],
+        "parameters": [
+          {
+            "name": "Page",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "PageSize",
+            "in": "query",
+            "schema": {
+              "maximum": 500,
+              "minimum": 1,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "UserId",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "VpnServerId",
+            "in": "query",
+            "schema": {
+              "maximum": 2147483647,
+              "minimum": 0,
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.GetAllUserVpnServerAccessRulesResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.GetAllUserVpnServerAccessRulesResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.GetAllUserVpnServerAccessRulesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-vpn-server-access-rules/get/{id}": {
+      "get": {
+        "tags": [
+          "UserVpnServerAccessRule"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.UserVpnServerAccessRuleResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.UserVpnServerAccessRuleResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.UserVpnServerAccessRuleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-vpn-server-access-rules/get-by-user-id/{userId}": {
+      "get": {
+        "tags": [
+          "UserVpnServerAccessRule"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByUserIdResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByUserIdResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByUserIdResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-vpn-server-access-rules/get-by-vpn-server-id/{vpnServerId}": {
+      "get": {
+        "tags": [
+          "UserVpnServerAccessRule"
+        ],
+        "parameters": [
+          {
+            "name": "vpnServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByVpnServerIdResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByVpnServerIdResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByVpnServerIdResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-vpn-server-access-rules/create": {
+      "post": {
+        "tags": [
+          "UserVpnServerAccessRule"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserVpnServerAccessRules.Requests.CreateOrUpdateUserVpnServerAccessRuleRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserVpnServerAccessRules.Requests.CreateOrUpdateUserVpnServerAccessRuleRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserVpnServerAccessRules.Requests.CreateOrUpdateUserVpnServerAccessRuleRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserVpnServerAccessRules.Requests.CreateOrUpdateUserVpnServerAccessRuleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.UserVpnServerAccessRuleResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.UserVpnServerAccessRuleResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.UserVpnServerAccessRules.Responses.UserVpnServerAccessRuleResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-vpn-server-access-rules/update": {
+      "put": {
+        "tags": [
+          "UserVpnServerAccessRule"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserVpnServerAccessRules.Requests.CreateOrUpdateUserVpnServerAccessRuleRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserVpnServerAccessRules.Requests.CreateOrUpdateUserVpnServerAccessRuleRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserVpnServerAccessRules.Requests.CreateOrUpdateUserVpnServerAccessRuleRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/UserVpnServerAccessRules.Requests.CreateOrUpdateUserVpnServerAccessRuleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-vpn-server-access-rules/delete/{id}": {
+      "delete": {
+        "tags": [
+          "UserVpnServerAccessRule"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-vpn-server-access-rules/healthcheck": {
+      "get": {
+        "tags": [
+          "UserVpnServerAccessRule"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/user-vpn-server-access-rules/healthcheck-with-jwt": {
+      "get": {
+        "tags": [
+          "UserVpnServerAccessRule"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/vpn-dns-queries/search": {
       "get": {
         "tags": [
@@ -8773,6 +9464,64 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Api.VpnServerClients.Responses.ConnectedClientsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-clients/user-connected-server-ids": {
+      "get": {
+        "tags": [
+          "VpnServerClients"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerClients.Responses.UserConnectedServerIdsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerClients.Responses.UserConnectedServerIdsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerClients.Responses.UserConnectedServerIdsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v2/vpn-sessions/user-connected-server-ids": {
+      "get": {
+        "tags": [
+          "VpnServerClients"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerClients.Responses.UserConnectedServerIdsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerClients.Responses.UserConnectedServerIdsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerClients.Responses.UserConnectedServerIdsResponse"
                 }
               }
             }
@@ -10333,6 +11082,698 @@
         }
       }
     },
+    "/api/vpn-server-groups/get-all": {
+      "get": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupsResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupsResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vpn-server-groups/get/{id}": {
+      "get": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vpn-server-groups/create": {
+      "post": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.CreateOrUpdateVpnServerGroupRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.CreateOrUpdateVpnServerGroupRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.CreateOrUpdateVpnServerGroupRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.CreateOrUpdateVpnServerGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vpn-server-groups/update/{id}": {
+      "put": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.CreateOrUpdateVpnServerGroupRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.CreateOrUpdateVpnServerGroupRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.CreateOrUpdateVpnServerGroupRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.CreateOrUpdateVpnServerGroupRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vpn-server-groups/delete/{id}": {
+      "delete": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.Boolean"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.Boolean"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.Boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vpn-server-groups/reorder": {
+      "put": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.ReorderVpnServerGroupsRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.ReorderVpnServerGroupsRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.ReorderVpnServerGroupsRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.ReorderVpnServerGroupsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.Boolean"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.Boolean"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.Boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vpn-server-groups/{id}/set-servers": {
+      "put": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.SetVpnServerGroupServersRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.SetVpnServerGroupServersRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.SetVpnServerGroupServersRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.SetVpnServerGroupServersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServerGroups.Responses.VpnServerGroupResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vpn-server-groups/ungrouped/set-servers": {
+      "put": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.SetVpnServerGroupServersRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.SetVpnServerGroupServersRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.SetVpnServerGroupServersRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServerGroups.Requests.SetVpnServerGroupServersRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.Boolean"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.Boolean"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.Boolean"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vpn-server-groups/healthcheck": {
+      "get": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/vpn-server-groups/healthcheck-with-jwt": {
+      "get": {
+        "tags": [
+          "VpnServerGroups"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/{vpnServerId}/openvpn-process/status": {
+      "get": {
+        "tags": [
+          "VpnServerOpenVpnProcess"
+        ],
+        "parameters": [
+          {
+            "name": "vpnServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/{vpnServerId}/openvpn-process/start": {
+      "post": {
+        "tags": [
+          "VpnServerOpenVpnProcess"
+        ],
+        "parameters": [
+          {
+            "name": "vpnServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/{vpnServerId}/openvpn-process/restart": {
+      "post": {
+        "tags": [
+          "VpnServerOpenVpnProcess"
+        ],
+        "parameters": [
+          {
+            "name": "vpnServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/{vpnServerId}/openvpn-process/kill": {
+      "post": {
+        "tags": [
+          "VpnServerOpenVpnProcess"
+        ],
+        "parameters": [
+          {
+            "name": "vpnServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/{vpnServerId}/openvpn-process/healthcheck": {
+      "get": {
+        "tags": [
+          "VpnServerOpenVpnProcess"
+        ],
+        "parameters": [
+          {
+            "name": "vpnServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/{vpnServerId}/openvpn-process/healthcheck-with-jwt": {
+      "get": {
+        "tags": [
+          "VpnServerOpenVpnProcess"
+        ],
+        "parameters": [
+          {
+            "name": "vpnServerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.System.String"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/open-vpn-configs/get/{vpnServerId}": {
       "get": {
         "tags": [
@@ -11049,6 +12490,216 @@
               "text/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/discover": {
+      "post": {
+        "tags": [
+          "VpnServers"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.AnnounceVpnServerRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.AnnounceVpnServerRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.AnnounceVpnServerRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.AnnounceVpnServerRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.AnnounceVpnServerResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.AnnounceVpnServerResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.AnnounceVpnServerResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/discoveries/pending": {
+      "get": {
+        "tags": [
+          "VpnServers"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerDiscoveriesResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerDiscoveriesResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerDiscoveriesResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/discoveries/{discoveryId}/approve": {
+      "post": {
+        "tags": [
+          "VpnServers"
+        ],
+        "parameters": [
+          {
+            "name": "discoveryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.ApproveVpnServerDiscoveryRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.ApproveVpnServerDiscoveryRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.ApproveVpnServerDiscoveryRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.ApproveVpnServerDiscoveryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerDiscoveryResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerDiscoveryResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerDiscoveryResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/open-vpn-servers/discoveries/{discoveryId}/deny": {
+      "post": {
+        "tags": [
+          "VpnServers"
+        ],
+        "parameters": [
+          {
+            "name": "discoveryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json-patch+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.DenyVpnServerDiscoveryRequest"
+              }
+            },
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.DenyVpnServerDiscoveryRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.DenyVpnServerDiscoveryRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/VpnServers.Requests.DenyVpnServerDiscoveryRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerDiscoveryResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerDiscoveryResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Api.VpnServers.Responses.VpnServerDiscoveryResponse"
                 }
               }
             }
@@ -13240,6 +14891,22 @@
         },
         "additionalProperties": false
       },
+      "Api.DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse"
+          }
+        },
+        "additionalProperties": false
+      },
       "Api.EmailBroadcast.Responses.Dto.EmailBroadcastTemplateDto": {
         "type": "object",
         "properties": {
@@ -13300,6 +14967,38 @@
           },
           "data": {
             "$ref": "#/components/schemas/EmailBroadcast.Responses.SendAdminEmailResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.FreeTierEnforcement.Responses.FreeTierChannelSubscribeRemindResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/FreeTierEnforcement.Responses.FreeTierChannelSubscribeRemindResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.FreeTierEnforcement.Responses.FreeTierUnsubscribedVpnDigestResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/FreeTierEnforcement.Responses.FreeTierUnsubscribedVpnDigestResponse"
           }
         },
         "additionalProperties": false
@@ -13540,6 +15239,38 @@
           },
           "data": {
             "$ref": "#/components/schemas/OpenVpnFiles.Responses.OvpnFilesWithTokensResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.Performance.PerformanceDbQueriesResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Performance.PerformanceDbQueriesResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.Performance.PerformanceHttpRequestsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/Performance.PerformanceHttpRequestsResponse"
           }
         },
         "additionalProperties": false
@@ -14226,6 +15957,70 @@
         },
         "additionalProperties": false
       },
+      "Api.UserVpnServerAccessRules.Responses.GetAllUserVpnServerAccessRulesResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UserVpnServerAccessRules.Responses.GetAllUserVpnServerAccessRulesResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByUserIdResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByUserIdResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByVpnServerIdResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByVpnServerIdResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.UserVpnServerAccessRules.Responses.UserVpnServerAccessRuleResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/UserVpnServerAccessRules.Responses.UserVpnServerAccessRuleResponse"
+          }
+        },
+        "additionalProperties": false
+      },
       "Api.VpnDnsQuery.Responses.VpnDnsQueryPageResponse": {
         "type": "object",
         "properties": {
@@ -14434,6 +16229,22 @@
         },
         "additionalProperties": false
       },
+      "Api.VpnServerClients.Responses.UserConnectedServerIdsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/VpnServerClients.Responses.UserConnectedServerIdsResponse"
+          }
+        },
+        "additionalProperties": false
+      },
       "Api.VpnServerConflog.Responses.VpnServerConflogPageResponse": {
         "type": "object",
         "properties": {
@@ -14510,6 +16321,38 @@
           },
           "data": {
             "$ref": "#/components/schemas/VpnServerEvent.Responses.VpnServerEventResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.VpnServerGroups.Responses.VpnServerGroupResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/VpnServerGroups.Responses.VpnServerGroupResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.VpnServerGroups.Responses.VpnServerGroupsResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/VpnServerGroups.Responses.VpnServerGroupsResponse"
           }
         },
         "additionalProperties": false
@@ -14642,6 +16485,22 @@
         },
         "additionalProperties": false
       },
+      "Api.VpnServers.Responses.AnnounceVpnServerResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/VpnServers.Responses.AnnounceVpnServerResponse"
+          }
+        },
+        "additionalProperties": false
+      },
       "Api.VpnServers.Responses.ServiceStatusesResponse": {
         "type": "object",
         "properties": {
@@ -14670,6 +16529,38 @@
           },
           "data": {
             "$ref": "#/components/schemas/VpnServers.Responses.StatusStreamLogsResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.VpnServers.Responses.VpnServerDiscoveriesResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/VpnServers.Responses.VpnServerDiscoveriesResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "Api.VpnServers.Responses.VpnServerDiscoveryResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "data": {
+            "$ref": "#/components/schemas/VpnServers.Responses.VpnServerDiscoveryResponse"
           }
         },
         "additionalProperties": false
@@ -16190,6 +18081,34 @@
             "type": "string",
             "nullable": true
           },
+          "cipher": {
+            "type": "string",
+            "nullable": true
+          },
+          "dataCiphers": {
+            "type": "string",
+            "nullable": true
+          },
+          "dco": {
+            "type": "string",
+            "nullable": true
+          },
+          "auth": {
+            "type": "string",
+            "nullable": true
+          },
+          "tlsVersionMin": {
+            "type": "string",
+            "nullable": true
+          },
+          "mssFix": {
+            "type": "string",
+            "nullable": true
+          },
+          "clientVerb": {
+            "type": "string",
+            "nullable": true
+          },
           "openVpnManagement": {
             "$ref": "#/components/schemas/DataGateOpenVpnManager.Info.OpenVpnManagementInfoResponse"
           },
@@ -16233,8 +18152,71 @@
             "type": "string",
             "nullable": true
           },
+          "publicIp": {
+            "type": "string",
+            "nullable": true
+          },
           "config": {
             "$ref": "#/components/schemas/DataGateOpenVpnManager.Info.ConfigInfoResponse"
+          }
+        },
+        "additionalProperties": false
+      },
+      "DataGateOpenVpnManager.OpenVpnProcess.Responses.OpenVpnProcessStatusResponse": {
+        "type": "object",
+        "properties": {
+          "action": {
+            "type": "string",
+            "nullable": true
+          },
+          "isRunning": {
+            "type": "boolean"
+          },
+          "pid": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "configPath": {
+            "type": "string",
+            "nullable": true
+          },
+          "pidFilePath": {
+            "type": "string",
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "operationInProgress": {
+            "type": "boolean"
+          },
+          "phase": {
+            "type": "string",
+            "nullable": true
+          },
+          "currentOperation": {
+            "type": "string",
+            "nullable": true
+          },
+          "operationStartedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastCompletedOperation": {
+            "type": "string",
+            "nullable": true
+          },
+          "lastCompletedAtUtc": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
+          "lastError": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -16249,6 +18231,16 @@
           "dns2": {
             "type": "string",
             "nullable": true
+          },
+          "clientDnsServers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "dnsIdentityEnabled": {
+            "type": "boolean"
           },
           "vpnSubnet": {
             "type": "string",
@@ -16300,6 +18292,10 @@
             "nullable": true
           },
           "description": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicIp": {
             "type": "string",
             "nullable": true
           },
@@ -16558,6 +18554,15 @@
         },
         "additionalProperties": false
       },
+      "Enums.AnnounceVpnServerResultStatus": {
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
       "Enums.ApplicationNotificationKind": {
         "enum": [
           0,
@@ -16592,7 +18597,8 @@
           29,
           30,
           31,
-          32
+          32,
+          33
         ],
         "type": "integer",
         "format": "int32"
@@ -16686,6 +18692,23 @@
         "format": "int32"
       },
       "Enums.ServiceStatus": {
+        "enum": [
+          0,
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "Enums.VpnServerAccessRuleMode": {
+        "enum": [
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "Enums.VpnServerDiscoveryStatus": {
         "enum": [
           0,
           1,
@@ -16793,6 +18816,13 @@
           "isChannelSubscribed": {
             "type": "boolean"
           },
+          "identityProviders": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "nullable": true
+          },
           "isConnected": {
             "type": "boolean"
           },
@@ -16812,6 +18842,61 @@
           "connectedSince": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FreeTierEnforcement.Enums.FreeTierChannelSubscribeRemindChannel": {
+        "enum": [
+          1,
+          2
+        ],
+        "type": "integer",
+        "format": "int32"
+      },
+      "FreeTierEnforcement.Responses.FreeTierChannelSubscribeRemindResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          },
+          "channel": {
+            "$ref": "#/components/schemas/FreeTierEnforcement.Enums.FreeTierChannelSubscribeRemindChannel"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "telegramId": {
+            "type": "integer",
+            "format": "int64",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "FreeTierEnforcement.Responses.FreeTierUnsubscribedVpnDigestResponse": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "nullable": true
+          },
+          "candidates": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FreeTierEnforcement.Dto.FreeTierEnforcementCandidateDto"
+            },
             "nullable": true
           }
         },
@@ -17671,6 +19756,103 @@
           "hasPrev": {
             "type": "boolean",
             "readOnly": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Performance.PerformanceDbQueriesResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Performance.PerformanceDbQueryEntryDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Performance.PerformanceDbQueryEntryDto": {
+        "type": "object",
+        "properties": {
+          "timestampUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestId": {
+            "type": "string",
+            "nullable": true
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "commandType": {
+            "type": "string",
+            "nullable": true
+          },
+          "sql": {
+            "type": "string",
+            "nullable": true
+          },
+          "succeeded": {
+            "type": "boolean"
+          },
+          "exceptionMessage": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Performance.PerformanceHttpRequestEntryDto": {
+        "type": "object",
+        "properties": {
+          "timestampUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "requestId": {
+            "type": "string",
+            "nullable": true
+          },
+          "method": {
+            "type": "string",
+            "nullable": true
+          },
+          "path": {
+            "type": "string",
+            "nullable": true
+          },
+          "statusCode": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "durationMs": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "userName": {
+            "type": "string",
+            "nullable": true
+          },
+          "traceId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "Performance.PerformanceHttpRequestsResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Performance.PerformanceHttpRequestEntryDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -18991,6 +21173,114 @@
         },
         "additionalProperties": false
       },
+      "UserVpnServerAccessRules.Dto.UserVpnServerAccessRuleDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "userId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "vpnServerId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Enums.VpnServerAccessRuleMode"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserVpnServerAccessRules.Requests.CreateOrUpdateUserVpnServerAccessRuleRequest": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "maximum": 2147483647,
+            "minimum": 0,
+            "type": "integer",
+            "format": "int32"
+          },
+          "userId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "vpnServerId": {
+            "maximum": 2147483647,
+            "minimum": 1,
+            "type": "integer",
+            "format": "int32"
+          },
+          "mode": {
+            "$ref": "#/components/schemas/Enums.VpnServerAccessRuleMode"
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserVpnServerAccessRules.Responses.GetAllUserVpnServerAccessRulesResponse": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "pageSize": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "totalCount": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserVpnServerAccessRules.Dto.UserVpnServerAccessRuleDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByUserIdResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserVpnServerAccessRules.Dto.UserVpnServerAccessRuleDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserVpnServerAccessRules.Responses.GetUserVpnServerAccessRulesByVpnServerIdResponse": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/UserVpnServerAccessRules.Dto.UserVpnServerAccessRuleDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "UserVpnServerAccessRules.Responses.UserVpnServerAccessRuleResponse": {
+        "type": "object",
+        "properties": {
+          "userVpnServerAccessRule": {
+            "$ref": "#/components/schemas/UserVpnServerAccessRules.Dto.UserVpnServerAccessRuleDto"
+          }
+        },
+        "additionalProperties": false
+      },
       "VpnDnsQuery.Dto.VpnDnsProfileSummaryItemDto": {
         "type": "object",
         "properties": {
@@ -19276,6 +21566,10 @@
             "type": "string",
             "format": "date-time",
             "nullable": true
+          },
+          "identityIp": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -19500,6 +21794,10 @@
             "type": "integer",
             "format": "int64"
           },
+          "accountsCount": {
+            "type": "integer",
+            "format": "int64"
+          },
           "trafficInBytes": {
             "type": "integer",
             "format": "int64"
@@ -19651,6 +21949,20 @@
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/VpnServerClients.Dto.OverviewUsersSeriesRowDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServerClients.Responses.UserConnectedServerIdsResponse": {
+        "type": "object",
+        "properties": {
+          "vpnServerIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
             },
             "nullable": true
           }
@@ -19923,6 +22235,117 @@
         "properties": {
           "events": {
             "$ref": "#/components/schemas/Paged.VpnServerEvent.Dto.VpnServerEventLogDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServerGroups.Dto.VpnServerGroupDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "name": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "serverIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServerGroups.Requests.CreateOrUpdateVpnServerGroupRequest": {
+        "required": [
+          "name"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "type": "string"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServerGroups.Requests.ReorderVpnServerGroupsRequest": {
+        "required": [
+          "items"
+        ],
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VpnServerGroups.Requests.VpnServerGroupOrderItem"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServerGroups.Requests.SetVpnServerGroupServersRequest": {
+        "required": [
+          "vpnServerIds"
+        ],
+        "type": "object",
+        "properties": {
+          "vpnServerIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServerGroups.Requests.VpnServerGroupOrderItem": {
+        "required": [
+          "groupId",
+          "sortOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "groupId": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServerGroups.Responses.VpnServerGroupResponse": {
+        "type": "object",
+        "properties": {
+          "group": {
+            "$ref": "#/components/schemas/VpnServerGroups.Dto.VpnServerGroupDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServerGroups.Responses.VpnServerGroupsResponse": {
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VpnServerGroups.Dto.VpnServerGroupDto"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -20307,6 +22730,22 @@
               "format": "int32"
             },
             "nullable": true
+          },
+          "personalAllowedVpnServerIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "personalDeniedVpnServerIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -20413,6 +22852,54 @@
         },
         "additionalProperties": false
       },
+      "VpnServers.Dto.VpnServerDiscoveryDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "serverType": {
+            "$ref": "#/components/schemas/Enums.VpnServerType"
+          },
+          "apiUrl": {
+            "type": "string",
+            "nullable": true
+          },
+          "suggestedName": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicIp": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "isEnableWss": {
+            "type": "boolean"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Enums.VpnServerDiscoveryStatus"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastSeenUtc": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "resolvedVpnServerId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "VpnServers.Dto.VpnServerDto": {
         "type": "object",
         "properties": {
@@ -20474,6 +22961,19 @@
               "type": "string"
             },
             "nullable": true
+          },
+          "groupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "groupName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
           },
           "xrayClientsPolledAt": {
             "type": "string",
@@ -20549,6 +23049,19 @@
             },
             "nullable": true
           },
+          "groupId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "groupName": {
+            "type": "string",
+            "nullable": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "format": "int32"
+          },
           "quotaPlanGroups": {
             "type": "array",
             "items": {
@@ -20598,6 +23111,21 @@
           "totalBytesOut": {
             "type": "integer",
             "format": "int64"
+          },
+          "installedManagerVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "latestManagerVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "isManagerUpdateAvailable": {
+            "type": "boolean"
+          },
+          "managerReleaseUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -20629,6 +23157,21 @@
           "totalBytesOut": {
             "type": "integer",
             "format": "int64"
+          },
+          "installedManagerVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "latestManagerVersion": {
+            "type": "string",
+            "nullable": true
+          },
+          "isManagerUpdateAvailable": {
+            "type": "boolean"
+          },
+          "managerReleaseUrl": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -20690,6 +23233,95 @@
           },
           "isDisabled": {
             "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServers.Requests.AnnounceVpnServerRequest": {
+        "required": [
+          "apiUrl"
+        ],
+        "type": "object",
+        "properties": {
+          "serverType": {
+            "$ref": "#/components/schemas/Enums.VpnServerType"
+          },
+          "apiUrl": {
+            "minLength": 1,
+            "type": "string"
+          },
+          "suggestedName": {
+            "type": "string",
+            "nullable": true
+          },
+          "publicIp": {
+            "type": "string",
+            "nullable": true
+          },
+          "version": {
+            "type": "string",
+            "nullable": true
+          },
+          "isEnableWss": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServers.Requests.ApproveVpnServerDiscoveryRequest": {
+        "type": "object",
+        "properties": {
+          "serverName": {
+            "type": "string",
+            "nullable": true
+          },
+          "isDefault": {
+            "type": "boolean"
+          },
+          "isEnableWss": {
+            "type": "boolean"
+          },
+          "isPiHoleEnabled": {
+            "type": "boolean"
+          },
+          "latitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "longitude": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "quotaPlanIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "tagIds": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "isDisabled": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServers.Requests.DenyVpnServerDiscoveryRequest": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -20762,6 +23394,25 @@
         },
         "additionalProperties": false
       },
+      "VpnServers.Responses.AnnounceVpnServerResponse": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "$ref": "#/components/schemas/Enums.AnnounceVpnServerResultStatus"
+          },
+          "discoveryId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "existingVpnServerId": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "VpnServers.Responses.ServiceStatusesResponse": {
         "type": "object",
         "properties": {
@@ -20801,6 +23452,33 @@
             "items": {
               "$ref": "#/components/schemas/VpnServers.Responses.StatusStreamLogEntryResponse"
             },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServers.Responses.VpnServerDiscoveriesResponse": {
+        "type": "object",
+        "properties": {
+          "discoveries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/VpnServers.Dto.VpnServerDiscoveryDto"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "VpnServers.Responses.VpnServerDiscoveryResponse": {
+        "type": "object",
+        "properties": {
+          "discovery": {
+            "$ref": "#/components/schemas/VpnServers.Dto.VpnServerDiscoveryDto"
+          },
+          "vpnServerId": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -21155,6 +23833,9 @@
       "name": "OpenVpnFiles"
     },
     {
+      "name": "Performance"
+    },
+    {
       "name": "QuotaPlan"
     },
     {
@@ -21188,6 +23869,9 @@
       "name": "UserRoles"
     },
     {
+      "name": "UserVpnServerAccessRule"
+    },
+    {
       "name": "VpnDnsQuery"
     },
     {
@@ -21204,6 +23888,12 @@
     },
     {
       "name": "VpnServerEvent"
+    },
+    {
+      "name": "VpnServerGroups"
+    },
+    {
+      "name": "VpnServerOpenVpnProcess"
     },
     {
       "name": "VpnServerOvpnFileConfig"

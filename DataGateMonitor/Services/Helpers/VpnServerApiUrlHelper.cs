@@ -1,9 +1,122 @@
 using System.Net;
+using DataGateMonitor.SharedModels.Enums;
 
 namespace DataGateMonitor.Services.Helpers;
 
 internal static class VpnServerApiUrlHelper
 {
+    /// <summary>
+    /// Canonical form for comparing or storing VPN manager ApiUrl values
+    /// (scheme, host, port, path; trailing slash; no query/fragment).
+    /// </summary>
+    public static string NormalizeApiUrl(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return string.Empty;
+
+        var trimmed = raw.Trim();
+        if (!Uri.TryCreate(trimmed, UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            if (!trimmed.Contains("://", StringComparison.Ordinal)
+                && Uri.TryCreate("http://" + trimmed.TrimEnd('/'), UriKind.Absolute, out uri))
+            {
+                // accepted host:port as http
+            }
+            else
+            {
+                return trimmed.TrimEnd('/') + "/";
+            }
+        }
+
+        var builder = new UriBuilder(uri)
+        {
+            Path = uri.AbsolutePath.TrimEnd('/'),
+            Query = string.Empty,
+            Fragment = string.Empty
+        };
+        if (builder.Path == "/")
+            builder.Path = string.Empty;
+
+        return builder.Uri.ToString().TrimEnd('/') + "/";
+    }
+
+    public static bool ApiUrlsEquivalent(string? a, string? b) =>
+        string.Equals(NormalizeApiUrl(a), NormalizeApiUrl(b), StringComparison.OrdinalIgnoreCase);
+
+    public static string? TryParsePublicIp(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        var trimmed = value.Trim();
+        var direct = TryParseHostIp(trimmed);
+        if (direct is not null)
+            return direct;
+
+        return TryParseHostIp(SanitizeExportEndpointHost(trimmed));
+    }
+
+    public static bool UsesSchemeDefaultPort(string? apiUrl)
+    {
+        var normalized = NormalizeApiUrl(apiUrl);
+        if (string.IsNullOrWhiteSpace(normalized)
+            || !Uri.TryCreate(normalized, UriKind.Absolute, out var uri))
+        {
+            return false;
+        }
+
+        return uri.IsDefaultPort;
+    }
+
+    /// <summary>Host + port extracted from a normalized manager ApiUrl.</summary>
+    public static bool TryGetEndpointHostPort(string? apiUrl, out string host, out int port)
+    {
+        host = string.Empty;
+        port = 0;
+
+        var normalized = NormalizeApiUrl(apiUrl);
+        if (string.IsNullOrWhiteSpace(normalized)
+            || !Uri.TryCreate(normalized, UriKind.Absolute, out var uri)
+            || string.IsNullOrWhiteSpace(uri.Host))
+        {
+            return false;
+        }
+
+        host = uri.Host;
+        port = uri.IsDefaultPort
+            ? uri.Scheme.Equals(Uri.UriSchemeHttps, StringComparison.OrdinalIgnoreCase) ? 443 : 80
+            : uri.Port;
+        return port is > 0 and <= 65535;
+    }
+
+    public static string? TryParseHostIp(string? host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+            return null;
+
+        if (!IPAddress.TryParse(host.Trim(), out var parsed))
+            return null;
+
+        if (parsed.IsIPv4MappedToIPv6)
+            parsed = parsed.MapToIPv4();
+
+        return parsed.ToString();
+    }
+
+    public readonly record struct ManagerEndpointKey(string Ip, int Port, VpnServerType ServerType);
+
+    public static ManagerEndpointKey? BuildEndpointKey(string? apiUrl, VpnServerType serverType, string? resolvedHostIp)
+    {
+        if (string.IsNullOrWhiteSpace(resolvedHostIp)
+            || !TryGetEndpointHostPort(apiUrl, out _, out var port))
+        {
+            return null;
+        }
+
+        return new ManagerEndpointKey(resolvedHostIp, port, serverType);
+    }
+
     /// <summary>
     /// Reported "remote" for status UI: node PublicIp from /api/info, then Config IP,
     /// then host from ApiUrl. Never the dashboard WAN IP.

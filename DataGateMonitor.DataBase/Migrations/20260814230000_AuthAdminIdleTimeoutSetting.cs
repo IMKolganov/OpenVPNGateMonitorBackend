@@ -24,6 +24,17 @@ namespace DataGateMonitor.DataBase.Migrations
                 {
                     { 206, null, null, null, 15, "Auth_Admin_Idle_Timeout_Minutes", null, "int" },
                     { 207, null, null, null, null, "Auth_Admin_Idle_Timeout_Minutes_Type", "int", "string" }
+                },
+                columnTypes: new[]
+                {
+                    "integer",
+                    "boolean",
+                    "timestamp with time zone",
+                    "double precision",
+                    "integer",
+                    "character varying(255)",
+                    "character varying(255)",
+                    "character varying(50)"
                 });
         }
 

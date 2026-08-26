@@ -102,44 +102,33 @@ public static class DatabaseMigrationExtensions
             logger.LogInformation("Applying {Count} pending migrations: {List}",
                 pending.Count, string.Join(", ", pending));
 
+            // Apply all pending migrations in one Migrate() call. Do NOT call Migrate(target) per migration:
+            // when history has gaps (a later migration applied but an earlier one missing), targeting the
+            // earlier id makes EF revert every applied migration with a higher id first — e.g. Down() on
+            // VpnServers_ServerNameUniqueActiveOnly recreates a full unique index and fails on prod data.
             var strategy = dbContext.Database.CreateExecutionStrategy();
             strategy.Execute(() =>
             {
                 var migrator = dbContext.Database.GetService<IMigrator>();
+                var sw = Stopwatch.StartNew();
 
-                foreach (var migration in pending)
+                try
                 {
-                    var sw = Stopwatch.StartNew();
-                    logger.LogInformation("Applying migration: {Migration}", migration);
-
-                    try
-                    {
-                        migrator.Migrate(migration);
-
-                        sw.Stop();
-                        logger.LogInformation("Migration applied: {Migration} in {Elapsed} ms",
-                            migration, sw.ElapsedMilliseconds);
-                    }
-                    catch (Exception ex)
-                    {
-                        sw.Stop();
-
-                        var pg = FindPostgresException(ex);
-                        if (pg is not null)
-                        {
-                            logger.LogError(ex,
-                                "Migration FAILED: {Migration}. PostgresSQL SqlState={SqlState}, Message={MessageText}, Severity={Severity}, Routine={Routine}",
-                                migration, pg.SqlState, pg.MessageText, pg.Severity, pg.Routine);
-                        }
-                        else
-                        {
-                            logger.LogError(ex, "Migration FAILED: {Migration}. {Message}",
-                                migration, ex.Message);
-                        }
-
-                        throw new InvalidOperationException($"Migration failed: {migration}", ex);
-                    }
+                    migrator.Migrate();
                 }
+                catch (Exception ex)
+                {
+                    sw.Stop();
+                    LogMigrationFailure(logger, pending.FirstOrDefault() ?? "(unknown)", ex);
+                    throw new InvalidOperationException(
+                        $"Migration failed while applying pending migrations (first pending: {pending[0]})",
+                        ex);
+                }
+
+                sw.Stop();
+                logger.LogInformation(
+                    "Applied {Count} pending migration(s) in {Elapsed} ms: {List}",
+                    pending.Count, sw.ElapsedMilliseconds, string.Join(", ", pending));
             });
 
             logger.LogInformation("All pending migrations applied successfully.");
@@ -198,5 +187,20 @@ public static class DatabaseMigrationExtensions
         }
 
         return null;
+    }
+
+    private static void LogMigrationFailure(ILogger logger, string migration, Exception ex)
+    {
+        var pg = FindPostgresException(ex);
+        if (pg is not null)
+        {
+            logger.LogError(ex,
+                "Migration FAILED: {Migration}. PostgresSQL SqlState={SqlState}, Message={MessageText}, Severity={Severity}, Routine={Routine}",
+                migration, pg.SqlState, pg.MessageText, pg.Severity, pg.Routine);
+        }
+        else
+        {
+            logger.LogError(ex, "Migration FAILED: {Migration}. {Message}", migration, ex.Message);
+        }
     }
 }

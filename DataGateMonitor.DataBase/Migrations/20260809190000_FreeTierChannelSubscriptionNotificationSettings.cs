@@ -26,10 +26,10 @@ namespace DataGateMonitor.DataBase.Migrations
                 columns: new[] { "Id", "BoolValue", "DateTimeValue", "DoubleValue", "IntValue", "Key", "StringValue", "ValueType" },
                 values: new object[,]
                 {
-                    { 202, true, null, null, null, "FreeTier_Send_Unsubscribed_User_Reminders", null, "bool" },
-                    { 203, null, null, null, null, "FreeTier_Send_Unsubscribed_User_Reminders_Type", "bool", "string" },
-                    { 204, true, null, null, null, "FreeTier_Daily_Unsubscribed_Admin_Digest", null, "bool" },
-                    { 205, null, null, null, null, "FreeTier_Daily_Unsubscribed_Admin_Digest_Type", "bool", "string" }
+                    { 208, true, null, null, null, "FreeTier_Send_Unsubscribed_User_Reminders", null, "bool" },
+                    { 209, null, null, null, null, "FreeTier_Send_Unsubscribed_User_Reminders_Type", "bool", "string" },
+                    { 210, true, null, null, null, "FreeTier_Daily_Unsubscribed_Admin_Digest", null, "bool" },
+                    { 211, null, null, null, null, "FreeTier_Daily_Unsubscribed_Admin_Digest_Type", "bool", "string" }
                 },
                 columnTypes: new[]
                 {
@@ -51,28 +51,28 @@ namespace DataGateMonitor.DataBase.Migrations
                 schema: "xgb_dashopnvpn",
                 table: "Settings",
                 keyColumn: "Id",
-                keyValue: 202,
+                keyValue: 208,
                 keyColumnType: "integer");
 
             migrationBuilder.DeleteData(
                 schema: "xgb_dashopnvpn",
                 table: "Settings",
                 keyColumn: "Id",
-                keyValue: 203,
+                keyValue: 209,
                 keyColumnType: "integer");
 
             migrationBuilder.DeleteData(
                 schema: "xgb_dashopnvpn",
                 table: "Settings",
                 keyColumn: "Id",
-                keyValue: 204,
+                keyValue: 210,
                 keyColumnType: "integer");
 
             migrationBuilder.DeleteData(
                 schema: "xgb_dashopnvpn",
                 table: "Settings",
                 keyColumn: "Id",
-                keyValue: 205,
+                keyValue: 211,
                 keyColumnType: "integer");
         }
     }

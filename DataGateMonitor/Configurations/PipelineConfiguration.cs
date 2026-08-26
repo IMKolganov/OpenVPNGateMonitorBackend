@@ -61,7 +61,7 @@ public static class PipelineConfiguration
         app.UseAuthentication();
         app.UseAuthorization();
 
-        // EF migrations run in EfCoreMigrationHostedService after ApplicationStarted so Swagger/HTTP work while Postgres is down.
+        // EF migrations run in EfCoreMigrationHostedService.StartAsync before HTTP/background workers start.
 
         app.MapControllers();
         app.MapHealthChecks("/health");

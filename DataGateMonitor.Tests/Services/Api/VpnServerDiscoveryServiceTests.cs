@@ -11,9 +11,18 @@ using DataGateMonitor.DataBase.Services.Query;
 using DataGateMonitor.DataBase.UnitOfWork;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api;
+using DataGateMonitor.Services.Helpers;
 using DataGateMonitor.Services.Api.Interfaces;
 using DataGateMonitor.Services.Others.Notifications.ServerOpenVpnApiClient;
+using DataGateMonitor.DataBase.Services.Query.VpnServerConflogTable;
+using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
+using DataGateMonitor.Serialization;
+using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
+using DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info;
+using DataGateMonitor.SharedModels.DataGateXRayManager.Info;
+using OpenVpnConfigInfoResponse = DataGateMonitor.SharedModels.DataGateOpenVpnManager.Info.ConfigInfoResponse;
+using XrayConfigInfoResponse = DataGateMonitor.SharedModels.DataGateXRayManager.Info.ConfigInfoResponse;
 using DataGateMonitor.SharedModels.Enums;
 using DataGateMonitor.Tests.Helpers;
 
@@ -34,7 +43,7 @@ public class VpnServerDiscoveryServiceTests
     [InlineData("   ", "")]
     public void NormalizeApiUrl_NormalizesOrRejectsEmpty(string? input, string expected)
     {
-        Assert.Equal(expected, VpnServerDiscoveryService.NormalizeApiUrl(input));
+        Assert.Equal(expected, VpnServerApiUrlHelper.NormalizeApiUrl(input));
     }
 
     [Fact]
@@ -47,6 +56,513 @@ public class VpnServerDiscoveryServiceTests
             sut.AnnounceAsync(new AnnounceVpnServerRequest { ApiUrl = "  " }, CancellationToken.None));
 
         Assert.Contains("ApiUrl", ex.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_ReturnsAlreadyRegistered_WhenStoredUrlLacksTrailingSlash()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 5, name: "existing", apiUrl: "http://10.0.0.1:5010", deleted: false);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://10.0.0.1:5010/",
+            SuggestedName = "node-a"
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, result.Status);
+        Assert.Equal(5, result.ExistingVpnServerId);
+        discoveryCmd.Verify(c => c.Add(It.IsAny<VpnServerDiscovery>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_AutoResolvesStalePending_WhenRegisteredServerMatchesAfterRestart()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 5, name: "dg-vpn-pol-1", apiUrl: "http://81.27.103.215:5011", deleted: false);
+        var now = DateTimeOffset.UtcNow;
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 17,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://81.27.103.215:5011/",
+            SuggestedName = "dg-vpn-pol-1",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = now,
+            CreateDate = now,
+            LastUpdate = now
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://81.27.103.215:5011/",
+            SuggestedName = "dg-vpn-pol-1",
+            Version = "1.2.5.103"
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, result.Status);
+        Assert.Equal(5, result.ExistingVpnServerId);
+        var row = await ctx.VpnServerDiscoveries.FindAsync(17);
+        Assert.Equal(VpnServerDiscoveryStatus.Approved, row!.Status);
+        Assert.Equal(5, row.ResolvedVpnServerId);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task ListPendingAsync_ExcludesAndAutoResolves_AlreadyRegisteredServers()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 5, name: "existing", apiUrl: "http://10.0.0.1:5010", deleted: false);
+        var now = DateTimeOffset.UtcNow;
+        ctx.VpnServerDiscoveries.AddRange(
+            new VpnServerDiscovery
+            {
+                Id = 1, ApiUrl = "http://10.0.0.1:5010/", SuggestedName = "stale",
+                Status = VpnServerDiscoveryStatus.Pending, LastSeenUtc = now,
+                CreateDate = now, LastUpdate = now
+            },
+            new VpnServerDiscovery
+            {
+                Id = 2, ApiUrl = "http://10.0.0.99:5010/", SuggestedName = "new",
+                Status = VpnServerDiscoveryStatus.Pending, LastSeenUtc = now,
+                CreateDate = now, LastUpdate = now
+            });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var list = await sut.ListPendingAsync(CancellationToken.None);
+
+        Assert.Single(list.Discoveries);
+        Assert.Equal(2, list.Discoveries[0].Id);
+        var stale = await ctx.VpnServerDiscoveries.FindAsync(1);
+        Assert.Equal(VpnServerDiscoveryStatus.Approved, stale!.Status);
+        Assert.Equal(5, stale.ResolvedVpnServerId);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_MatchesNginxFrontedServer_ByVpnServerIpAndConflogApiPort()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 94, name: "nor-udp", apiUrl: "https://s1-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, vpnServerId: 94, vpnServerIp: "81.27.109.193");
+        SeedConflog(ctx, vpnServerId: 94, VpnServerType.OpenVpn, apiPort: 5010);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://81.27.109.193:5010/",
+            PublicIp = "81.27.109.193",
+            SuggestedName = "dg-vpn-nor-1"
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, result.Status);
+        Assert.Equal(94, result.ExistingVpnServerId);
+        discoveryCmd.Verify(c => c.Add(It.IsAny<VpnServerDiscovery>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_OnMultiStackHost_MatchesCorrectManagerPortPerStack()
+    {
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+
+        SeedServer(ctx, id: 94, name: "nor-udp", apiUrl: "https://s1-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 94, hostIp);
+        SeedConflog(ctx, 94, VpnServerType.OpenVpn, 5010);
+
+        SeedServer(ctx, id: 95, name: "nor-tcp", apiUrl: "https://s2-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 95, hostIp);
+        SeedConflog(ctx, 95, VpnServerType.OpenVpn, 5011);
+
+        SeedServer(ctx, id: 96, name: "nor-xray", apiUrl: "https://xs1-nor.datagateapp.com:9443/", deleted: false,
+            serverType: VpnServerType.Xray);
+        SeedOvpnConfig(ctx, 96, hostIp);
+        SeedConflog(ctx, 96, VpnServerType.Xray, 9443);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var udp = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = $"http://{hostIp}:5010/",
+            PublicIp = hostIp
+        }, CancellationToken.None);
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, udp.Status);
+        Assert.Equal(94, udp.ExistingVpnServerId);
+
+        var tcp = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = $"http://{hostIp}:5011/",
+            PublicIp = hostIp
+        }, CancellationToken.None);
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, tcp.Status);
+        Assert.Equal(95, tcp.ExistingVpnServerId);
+
+        var xray = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.Xray,
+            ApiUrl = $"http://{hostIp}:9443/",
+            PublicIp = hostIp
+        }, CancellationToken.None);
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, xray.Status);
+        Assert.Equal(96, xray.ExistingVpnServerId);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_OnMultiStackHost_DoesNotCrossMatchUdpAndTcpPorts()
+    {
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+
+        SeedServer(ctx, id: 94, name: "nor-udp", apiUrl: "https://s1-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 94, hostIp);
+        SeedConflog(ctx, 94, VpnServerType.OpenVpn, 5010);
+
+        SeedServer(ctx, id: 95, name: "nor-tcp", apiUrl: "https://s2-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 95, hostIp);
+        SeedConflog(ctx, 95, VpnServerType.OpenVpn, 5011);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var wrongPort = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = $"http://{hostIp}:5012/",
+            PublicIp = hostIp
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, wrongPort.Status);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_ReturnsPending_WhenSameIpPortTypeIsAmbiguousWithoutConflogPorts()
+    {
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+
+        SeedServer(ctx, id: 94, name: "nor-udp", apiUrl: "https://s1-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 94, hostIp);
+
+        SeedServer(ctx, id: 95, name: "nor-tcp", apiUrl: "https://s2-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 95, hostIp);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = $"http://{hostIp}:5010/",
+            PublicIp = hostIp
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ListPendingAsync_KeepsPending_WhenNodeIdentityWouldBeAmbiguousWithoutConflog()
+    {
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+        var now = DateTimeOffset.UtcNow;
+
+        SeedServer(ctx, id: 94, name: "nor-udp", apiUrl: "https://s1-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 94, hostIp);
+        SeedServer(ctx, id: 95, name: "nor-tcp", apiUrl: "https://s2-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 95, hostIp);
+
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 50,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = $"http://{hostIp}:5010/",
+            PublicIp = hostIp,
+            SuggestedName = "ambiguous",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = now,
+            CreateDate = now,
+            LastUpdate = now
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var list = await sut.ListPendingAsync(CancellationToken.None);
+
+        Assert.Single(list.Discoveries);
+        Assert.Equal(50, list.Discoveries[0].Id);
+        var row = await ctx.VpnServerDiscoveries.FindAsync(50);
+        Assert.Equal(VpnServerDiscoveryStatus.Pending, row!.Status);
+        Assert.Null(row.ResolvedVpnServerId);
+    }
+
+    [Fact]
+    public async Task ListPendingAsync_AutoResolvesViaNodeIdentity_WhenConflogPortsDistinguishStacks()
+    {
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+        var now = DateTimeOffset.UtcNow;
+
+        SeedServer(ctx, id: 94, name: "nor-udp", apiUrl: "https://s1-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 94, hostIp);
+        SeedConflog(ctx, 94, VpnServerType.OpenVpn, 5010);
+        SeedServer(ctx, id: 95, name: "nor-tcp", apiUrl: "https://s2-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 95, hostIp);
+        SeedConflog(ctx, 95, VpnServerType.OpenVpn, 5011);
+
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 51,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = $"http://{hostIp}:5010/",
+            PublicIp = hostIp,
+            SuggestedName = "udp-stale",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = now,
+            CreateDate = now,
+            LastUpdate = now
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out _, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var list = await sut.ListPendingAsync(CancellationToken.None);
+
+        Assert.Empty(list.Discoveries);
+        var row = await ctx.VpnServerDiscoveries.FindAsync(51);
+        Assert.Equal(VpnServerDiscoveryStatus.Approved, row!.Status);
+        Assert.Equal(94, row.ResolvedVpnServerId);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_FindsExactApiUrlMatch_EvenWhenSecondaryMatchesAppearFirstInFleet()
+    {
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+
+        // Insert secondary candidates first so DB iteration hits them before the exact-match row.
+        SeedServer(ctx, id: 95, name: "nor-tcp-a", apiUrl: "https://s2-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 95, hostIp);
+        SeedConflog(ctx, 95, VpnServerType.OpenVpn, 5010);
+
+        SeedServer(ctx, id: 96, name: "nor-tcp-b", apiUrl: "https://s3-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 96, hostIp);
+        SeedConflog(ctx, 96, VpnServerType.OpenVpn, 5010);
+
+        SeedServer(ctx, id: 94, name: "direct", apiUrl: $"http://{hostIp}:5010/", deleted: false);
+        SeedOvpnConfig(ctx, 94, hostIp);
+        SeedConflog(ctx, 94, VpnServerType.OpenVpn, 5010);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = $"http://{hostIp}:5010/",
+            PublicIp = hostIp
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, result.Status);
+        Assert.Equal(94, result.ExistingVpnServerId);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_ReturnsExactApiUrlMatch_WhenMultipleSecondaryCandidatesExist()
+    {
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+
+        SeedServer(ctx, id: 94, name: "direct", apiUrl: $"http://{hostIp}:5010/", deleted: false);
+        SeedOvpnConfig(ctx, 94, hostIp);
+        SeedConflog(ctx, 94, VpnServerType.OpenVpn, 5010);
+
+        SeedServer(ctx, id: 95, name: "nor-tcp-a", apiUrl: "https://s2-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 95, hostIp);
+        SeedConflog(ctx, 95, VpnServerType.OpenVpn, 5010);
+
+        SeedServer(ctx, id: 96, name: "nor-tcp-b", apiUrl: "https://s3-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 96, hostIp);
+        SeedConflog(ctx, 96, VpnServerType.OpenVpn, 5010);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = $"http://{hostIp}:5010/",
+            PublicIp = hostIp
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, result.Status);
+        Assert.Equal(94, result.ExistingVpnServerId);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_PrefersExactApiUrlMatch_OverSecondaryNodeIdentityMatch()
+    {
+        await using var ctx = CreateContext();
+        const string hostIp = "81.27.109.193";
+
+        SeedServer(ctx, id: 94, name: "direct", apiUrl: $"http://{hostIp}:5010/", deleted: false);
+        SeedOvpnConfig(ctx, 94, hostIp);
+        SeedConflog(ctx, 94, VpnServerType.OpenVpn, 5010);
+
+        SeedServer(ctx, id: 95, name: "nor-tcp", apiUrl: "https://s2-nor.datagateapp.com/", deleted: false);
+        SeedOvpnConfig(ctx, 95, hostIp);
+        SeedConflog(ctx, 95, VpnServerType.OpenVpn, 5011);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = $"http://{hostIp}:5010/",
+            PublicIp = hostIp
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.AlreadyRegistered, result.Status);
+        Assert.Equal(94, result.ExistingVpnServerId);
+        discoveryCmd.Verify(c => c.Add(It.IsAny<VpnServerDiscovery>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_DoesNotRefreshPendingDiscovery_WhenServerTypeDiffersButApiUrlMatches()
+    {
+        await using var ctx = CreateContext();
+        var now = DateTimeOffset.UtcNow;
+        ctx.VpnServerDiscoveries.Add(new VpnServerDiscovery
+        {
+            Id = 60,
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://10.0.0.5:5010/",
+            PublicIp = "10.0.0.5",
+            SuggestedName = "openvpn-pending",
+            Status = VpnServerDiscoveryStatus.Pending,
+            LastSeenUtc = now.AddHours(-1),
+            CreateDate = now,
+            LastUpdate = now
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.Xray,
+            ApiUrl = "http://10.0.0.5:5010/",
+            PublicIp = "10.0.0.5",
+            SuggestedName = "xray-node"
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
+        Assert.NotEqual(60, result.DiscoveryId);
+        var original = await ctx.VpnServerDiscoveries.FindAsync(60);
+        Assert.Equal(VpnServerDiscoveryStatus.Pending, original!.Status);
+        Assert.Equal("openvpn-pending", original.SuggestedName);
+        Assert.Equal(2, await ctx.VpnServerDiscoveries.CountAsync(d => d.Status == VpnServerDiscoveryStatus.Pending));
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_DoesNotMatchDifferentPortOnSameIp()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 5, name: "tcp", apiUrl: "http://81.27.109.193:5011/", deleted: false);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://81.27.109.193:5010/",
+            PublicIp = "81.27.109.193"
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task AnnounceAsync_DoesNotMatchNginxHttps443_WhenAnnounceUsesDirectApiPort()
+    {
+        await using var ctx = CreateContext();
+        SeedServer(ctx, id: 94, name: "nor-udp", apiUrl: "https://81.27.109.193/", deleted: false);
+        await ctx.SaveChangesAsync();
+
+        var sut = CreateSut(ctx, out var discoveryCmd, out var notifications, out _);
+        WireCommandToContext(ctx, discoveryCmd);
+
+        var result = await sut.AnnounceAsync(new AnnounceVpnServerRequest
+        {
+            ServerType = VpnServerType.OpenVpn,
+            ApiUrl = "http://81.27.109.193:5010/",
+            PublicIp = "81.27.109.193"
+        }, CancellationToken.None);
+
+        Assert.Equal(AnnounceVpnServerResultStatus.Pending, result.Status);
+        notifications.Verify(
+            n => n.NotifyDiscovered(It.IsAny<int>(), It.IsAny<string?>(), It.IsAny<string>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -554,7 +1070,13 @@ public class VpnServerDiscoveryServiceTests
         Assert.True(sut.TryAcquireAnnounceSlot(null));
     }
 
-    private static void SeedServer(ApplicationDbContext ctx, int id, string name, string apiUrl, bool deleted)
+    private static void SeedServer(
+        ApplicationDbContext ctx,
+        int id,
+        string name,
+        string apiUrl,
+        bool deleted,
+        VpnServerType serverType = VpnServerType.OpenVpn)
     {
         var now = DateTimeOffset.UtcNow;
         ctx.VpnServers.Add(new VpnServer
@@ -562,7 +1084,52 @@ public class VpnServerDiscoveryServiceTests
             Id = id,
             ServerName = name,
             ApiUrl = apiUrl,
+            ServerType = serverType,
             IsDeleted = deleted,
+            CreateDate = now,
+            LastUpdate = now
+        });
+    }
+
+    private static void SeedOvpnConfig(ApplicationDbContext ctx, int vpnServerId, string vpnServerIp)
+    {
+        var now = DateTimeOffset.UtcNow;
+        ctx.VpnServerOvpnFileConfigs.Add(new VpnServerOvpnFileConfig
+        {
+            VpnServerId = vpnServerId,
+            VpnServerIp = vpnServerIp,
+            VpnServerPort = 1194,
+            ConfigTemplate = "remote {{server_ip}} {{server_port}}",
+            CreateDate = now,
+            LastUpdate = now
+        });
+    }
+
+    private static void SeedConflog(ApplicationDbContext ctx, int vpnServerId, VpnServerType serverType, int apiPort)
+    {
+        var now = DateTimeOffset.UtcNow;
+        var payload = ProjectJson.Serialize(new VpnMicroserviceDiagnosticsDto
+        {
+            ServerType = serverType,
+            OpenVpn = serverType == VpnServerType.OpenVpn
+                ? new RootOpenVpnInfoResponse
+                {
+                    Config = new OpenVpnConfigInfoResponse { ApiPort = apiPort.ToString() }
+                }
+                : null,
+            Xray = serverType == VpnServerType.Xray
+                ? new RootXrayInfoResponse
+                {
+                    Config = new XrayConfigInfoResponse { ApiPort = apiPort.ToString() }
+                }
+                : null
+        });
+
+        ctx.VpnServerConflogs.Add(new VpnServerConflog
+        {
+            VpnServerId = vpnServerId,
+            RequestUrl = $"https://server-{vpnServerId}.example/",
+            PayloadJson = payload,
             CreateDate = now,
             LastUpdate = now
         });
@@ -604,6 +1171,8 @@ public class VpnServerDiscoveryServiceTests
         var uow = new DbContextUnitOfWork(ctx);
         var discoveryQuery = new EfQueryService<VpnServerDiscovery, int>(uow);
         var vpnServerQuery = new EfQueryService<VpnServer, int>(uow);
+        var ovpnConfigQuery = new EfQueryService<VpnServerOvpnFileConfig, int>(uow);
+        var conflogQuery = new EfQueryService<VpnServerConflog, int>(uow);
         discoveryCmd = new Mock<ICommandService<VpnServerDiscovery, int>>(MockBehavior.Strict);
         notifications = new Mock<IServerOpenVpnNotificationService>(MockBehavior.Loose);
         vpnData = new Mock<IVpnDataService>(MockBehavior.Strict);
@@ -613,6 +1182,8 @@ public class VpnServerDiscoveryServiceTests
             discoveryQuery,
             discoveryCmd.Object,
             vpnServerQuery,
+            new VpnServerOvpnFileConfigQueryService(ovpnConfigQuery),
+            new VpnServerConflogQueryService(conflogQuery),
             vpnData.Object,
             notifications.Object,
             cache,

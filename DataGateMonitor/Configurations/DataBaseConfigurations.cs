@@ -115,9 +115,7 @@ public static class DataBaseConfigurations
 
         services.AddSingleton<ApplicationDatabaseState>();
         services.AddSingleton<IApplicationDatabaseState>(sp => sp.GetRequiredService<ApplicationDatabaseState>());
-        if (databaseRuntime.IsConnectionConfigured)
-            services.AddHostedService<EfCoreMigrationHostedService>();
-        else
+        if (!databaseRuntime.IsConnectionConfigured)
             services.AddHostedService<MarkDatabaseUnconfiguredHostedService>();
     }
 

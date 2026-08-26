@@ -32,6 +32,16 @@ namespace DataGateMonitor.DataBase.Migrations
                         epoch,
                         epoch
                     }
+                },
+                columnTypes: new[]
+                {
+                    "character varying(128)",
+                    "character varying(512)",
+                    "character varying(512)",
+                    "text",
+                    "integer",
+                    "timestamp with time zone",
+                    "timestamp with time zone"
                 });
         }
 

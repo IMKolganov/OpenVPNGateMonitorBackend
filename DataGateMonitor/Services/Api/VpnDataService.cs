@@ -37,6 +37,8 @@ public class VpnDataService(
 
     public async Task<VpnServer> AddVpnServer(VpnServer server, List<int> quotaPlanIds, List<int> tagIds, CancellationToken ct)
     {
+        server.ApiUrl = VpnServerApiUrlHelper.NormalizeApiUrl(server.ApiUrl);
+
         var result = await transactionRunner.RunAsync(async _ =>
         {
             var now = DateTimeOffset.UtcNow;
@@ -86,9 +88,9 @@ public class VpnDataService(
     {
         var previous = await openVpnServerQueryService.GetById(server.Id, ct)
                        ?? throw new InvalidOperationException("OpenVPN server not found");
+        server.ApiUrl = VpnServerApiUrlHelper.NormalizeApiUrl(server.ApiUrl);
         var becameDisabled = server.IsDisable && !previous.IsDisable;
-        var apiUrlChanged = !string.Equals(
-            previous.ApiUrl?.Trim(), server.ApiUrl?.Trim(), StringComparison.OrdinalIgnoreCase);
+        var apiUrlChanged = !VpnServerApiUrlHelper.ApiUrlsEquivalent(previous.ApiUrl, server.ApiUrl);
 
         var result = await transactionRunner.RunAsync(async _ =>
         {

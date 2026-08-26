@@ -24,6 +24,12 @@ namespace DataGateMonitor.DataBase.Migrations
                 {
                     { 30, true, 29 },
                     { 31, true, 30 }
+                },
+                columnTypes: new[]
+                {
+                    "integer",
+                    "boolean",
+                    "integer"
                 });
 
             migrationBuilder.Sql(
