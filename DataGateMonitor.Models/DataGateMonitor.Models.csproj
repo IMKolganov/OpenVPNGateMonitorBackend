@@ -10,7 +10,7 @@
 
     <ItemGroup>
       <!-- SharedModels: NuGet only (never ProjectReference). Publish new package version to nuget.org after DTO changes. -->
-      <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.61" />
+      <PackageReference Include="DataGateMonitor.SharedModels" Version="1.0.63" />
       <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.9" />
       <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     </ItemGroup>
