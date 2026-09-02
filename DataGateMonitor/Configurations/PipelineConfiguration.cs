@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.OpenApi;
 using DataGateMonitor.Hubs;
+using DataGateMonitor.Middlewares;
 using Swashbuckle.AspNetCore.Swagger;
 
 namespace DataGateMonitor.Configurations;
@@ -60,6 +61,7 @@ public static class PipelineConfiguration
         // app.UseHttpsRedirection();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseMiddleware<AdminIdleActivityMiddleware>();
 
         // EF migrations run in EfCoreMigrationHostedService.StartAsync before HTTP/background workers start.
 
