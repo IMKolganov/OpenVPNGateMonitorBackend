@@ -1,6 +1,7 @@
 using System.Linq.Expressions;
 using Microsoft.EntityFrameworkCore;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.SharedModels.Responses;
 
@@ -11,34 +12,18 @@ public class VpnServerQueryService(
     IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService) : IVpnServerQueryService
 {
     public async Task<List<VpnServer>> GetAll(bool includeDeleted = false, bool requireQuotaPlanAssignment = false,
-        int? restrictToQuotaPlanId = null, CancellationToken ct = default)
+        int? restrictToQuotaPlanId = null, UserVpnServerAccessOverrides? personalOverrides = null,
+        CancellationToken ct = default)
     {
-        if (restrictToQuotaPlanId is int planId)
-        {
-            var ids = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(planId, ct);
-            if (ids.Count == 0)
-                return [];
-
-            return includeDeleted
-                ? await q.Where(x => ids.Contains(x.Id), ct: ct)
-                : await q.Where(x => ids.Contains(x.Id) && !x.IsDeleted, ct: ct);
-        }
-
-        if (!requireQuotaPlanAssignment)
-        {
-            return includeDeleted
-                ? await q.GetAll(ct: ct)
-                : await q.Where(x => !x.IsDeleted, ct: ct);
-        }
-
-        var allowedIds = await quotaPlanAllowedServerQueryService.GetDistinctVpnServerIds(ct);
-        if (allowedIds.Count == 0)
+        var overrides = personalOverrides ?? UserVpnServerAccessOverrides.None;
+        var scopedIds = await ResolveScopedIdsAsync(requireQuotaPlanAssignment, restrictToQuotaPlanId, overrides, ct);
+        if (scopedIds is { Count: 0 })
             return [];
 
-        if (includeDeleted)
-            return await q.Where(x => allowedIds.Contains(x.Id), ct: ct);
-
-        return await q.Where(x => allowedIds.Contains(x.Id) && !x.IsDeleted, ct: ct);
+        var predicate = BuildPredicate(scopedIds, overrides.DeniedVpnServerIds, includeDeleted);
+        return predicate is null
+            ? await q.GetAll(ct: ct)
+            : await q.Where(predicate, ct: ct);
     }
 
     public Task<VpnServer?> GetById(int id, CancellationToken ct = default)
@@ -48,38 +33,12 @@ public class VpnServerQueryService(
         => q.Where(x => x.IsDefault && x.Id != exceptId && !x.IsDeleted, ct: ct);
 
     public async Task<IPagedResult<VpnServer>> GetPage(int page, int pageSize, bool includeDeleted = false,
-        bool requireQuotaPlanAssignment = false, int? restrictToQuotaPlanId = null, CancellationToken ct = default)
+        bool requireQuotaPlanAssignment = false, int? restrictToQuotaPlanId = null,
+        UserVpnServerAccessOverrides? personalOverrides = null, CancellationToken ct = default)
     {
-        if (restrictToQuotaPlanId is int planId)
-        {
-            var ids = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(planId, ct);
-            if (ids.Count == 0)
-            {
-                return new PagedResponse<VpnServer>
-                {
-                    Page = page,
-                    PageSize = pageSize,
-                    TotalCount = 0,
-                    Items = []
-                };
-            }
-
-            Expression<Func<VpnServer, bool>> predicate = includeDeleted
-                ? x => ids.Contains(x.Id)
-                : x => ids.Contains(x.Id) && !x.IsDeleted;
-
-            return await q.Page(page, pageSize, predicate: predicate, ct: ct);
-        }
-
-        if (!requireQuotaPlanAssignment)
-        {
-            return includeDeleted
-                ? await q.Page(page, pageSize, ct: ct)
-                : await q.Page(page, pageSize, predicate: x => !x.IsDeleted, ct: ct);
-        }
-
-        var allowedIds = await quotaPlanAllowedServerQueryService.GetDistinctVpnServerIds(ct);
-        if (allowedIds.Count == 0)
+        var overrides = personalOverrides ?? UserVpnServerAccessOverrides.None;
+        var scopedIds = await ResolveScopedIdsAsync(requireQuotaPlanAssignment, restrictToQuotaPlanId, overrides, ct);
+        if (scopedIds is { Count: 0 })
         {
             return new PagedResponse<VpnServer>
             {
@@ -90,11 +49,8 @@ public class VpnServerQueryService(
             };
         }
 
-        Expression<Func<VpnServer, bool>> predicate2 = includeDeleted
-            ? x => allowedIds.Contains(x.Id)
-            : x => allowedIds.Contains(x.Id) && !x.IsDeleted;
-
-        return await q.Page(page, pageSize, predicate: predicate2, ct: ct);
+        return await q.Page(page, pageSize,
+            predicate: BuildPredicate(scopedIds, overrides.DeniedVpnServerIds, includeDeleted), ct: ct);
     }
 
     public Task<bool> AnyByServerName(string serverName, CancellationToken ct = default)
@@ -104,38 +60,66 @@ public class VpnServerQueryService(
         => q.Any(x => x.ServerName == serverName && x.Id != id && !x.IsDeleted, ct: ct);
 
     public async Task<DateTimeOffset?> GetLastUpdateStamp(bool includeDeleted = false,
-        bool requireQuotaPlanAssignment = false, int? restrictToQuotaPlanId = null, CancellationToken ct = default)
+        bool requireQuotaPlanAssignment = false, int? restrictToQuotaPlanId = null,
+        UserVpnServerAccessOverrides? personalOverrides = null, CancellationToken ct = default)
     {
-        if (restrictToQuotaPlanId is int planId)
-        {
-            var ids = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(planId, ct);
-            if (ids.Count == 0)
-                return null;
-
-            var scoped = q.Query().Where(x => ids.Contains(x.Id));
-            if (!includeDeleted)
-                scoped = scoped.Where(x => !x.IsDeleted);
-
-            return await scoped.MaxAsync(x => (DateTimeOffset?)x.LastUpdate, ct);
-        }
-
-        if (!requireQuotaPlanAssignment)
-        {
-            var all = q.Query();
-            if (!includeDeleted)
-                all = all.Where(x => !x.IsDeleted);
-
-            return await all.MaxAsync(x => (DateTimeOffset?)x.LastUpdate, ct);
-        }
-
-        var allowedIds = await quotaPlanAllowedServerQueryService.GetDistinctVpnServerIds(ct);
-        if (allowedIds.Count == 0)
+        var overrides = personalOverrides ?? UserVpnServerAccessOverrides.None;
+        var scopedIds = await ResolveScopedIdsAsync(requireQuotaPlanAssignment, restrictToQuotaPlanId, overrides, ct);
+        if (scopedIds is { Count: 0 })
             return null;
 
-        var filtered = q.Query().Where(x => allowedIds.Contains(x.Id));
-        if (!includeDeleted)
-            filtered = filtered.Where(x => !x.IsDeleted);
+        var query = q.Query();
+        if (BuildPredicate(scopedIds, overrides.DeniedVpnServerIds, includeDeleted) is { } predicate)
+            query = query.Where(predicate);
 
-        return await filtered.MaxAsync(x => (DateTimeOffset?)x.LastUpdate, ct);
+        return await query.MaxAsync(x => (DateTimeOffset?)x.LastUpdate, ct);
+    }
+
+    /// <returns>Server ids the caller is limited to, or <c>null</c> when only personal blocks narrow the full list.</returns>
+    private async Task<HashSet<int>?> ResolveScopedIdsAsync(
+        bool requireQuotaPlanAssignment,
+        int? restrictToQuotaPlanId,
+        UserVpnServerAccessOverrides overrides,
+        CancellationToken ct)
+    {
+        HashSet<int>? scopedIds = null;
+
+        if (restrictToQuotaPlanId is int planId)
+        {
+            scopedIds = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(planId, ct);
+            scopedIds.UnionWith(overrides.AllowedVpnServerIds);
+        }
+        else if (requireQuotaPlanAssignment)
+        {
+            scopedIds = await quotaPlanAllowedServerQueryService.GetDistinctVpnServerIds(ct);
+        }
+
+        scopedIds?.ExceptWith(overrides.DeniedVpnServerIds);
+        return scopedIds;
+    }
+
+    /// <returns><c>null</c> when nothing narrows the query, so the caller can keep the unfiltered fast path.</returns>
+    private static Expression<Func<VpnServer, bool>>? BuildPredicate(
+        HashSet<int>? scopedIds,
+        HashSet<int> deniedIds,
+        bool includeDeleted)
+    {
+        if (scopedIds is not null)
+        {
+            return includeDeleted
+                ? x => scopedIds.Contains(x.Id)
+                : x => scopedIds.Contains(x.Id) && !x.IsDeleted;
+        }
+
+        if (deniedIds.Count > 0)
+        {
+            return includeDeleted
+                ? x => !deniedIds.Contains(x.Id)
+                : x => !deniedIds.Contains(x.Id) && !x.IsDeleted;
+        }
+
+        return includeDeleted
+            ? null
+            : x => !x.IsDeleted;
     }
 }

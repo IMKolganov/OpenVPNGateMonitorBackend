@@ -1,4 +1,5 @@
 using DataGateMonitor.Services.Helpers;
+using DataGateMonitor.SharedModels.Enums;
 using Xunit;
 
 namespace DataGateMonitor.Tests.Services.Helpers;
@@ -130,6 +131,37 @@ public class VpnServerApiUrlHelperTests
     public void SanitizeExportEndpointHost_StripsSchemeAndPort(string input, string expected)
     {
         Assert.Equal(expected, VpnServerApiUrlHelper.SanitizeExportEndpointHost(input));
+    }
+
+    [Fact]
+    public void TryGetEndpointHostPort_UsesDefaultHttpsPort()
+    {
+        Assert.True(VpnServerApiUrlHelper.TryGetEndpointHostPort("https://s1-nor.datagateapp.com/", out var host, out var port));
+        Assert.Equal("s1-nor.datagateapp.com", host);
+        Assert.Equal(443, port);
+    }
+
+    [Fact]
+    public void UsesSchemeDefaultPort_DetectsHttps443AndHttp80()
+    {
+        Assert.True(VpnServerApiUrlHelper.UsesSchemeDefaultPort("https://s1-nor.datagateapp.com/"));
+        Assert.True(VpnServerApiUrlHelper.UsesSchemeDefaultPort("http://10.0.0.1/"));
+        Assert.False(VpnServerApiUrlHelper.UsesSchemeDefaultPort("https://xs1-nor.datagateapp.com:9443/"));
+        Assert.False(VpnServerApiUrlHelper.UsesSchemeDefaultPort("http://81.27.109.193:5010/"));
+    }
+
+    [Fact]
+    public void BuildEndpointKey_UsesResolvedIpPortAndType()
+    {
+        var key = VpnServerApiUrlHelper.BuildEndpointKey(
+            "http://81.27.109.193:5010/",
+            VpnServerType.OpenVpn,
+            "81.27.109.193");
+
+        Assert.NotNull(key);
+        Assert.Equal("81.27.109.193", key.Value.Ip);
+        Assert.Equal(5010, key.Value.Port);
+        Assert.Equal(VpnServerType.OpenVpn, key.Value.ServerType);
     }
 
     [Fact]

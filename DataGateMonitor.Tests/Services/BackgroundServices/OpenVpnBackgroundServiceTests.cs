@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Moq;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices;
@@ -35,7 +36,7 @@ public class OpenVpnBackgroundServiceTests
         queryService.Setup(x => x.GetAll(
                 It.IsAny<bool>(),
                 It.IsAny<bool>(),
-                It.IsAny<int?>(),
+                It.IsAny<int?>(),It.IsAny<UserVpnServerAccessOverrides?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([server]);
 
@@ -117,7 +118,7 @@ public class OpenVpnBackgroundServiceTests
         queryService.Setup(x => x.GetAll(
                 It.IsAny<bool>(),
                 It.IsAny<bool>(),
-                It.IsAny<int?>(),
+                It.IsAny<int?>(),It.IsAny<UserVpnServerAccessOverrides?>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync([disabledServer]);
 

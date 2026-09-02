@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Models.Helpers;
@@ -56,7 +57,7 @@ public class FreeTierOpenVpnSessionEnforcementServiceTests
     private void SetupSingleConnectedClient(int userId, string commonName = "cn1", string externalId = "ext1")
     {
         var server = new VpnServer { Id = 1, ServerType = VpnServerType.OpenVpn, IsDisable = false, IsDeleted = false };
-        _vpnServerQuery.Setup(q => q.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        _vpnServerQuery.Setup(q => q.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([server]);
 
         _openVpnClientService

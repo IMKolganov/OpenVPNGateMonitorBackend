@@ -56,6 +56,7 @@ public class AdminIdleSessionTrackerTests
         Assert.True(AdminIdleSessionTracker.IsAdminRole("admin"));
         Assert.True(AdminIdleSessionTracker.IsAdminRole("Admin"));
         Assert.False(AdminIdleSessionTracker.IsAdminRole("user"));
+        Assert.False(AdminIdleSessionTracker.IsAdminRole("VpnUser"));
         Assert.False(AdminIdleSessionTracker.IsAdminRole(null));
     }
 }

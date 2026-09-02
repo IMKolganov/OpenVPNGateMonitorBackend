@@ -1,4 +1,5 @@
 using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.CertExpiry;
@@ -38,7 +39,7 @@ public sealed class CertExpiryScheduledCheckRunnerIntegrationTests : IDisposable
     [Fact]
     public async Task RunAsync_WhenNoEligibleServers_DoesNotQueryCertificatesOrProfiles()
     {
-        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]);
 
         await CreateRunner().RunAsync(CancellationToken.None);
@@ -156,7 +157,7 @@ public sealed class CertExpiryScheduledCheckRunnerIntegrationTests : IDisposable
     [Fact]
     public async Task RunAsync_SkipsDisabledAndNonOpenVpnServers()
     {
-        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new VpnServer
@@ -310,7 +311,7 @@ public sealed class CertExpiryScheduledCheckRunnerIntegrationTests : IDisposable
 
         await CreateRunner().RunAsync(CancellationToken.None);
 
-        _servers.Verify(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()), Times.Never);
+        _servers.Verify(s => s.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     private CertExpiryScheduledCheckRunner CreateRunner()
@@ -332,7 +333,7 @@ public sealed class CertExpiryScheduledCheckRunnerIntegrationTests : IDisposable
 
     private void SetupServer(int serverId)
     {
-        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        _servers.Setup(s => s.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(
             [
                 new VpnServer

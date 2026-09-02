@@ -70,6 +70,7 @@ public sealed class OpenVpnOverviewTotalsQuery(
 
         var sessionsCount = sessionAgg?.SessionsCount ?? 0L;
         var usersCount = sessionAgg?.UsersCount ?? 0L;
+        var accountsCount = await CountDistinctAccountsAsync(sessionsQ, ct);
 
         var trafficTotals = await trafficAggregator.GetTrafficTotalsAsync(
             fromUtc, toUtc, vpnServerId, externalId, ct);
@@ -89,9 +90,51 @@ public sealed class OpenVpnOverviewTotalsQuery(
             {
                 SessionsCount = sessionsCount,
                 UsersCount = usersCount,
+                AccountsCount = accountsCount,
                 TrafficInBytes = trafficTotals.TrafficInBytes,
                 TrafficOutBytes = trafficTotals.TrafficOutBytes
             }
         };
+    }
+
+    private async Task<long> CountDistinctAccountsAsync(
+        IQueryable<VpnServerClient> sessionsQ,
+        CancellationToken ct)
+    {
+        var deviceRows = await sessionsQ
+            .Where(x => x.ExternalId != null && x.ExternalId != "")
+            .Select(x => new { x.ExternalId, x.UserId })
+            .Distinct()
+            .ToListAsync(ct);
+
+        if (deviceRows.Count == 0)
+            return 0L;
+
+        var externalIds = deviceRows
+            .Select(x => x.ExternalId)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+
+        var links = await uow.GetQuery<UserIdentityLink>()
+            .AsQueryable()
+            .Where(l => externalIds.Contains(l.ExternalId))
+            .Select(l => new { l.ExternalId, l.UserId })
+            .AsNoTracking()
+            .ToListAsync(ct);
+
+        var userIdByExternalId = links
+            .GroupBy(l => l.ExternalId, StringComparer.Ordinal)
+            .ToDictionary(g => g.Key, g => g.First().UserId, StringComparer.Ordinal);
+
+        var accountIds = new HashSet<int>();
+        foreach (var row in deviceRows)
+        {
+            if (row.UserId is > 0)
+                accountIds.Add(row.UserId.Value);
+            else if (userIdByExternalId.TryGetValue(row.ExternalId, out var linkedUserId))
+                accountIds.Add(linkedUserId);
+        }
+
+        return accountIds.Count;
     }
 }

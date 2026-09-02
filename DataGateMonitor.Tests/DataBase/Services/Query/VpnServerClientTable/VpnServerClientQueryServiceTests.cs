@@ -129,6 +129,38 @@ public class VpnServerClientQueryServiceTests
     }
 
     [Fact]
+    public async Task GetConnectedVpnServerIdsForUserAsync_MatchesByUserIdOrExternalId()
+    {
+        var data = new List<VpnServerClient>
+        {
+            new() { Id = 1, VpnServerId = 10, UserId = 7, ExternalId = "u1", IsConnected = true, SessionId = Guid.NewGuid(), ConnectedSince = DateTimeOffset.UtcNow },
+            new() { Id = 2, VpnServerId = 20, UserId = 99, ExternalId = "u1", IsConnected = true, SessionId = Guid.NewGuid(), ConnectedSince = DateTimeOffset.UtcNow },
+            new() { Id = 3, VpnServerId = 30, UserId = 7, ExternalId = "u2", IsConnected = false, SessionId = Guid.NewGuid(), ConnectedSince = DateTimeOffset.UtcNow },
+            new() { Id = 4, VpnServerId = 40, UserId = 8, ExternalId = "u3", IsConnected = true, SessionId = Guid.NewGuid(), ConnectedSince = DateTimeOffset.UtcNow },
+        };
+
+        var (q, ctx) = CreateEfBackedQuery(data);
+        var sut = new VpnServerClientQueryService(q.Object);
+
+        var result = await sut.GetConnectedVpnServerIdsForUserAsync(7, "u1", CancellationToken.None);
+
+        Assert.Equal(new[] { 10, 20 }, result.OrderBy(x => x));
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetConnectedVpnServerIdsForUserAsync_ReturnsEmpty_WhenIdentityMissing()
+    {
+        var (q, ctx) = CreateEfBackedQuery(Sample());
+        var sut = new VpnServerClientQueryService(q.Object);
+
+        var result = await sut.GetConnectedVpnServerIdsForUserAsync(null, null, CancellationToken.None);
+
+        Assert.Empty(result);
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
     public async Task GetByIdAsync_Delegates()
     {
         var entity = new VpnServerClient { Id = 42, VpnServerId = 10, IsConnected = true, SessionId = Guid.NewGuid(), ConnectedSince = DateTimeOffset.UtcNow };

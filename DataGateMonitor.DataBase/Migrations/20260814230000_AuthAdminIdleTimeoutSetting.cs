@@ -1,3 +1,5 @@
+using DataGateMonitor.DataBase.Contexts;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -7,6 +9,8 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace DataGateMonitor.DataBase.Migrations
 {
     /// <inheritdoc />
+    [DbContext(typeof(ApplicationDbContext))]
+    [Migration("20260814230000_AuthAdminIdleTimeoutSetting")]
     public partial class AuthAdminIdleTimeoutSetting : Migration
     {
         /// <inheritdoc />
@@ -20,6 +24,17 @@ namespace DataGateMonitor.DataBase.Migrations
                 {
                     { 206, null, null, null, 15, "Auth_Admin_Idle_Timeout_Minutes", null, "int" },
                     { 207, null, null, null, null, "Auth_Admin_Idle_Timeout_Minutes_Type", "int", "string" }
+                },
+                columnTypes: new[]
+                {
+                    "integer",
+                    "boolean",
+                    "timestamp with time zone",
+                    "double precision",
+                    "integer",
+                    "character varying(255)",
+                    "character varying(255)",
+                    "character varying(50)"
                 });
         }
 

@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Memory;
 using Moq;
 using DataGateMonitor.Controllers;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
@@ -15,6 +16,8 @@ using PostSetupState = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetup
 using PostSetupStatus = DataGateMonitor.Services.Api.PostSetup.VpnServerPostSetupStatus;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.VpnManagerReleases;
+using DataGateMonitor.Tests.Services.VpnManagerReleases;
 using DataGateMonitor.Services.DataGateOpenVpnManager.Interfaces;
 using DataGateMonitor.Services.StatusStreamLogs;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Requests;
@@ -34,6 +37,7 @@ public class VpnServersControllerAddUpdateExoticTests
     private readonly Mock<IOpenVpnBackgroundService> _backgroundService = new();
     private readonly Mock<IMicroserviceInfoService> _microserviceInfo = new();
     private readonly Mock<IUserQuotaPlanQueryService> _userQuotaPlan = new();
+    private readonly Mock<IUserVpnServerAccessRuleQueryService> _accessRules = new();
     private readonly Mock<IVpnServerAccessQueryService> _vpnAccess = new();
     private readonly Mock<IStatusCacheGenerationService> _statusCacheGeneration = new();
     private readonly Mock<IStatusStreamLogStore> _statusStreamLogStore = new();
@@ -42,6 +46,8 @@ public class VpnServersControllerAddUpdateExoticTests
 
     public VpnServersControllerAddUpdateExoticTests()
     {
+        _accessRules.Setup(r => r.GetOverridesByUserId(It.IsAny<int>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(UserVpnServerAccessOverrides.None);
         _controller = new VpnServersController(
             _vpnDataService.Object,
             Mock.Of<IVpnServerDiscoveryService>(),
@@ -51,13 +57,15 @@ public class VpnServersControllerAddUpdateExoticTests
             _backgroundService.Object,
             _microserviceInfo.Object,
             _userQuotaPlan.Object,
+            _accessRules.Object,
             _vpnAccess.Object,
             new ApiMemoryCacheService(new MemoryCache(new MemoryCacheOptions())),
             _statusCacheGeneration.Object,
             _statusStreamLogStore.Object,
             _postSetup.Object,
             Mock.Of<IConnectedClientsCounterStore>(),
-            Mock.Of<IVpnServerOvpnFileConfigQueryService>());
+            Mock.Of<IVpnServerOvpnFileConfigQueryService>(),
+            new NoOpVpnManagerUpdateStatusEnricher());
         _controller.ControllerContext = new ControllerContext
         {
             HttpContext = new DefaultHttpContext

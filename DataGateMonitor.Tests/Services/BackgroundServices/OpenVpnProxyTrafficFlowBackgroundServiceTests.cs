@@ -1,3 +1,4 @@
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Services.BackgroundServices;
 using DataGateMonitor.Services.DataGateOpenVpnManager.OpenVpnProxy;
@@ -24,7 +25,7 @@ public class OpenVpnProxyTrafficFlowBackgroundServiceTests
         checker.Setup(x => x.ShouldListenAsync(server, It.IsAny<CancellationToken>())).ReturnsAsync(true);
 
         var query = new Mock<IVpnServerQueryService>();
-        query.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>())).ReturnsAsync([server]);
+        query.Setup(x => x.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>())).ReturnsAsync([server]);
 
         var services = new ServiceCollection();
         services.AddSingleton(query.Object);
@@ -59,7 +60,7 @@ public class OpenVpnProxyTrafficFlowBackgroundServiceTests
         checker.Setup(x => x.ShouldListenAsync(server, It.IsAny<CancellationToken>())).ReturnsAsync(false);
 
         var query = new Mock<IVpnServerQueryService>();
-        query.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>())).ReturnsAsync([server]);
+        query.Setup(x => x.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>())).ReturnsAsync([server]);
 
         var services = new ServiceCollection();
         services.AddSingleton(query.Object);

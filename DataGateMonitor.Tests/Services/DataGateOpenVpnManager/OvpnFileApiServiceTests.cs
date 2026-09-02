@@ -9,6 +9,7 @@ using DataGateMonitor.DataBase.Services.Query.IssuedOvpnFileTokenTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerOvpnFileConfigTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Mapping.DataGateOpenVpnManager.Mappings;
@@ -504,6 +505,7 @@ public class OvpnFileApiServiceTests
             identityLinkQuery.Object,
             userQuotaPlanQuery.Object,
             quotaPlanAllowedServerQuery.Object,
+            new Mock<IUserVpnServerAccessRuleQueryService>(MockBehavior.Loose).Object,
             userQuery.Object);
 
         return new OvpnFileApiService(

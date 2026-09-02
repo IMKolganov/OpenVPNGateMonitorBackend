@@ -25,6 +25,7 @@ namespace DataGateMonitor.Controllers;
 [Authorize]
 public class VpnServerClientsController(
     IVpnServerClientOverviewQuery openVpnServerClientOverviewQuery,
+    IVpnServerClientQueryService vpnServerClientQueryService,
     IOpenVpnGeoQueryService openVpnGeoQueryService,
     IOpenVpnOverviewTotalsQuery openVpnOverviewTotalsQuery,
     IOpenVpnOverviewSeriesQuery openVpnOverviewSeriesQuery,
@@ -97,6 +98,24 @@ public class VpnServerClientsController(
         ClientStatisticsResponseSanitizer.ApplyIfNeeded(User, response);
         RestoreOwnConnectedRowIdentity(response, ownRows, ownExternalId, ownDisplayName);
         return Ok(ApiResponse<ConnectedClientsResponse>.SuccessResponse(response));
+    }
+
+    /// <summary>
+    /// VPN server ids where the current user has at least one connected session.
+    /// Lightweight alternative to calling get-all-connected per server from the UI.
+    /// </summary>
+    [HttpGet("user-connected-server-ids")]
+    public async Task<ActionResult<ApiResponse<UserConnectedServerIdsResponse>>> GetUserConnectedServerIds(
+        CancellationToken ct)
+    {
+        var externalId = await ResolveEffectiveExternalIdAsync(null, ct);
+        var userId = HttpUserContext.TryGetUserId(User, out var resolvedUserId) ? resolvedUserId : (int?)null;
+        var serverIds = await vpnServerClientQueryService.GetConnectedVpnServerIdsForUserAsync(userId, externalId, ct);
+
+        return Ok(ApiResponse<UserConnectedServerIdsResponse>.SuccessResponse(new UserConnectedServerIdsResponse
+        {
+            VpnServerIds = serverIds.ToList(),
+        }));
     }
 
     [HttpGet("get-all-history")]

@@ -14,6 +14,7 @@ public class OpenVpnOverviewTotalsQueryTests
         public TestDbContext(DbContextOptions<TestDbContext> options) : base(options) { }
         public DbSet<VpnServerClient> Clients => Set<VpnServerClient>();
         public DbSet<VpnServerClientTraffic> Traffic => Set<VpnServerClientTraffic>();
+        public DbSet<UserIdentityLink> IdentityLinks => Set<UserIdentityLink>();
     }
 
     private static (Mock<IUnitOfWork> uow, TestDbContext ctx) CreateUow()
@@ -27,6 +28,8 @@ public class OpenVpnOverviewTotalsQueryTests
            .Returns(() => new TestQuery<VpnServerClient>(ctx.Clients));
         uow.Setup(x => x.GetQuery<VpnServerClientTraffic>())
            .Returns(() => new TestQuery<VpnServerClientTraffic>(ctx.Traffic));
+        uow.Setup(x => x.GetQuery<UserIdentityLink>())
+           .Returns(() => new TestQuery<UserIdentityLink>(ctx.IdentityLinks));
         return (uow, ctx);
     }
 
@@ -66,6 +69,7 @@ public class OpenVpnOverviewTotalsQueryTests
 
         Assert.Equal(3, res.Totals.SessionsCount);
         Assert.Equal(2, res.Totals.UsersCount);
+        Assert.Equal(0, res.Totals.AccountsCount);
         Assert.Equal(120, res.Totals.TrafficInBytes);
         Assert.Equal(50, res.Totals.TrafficOutBytes);
 
@@ -100,6 +104,7 @@ public class OpenVpnOverviewTotalsQueryTests
 
         Assert.Equal(1, res.Totals.SessionsCount);
         Assert.Equal(1, res.Totals.UsersCount);
+        Assert.Equal(0, res.Totals.AccountsCount);
         Assert.Equal(5, res.Totals.TrafficInBytes);
         Assert.Equal(3, res.Totals.TrafficOutBytes);
 
@@ -137,6 +142,37 @@ public class OpenVpnOverviewTotalsQueryTests
 
         Assert.Equal(400, res.Totals.TrafficInBytes);
         Assert.Equal(200, res.Totals.TrafficOutBytes);
+
+        await ctx.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task GetOverviewTotals_Counts_Distinct_Accounts_From_IdentityLinks()
+    {
+        var (uow, ctx) = CreateUow();
+        var now = DateTimeOffset.UtcNow;
+        var from = now.AddHours(-4);
+        var to = now.AddHours(1);
+
+        ctx.Clients.AddRange(new[]
+        {
+            new VpnServerClient { Id = 1, VpnServerId = 1, ExternalId = "dev-a", ConnectedSince = now.AddHours(-3) },
+            new VpnServerClient { Id = 2, VpnServerId = 1, ExternalId = "dev-b", ConnectedSince = now.AddHours(-2) },
+            new VpnServerClient { Id = 3, VpnServerId = 1, ExternalId = "dev-c", UserId = 42, ConnectedSince = now.AddHours(-1) },
+        });
+        ctx.IdentityLinks.AddRange(new[]
+        {
+            new UserIdentityLink { Id = 1, UserId = 7, Provider = "google", ExternalId = "dev-a" },
+            new UserIdentityLink { Id = 2, UserId = 7, Provider = "telegram", ExternalId = "dev-b" },
+        });
+        await ctx.SaveChangesAsync();
+
+        var sut = new OpenVpnOverviewTotalsQuery(uow.Object, OverviewQueryTestHelper.CreateTrafficAggregator(uow.Object));
+        var res = await sut.GetOverviewTotalsAsync(from, to, vpnServerId: 1, externalId: null, CancellationToken.None);
+
+        Assert.Equal(3, res.Totals.SessionsCount);
+        Assert.Equal(3, res.Totals.UsersCount);
+        Assert.Equal(2, res.Totals.AccountsCount);
 
         await ctx.DisposeAsync();
     }

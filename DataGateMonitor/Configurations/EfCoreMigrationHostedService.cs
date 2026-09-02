@@ -7,7 +7,6 @@ namespace DataGateMonitor.Configurations;
 /// Runs EF wait-for-Postgres and migrations after the host has fully started so HTTP (e.g. Swagger) is available while the database is still down.
 /// </summary>
 public sealed class EfCoreMigrationHostedService(
-    IHostApplicationLifetime lifetime,
     IServiceScopeFactory scopeFactory,
     IConfiguration configuration,
     ApplicationDatabaseState databaseState,
@@ -15,22 +14,20 @@ public sealed class EfCoreMigrationHostedService(
 {
     public Task StartAsync(CancellationToken cancellationToken)
     {
-        lifetime.ApplicationStarted.Register(
-            () =>
-            {
-                databaseState.SetWaitingOrMigrating();
-                try
-                {
-                    DatabaseMigrationExtensions.ApplyMigrationsWithDetailedLogging<ApplicationDbContext>(
-                        scopeFactory, configuration, logger);
-                    databaseState.SetReady();
-                }
-                catch (Exception ex)
-                {
-                    logger.LogCritical(ex, "Database migrations failed; API stays up (Swagger without DB). Fix PostgreSQL and restart.");
-                    databaseState.SetFailed(ex.GetBaseException().Message);
-                }
-            });
+        // Run before HTTP/background workers: ApplicationStarted was too late and caused
+        // queries against columns/tables that migrations had not created yet.
+        databaseState.SetWaitingOrMigrating();
+        try
+        {
+            DatabaseMigrationExtensions.ApplyMigrationsWithDetailedLogging<ApplicationDbContext>(
+                scopeFactory, configuration, logger);
+            databaseState.SetReady();
+        }
+        catch (Exception ex)
+        {
+            logger.LogCritical(ex, "Database migrations failed; API stays up (Swagger without DB). Fix PostgreSQL and restart.");
+            databaseState.SetFailed(ex.GetBaseException().Message);
+        }
 
         return Task.CompletedTask;
     }

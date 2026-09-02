@@ -33,6 +33,7 @@ using DataGateMonitor.DataBase.Services.Query.UserIdentityLinkTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
 using DataGateMonitor.DataBase.Services.Query.UserRefreshTokenTable;
 using DataGateMonitor.DataBase.Services.Query.UserRoleTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.UserTable;
 using DataGateMonitor.DataBase.Services.Query.TvLoginSessionTable;
 
@@ -83,6 +84,7 @@ public static class QueryCommandConfiguration
         services.AddScoped<IRoleQueryService, RoleQueryService>();
         services.AddScoped<IUserQuotaPlanQueryService, UserQuotaPlanQueryService>();
         services.AddScoped<IQuotaPlanAllowedServerQueryService, QuotaPlanAllowedServerQueryService>();
+        services.AddScoped<IUserVpnServerAccessRuleQueryService, UserVpnServerAccessRuleQueryService>();
         services.AddScoped<ITagQueryService, TagQueryService>();
         services.AddScoped<IVpnServerTagQueryService, VpnServerTagQueryService>();
         services.AddScoped<IVpnServerGroupQueryService, VpnServerGroupQueryService>();

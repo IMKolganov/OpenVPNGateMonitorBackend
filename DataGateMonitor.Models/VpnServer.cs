@@ -20,6 +20,9 @@ public class VpnServer : BaseEntity<int>
     /// <summary>DCO (Data Channel Offload) enabled; from OpenVPN "status 3" GLOBAL_STATS dco_enabled. Not required in DB.</summary>
     public bool? DcoIsEnabled { get; set; }
 
+    /// <summary>Last known OpenVPN/Xray manager assembly version from node <c>/api/info</c>.</summary>
+    public string? ManagerVersion { get; set; }
+
     /// <summary>Last time the monitor polled the Xray node <c>GET /api/xray/clients</c> (any outcome).</summary>
     public DateTimeOffset? XrayClientsPolledAt { get; set; }
 

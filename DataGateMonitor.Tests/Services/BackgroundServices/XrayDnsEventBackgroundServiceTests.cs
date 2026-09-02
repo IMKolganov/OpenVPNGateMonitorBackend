@@ -1,3 +1,4 @@
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.Api.Auth.Registers.Interfaces;
@@ -44,7 +45,7 @@ public class XrayDnsEventBackgroundServiceTests
             });
 
         var query = new Mock<IVpnServerQueryService>();
-        query.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        query.Setup(x => x.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([xray, disabledXray, openVpn]);
 
         var services = new ServiceCollection();
