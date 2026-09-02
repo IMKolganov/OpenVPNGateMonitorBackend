@@ -26,10 +26,18 @@ public sealed class ApplicationDbContextFactory : IDesignTimeDbContextFactory<Ap
             ?? "Host=localhost;Port=5432;Database=datagate_dev;Username=postgres;Password=postgres;Include Error Detail=true";
 
         // 3) Build DbContextOptions with Npgsql; point migrations to this assembly
+        var defaultSchema = Environment.GetEnvironmentVariable("DB_DEFAULT_SCHEMA")
+                            ?? config["DataBaseSettings:DefaultSchema"]
+                            ?? "xgb_dashopnvpn";
+        var migrationTable = Environment.GetEnvironmentVariable("DB_MIGRATION_TABLE")
+                             ?? config["DataBaseSettings:MigrationTable"]
+                             ?? "__EFMigrationsHistory";
+
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(conn, npgsql =>
             {
                 npgsql.MigrationsAssembly(typeof(ApplicationDbContextFactory).Assembly.GetName().Name);
+                npgsql.MigrationsHistoryTable(migrationTable, defaultSchema);
             })
             .Options;
 

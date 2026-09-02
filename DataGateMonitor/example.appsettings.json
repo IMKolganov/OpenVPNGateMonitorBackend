@@ -57,5 +57,17 @@
     "RequiredChannelUsername": "DataGateVPNBot",
     "BotToken": ""
   },
+  "VpnManagerReleases": {
+    "CacheMinutes": 30,
+    "UserAgent": "DataGateMonitor",
+    "OpenVpn": {
+      "Owner": "IMKolganov",
+      "Repo": "DataGateCertManager"
+    },
+    "Xray": {
+      "Owner": "IMKolganov",
+      "Repo": "DataGateXRayManager"
+    }
+  },
   "AllowedHosts": "*"
 }

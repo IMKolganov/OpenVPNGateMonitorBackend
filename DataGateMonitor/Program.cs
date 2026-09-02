@@ -41,6 +41,9 @@ builder.Services.Configure<HostOptions>(options =>
         options.BackgroundServiceExceptionBehavior = BackgroundServiceExceptionBehavior.Ignore;
 });
 
+if (databaseRuntime.IsConnectionConfigured)
+    builder.Services.AddHostedService<EfCoreMigrationHostedService>();
+
 builder.Services.ConfigureServices(builder.Configuration, databaseRuntime);
 builder.Services.ConfigureQueryCommand();
 builder.Services.ConfigureTelegramServices(builder.Configuration);

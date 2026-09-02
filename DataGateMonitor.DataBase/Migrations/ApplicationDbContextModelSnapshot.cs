@@ -2556,16 +2556,14 @@ namespace DataGateMonitor.DataBase.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("UserCode");
-
-                    b.HasIndex("ApprovedUserId", "Status");
-
-                    b.HasIndex("UserCode", "Status");
-
                     b.HasIndex("UserCode")
                         .IsUnique()
                         .HasDatabaseName("IX_TvLoginSessions_UserCode_Open")
                         .HasFilter("\"Status\" IN (0, 5)");
+
+                    b.HasIndex("ApprovedUserId", "Status");
+
+                    b.HasIndex("UserCode", "Status");
 
                     b.ToTable("TvLoginSessions", "xgb_dashopnvpn");
                 });
@@ -2928,6 +2926,43 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("UserRole", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("DataGateMonitor.Models.UserVpnServerAccessRule", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<int>("Mode")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("VpnServerId")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("VpnServerId");
+
+                    b.HasIndex("UserId", "VpnServerId")
+                        .IsUnique();
+
+                    b.ToTable("UserVpnServerAccessRules", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("DataGateMonitor.Models.VpnDnsQueryLog", b =>
@@ -3335,6 +3370,14 @@ namespace DataGateMonitor.DataBase.Migrations
                             Enabled = true,
                             Kind = 32,
                             LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
+                        },
+                        new
+                        {
+                            Id = 34,
+                            CreateDate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
+                            Enabled = true,
+                            Kind = 33,
+                            LastUpdate = new DateTimeOffset(new DateTime(1, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0))
                         });
                 });
 
@@ -3394,6 +3437,10 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasPrecision(9, 6)
                         .HasColumnType("double precision");
 
+                    b.Property<string>("ManagerVersion")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<string>("ServerName")
                         .IsRequired()
                         .HasColumnType("text");
@@ -3402,6 +3449,14 @@ namespace DataGateMonitor.DataBase.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(0);
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.Property<int?>("VpnServerGroupId")
+                        .HasColumnType("integer");
 
                     b.Property<string>("XrayClientsPollError")
                         .HasMaxLength(2000)
@@ -3428,7 +3483,11 @@ namespace DataGateMonitor.DataBase.Migrations
 
                     b.HasIndex("ServerType");
 
+                    b.HasIndex("VpnServerGroupId");
+
                     b.HasIndex("Latitude", "Longitude");
+
+                    b.HasIndex("VpnServerGroupId", "SortOrder");
 
                     b.ToTable("VpnServers", "xgb_dashopnvpn");
 
@@ -3448,7 +3507,8 @@ namespace DataGateMonitor.DataBase.Migrations
                             Latitude = 35.185600000000001,
                             Longitude = 33.382300000000001,
                             ServerName = "OpenVPN Server (udp)",
-                            ServerType = 0
+                            ServerType = 0,
+                            SortOrder = 0
                         },
                         new
                         {
@@ -3465,7 +3525,8 @@ namespace DataGateMonitor.DataBase.Migrations
                             Latitude = 55.755800000000001,
                             Longitude = 37.6173,
                             ServerName = "OpenVPN Server (tcp)",
-                            ServerType = 0
+                            ServerType = 0,
+                            SortOrder = 0
                         },
                         new
                         {
@@ -3482,7 +3543,8 @@ namespace DataGateMonitor.DataBase.Migrations
                             Latitude = 52.367600000000003,
                             Longitude = 4.9040999999999997,
                             ServerName = "Xray Server (VLESS)",
-                            ServerType = 1
+                            ServerType = 1,
+                            SortOrder = 0
                         });
                 });
 
@@ -3763,6 +3825,80 @@ namespace DataGateMonitor.DataBase.Migrations
                     b.ToTable("VpnServerConflogs", "xgb_dashopnvpn");
                 });
 
+            modelBuilder.Entity("DataGateMonitor.Models.VpnServerDiscovery", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("ApiUrl")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<bool>("IsEnableWss")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTimeOffset?>("LastNotifiedUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastSeenUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("PublicIp")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<DateTimeOffset?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int?>("ResolvedVpnServerId")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("ServerType")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("SuggestedName")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<string>("Version")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ApiUrl")
+                        .IsUnique()
+                        .HasDatabaseName("IX_VpnServerDiscoveries_ApiUrl_Pending")
+                        .HasFilter("\"Status\" = 0");
+
+                    b.HasIndex("LastSeenUtc");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("VpnServerDiscoveries", "xgb_dashopnvpn");
+                });
+
             modelBuilder.Entity("DataGateMonitor.Models.VpnServerEventLog", b =>
                 {
                     b.Property<int>("Id")
@@ -3856,6 +3992,44 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasDatabaseName("ix_ovpn_events_server_type_time");
 
                     b.ToTable("VpnServerEventLogs", "xgb_dashopnvpn");
+                });
+
+            modelBuilder.Entity("DataGateMonitor.Models.VpnServerGroup", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTimeOffset>("CreateDate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<DateTimeOffset>("LastUpdate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<int>("SortOrder")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.HasIndex("SortOrder");
+
+                    b.ToTable("VpnServerGroups", "xgb_dashopnvpn");
                 });
 
             modelBuilder.Entity("DataGateMonitor.Models.VpnServerOvpnFileConfig", b =>
@@ -4220,6 +4394,14 @@ namespace DataGateMonitor.DataBase.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("DataGateMonitor.Models.VpnServer", b =>
+                {
+                    b.HasOne("DataGateMonitor.Models.VpnServerGroup", null)
+                        .WithMany()
+                        .HasForeignKey("VpnServerGroupId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 #pragma warning restore 612, 618
         }

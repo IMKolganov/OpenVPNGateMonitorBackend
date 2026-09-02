@@ -1,4 +1,5 @@
 using System.Reflection;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.Hubs;
 using DataGateMonitor.Services.BackgroundServices;
@@ -36,7 +37,7 @@ public class OpenVpnEventBackgroundServiceTests
         });
 
         var query = new Mock<IVpnServerQueryService>();
-        query.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>())).ReturnsAsync([server]);
+        query.Setup(x => x.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>())).ReturnsAsync([server]);
 
         var services = new ServiceCollection();
         services.AddSingleton(query.Object);
@@ -81,7 +82,7 @@ public class OpenVpnEventBackgroundServiceTests
         factory.Setup(x => x.Remove(91)).Returns(true);
 
         var query = new Mock<IVpnServerQueryService>();
-        query.Setup(x => x.GetAll(false, false, null, It.IsAny<CancellationToken>()))
+        query.Setup(x => x.GetAll(false, false, null, It.IsAny<UserVpnServerAccessOverrides?>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([]); // soft-deleted / gone from active list
 
         var services = new ServiceCollection();

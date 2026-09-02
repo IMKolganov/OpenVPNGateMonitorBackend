@@ -20,6 +20,7 @@ namespace DataGateMonitor.Tests.Controllers;
 public class VpnServerClientsControllerTests
 {
     private readonly Mock<IVpnServerClientOverviewQuery> _overviewQuery = new();
+    private readonly Mock<IVpnServerClientQueryService> _clientQuery = new();
     private readonly Mock<IOpenVpnGeoQueryService> _geoQuery = new();
     private readonly Mock<IOpenVpnOverviewTotalsQuery> _totalsQuery = new();
     private readonly Mock<IOpenVpnOverviewSeriesQuery> _seriesQuery = new();
@@ -40,6 +41,7 @@ public class VpnServerClientsControllerTests
 
         _controller = new VpnServerClientsController(
             _overviewQuery.Object,
+            _clientQuery.Object,
             _geoQuery.Object,
             _totalsQuery.Object,
             _seriesQuery.Object,
@@ -100,6 +102,21 @@ public class VpnServerClientsControllerTests
         Assert.Equal("cn-test", captured!.CommonName);
         Assert.Equal("ext-1", captured.ExternalId);
         Assert.Equal("term", captured.Search);
+    }
+
+    [Fact]
+    public async Task GetUserConnectedServerIds_Returns_Ok()
+    {
+        _clientQuery
+            .Setup(q => q.GetConnectedVpnServerIdsForUserAsync(null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new List<int> { 10, 20 });
+
+        var result = await _controller.GetUserConnectedServerIds(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var response = Assert.IsType<ApiResponse<UserConnectedServerIdsResponse>>(ok.Value);
+        Assert.True(response.Success);
+        Assert.Equal(new[] { 10, 20 }, response.Data!.VpnServerIds);
     }
 
     [Fact]

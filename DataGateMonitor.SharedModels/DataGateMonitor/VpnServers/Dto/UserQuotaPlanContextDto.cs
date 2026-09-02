@@ -15,6 +15,16 @@ public class UserQuotaPlanContextDto
 
     public string? QuotaPlanName { get; set; }
 
-    /// <summary>VPN server ids allowed by the active quota plan. Empty when <see cref="IsPrivileged"/> or no plan.</summary>
+    /// <summary>
+    /// Effective VPN server ids the user may connect to: the active plan allowlist plus
+    /// <see cref="PersonalAllowedVpnServerIds"/>, minus <see cref="PersonalDeniedVpnServerIds"/>.
+    /// Empty when <see cref="IsPrivileged"/> or no plan, which both mean "not restricted to a list".
+    /// </summary>
     public List<int> AllowedVpnServerIds { get; set; } = [];
+
+    /// <summary>VPN server ids granted to this user personally, on top of the quota plan.</summary>
+    public List<int> PersonalAllowedVpnServerIds { get; set; } = [];
+
+    /// <summary>VPN server ids blocked for this user personally. Wins over the plan and over personal grants.</summary>
+    public List<int> PersonalDeniedVpnServerIds { get; set; } = [];
 }

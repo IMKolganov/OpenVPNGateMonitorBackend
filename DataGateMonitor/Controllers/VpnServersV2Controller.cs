@@ -5,8 +5,10 @@ using DataGateMonitor.DataBase.Services.Query.VpnServerTable;
 using DataGateMonitor.DataBase.Services.Query.VpnServerTagTable;
 using DataGateMonitor.DataBase.Services.Query.QuotaPlanAllowedServerTable;
 using DataGateMonitor.DataBase.Services.Query.UserQuotaPlanTable;
+using DataGateMonitor.DataBase.Services.Query.UserVpnServerAccessRuleTable;
 using DataGateMonitor.Services.Api;
 using DataGateMonitor.Services.Cache;
+using DataGateMonitor.Services.VpnManagerReleases;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Dto;
 using DataGateMonitor.SharedModels.DataGateMonitor.VpnServers.Responses;
 using DataGateMonitor.SharedModels.Responses;
@@ -27,9 +29,11 @@ public class VpnServersV2Controller(
     IVpnServerTagQueryService openVpnServerTagQueryService,
     IUserQuotaPlanQueryService userQuotaPlanQueryService,
     IQuotaPlanAllowedServerQueryService quotaPlanAllowedServerQueryService,
+    IUserVpnServerAccessRuleQueryService userVpnServerAccessRuleQueryService,
     IApiMemoryCacheService apiMemoryCacheService,
     IStatusCacheGenerationService statusCacheGenerationService,
-    IConnectedClientsCounterStore connectedClientsCounterStore) : BaseController
+    IConnectedClientsCounterStore connectedClientsCounterStore,
+    IVpnManagerUpdateStatusEnricher vpnManagerUpdateStatusEnricher) : BaseController
 {
     private static readonly TimeSpan ServersListCacheTtl = TimeSpan.FromHours(1);
 
@@ -39,16 +43,16 @@ public class VpnServersV2Controller(
         CancellationToken ct = default,
         [FromQuery] bool withoutCache = false)
     {
-        var (allowedSet, restrictToQuotaPlanId, hasUserContext) = await ResolveAccessibleServerIdsAsync(ct);
-        if (!hasUserContext)
+        var access = await ResolveAccessibleServerIdsAsync(ct);
+        if (!access.HasUserContext)
             return Unauthorized(ApiResponse<VpnServersV2Response>.ErrorResponse("User id missing from token."));
 
-        var scopeKey = restrictToQuotaPlanId is int quotaPlanId ? $"plan:{quotaPlanId}" : "all";
-        var cacheKey = $"v2:open-vpn-servers:get-all:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var cacheKey = $"v2:open-vpn-servers:get-all:includeDeleted={includeDeleted}:scope={access.CacheScopeKey}";
         var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
             includeDeleted,
             requireQuotaPlanAssignment: false,
-            restrictToQuotaPlanId,
+            access.RestrictToQuotaPlanId,
+            access.Overrides,
             ct);
         var stampKey = stamp?.ToUnixTimeMilliseconds().ToString() ?? "empty";
 
@@ -57,7 +61,8 @@ public class VpnServersV2Controller(
             var serversList = await openVpnServerQueryService.GetAll(
                 includeDeleted,
                 requireQuotaPlanAssignment: false,
-                restrictToQuotaPlanId,
+                access.RestrictToQuotaPlanId,
+                access.Overrides,
                 token);
             var response = new VpnServersV2Response();
             if (serversList.Count == 0)
@@ -73,7 +78,7 @@ public class VpnServersV2Controller(
                 dto.Tags = tagNamesByServer.GetValueOrDefault(server.Id, []);
                 var v2 = dto.Adapt<VpnServerV2Dto>();
                 v2.QuotaPlanGroups = groups.GetValueOrDefault(server.Id, []);
-                v2.IsAccessibleForUserQuotaPlan = allowedSet is null || allowedSet.Contains(server.Id);
+                v2.IsAccessibleForUserQuotaPlan = access.IsAccessible(server.Id);
                 response.VpnServers.Add(v2);
             }
 
@@ -105,16 +110,16 @@ public class VpnServersV2Controller(
         CancellationToken ct = default,
         [FromQuery] bool withoutCache = false)
     {
-        var (allowedSet, restrictToQuotaPlanId, hasUserContext) = await ResolveAccessibleServerIdsAsync(ct);
-        if (!hasUserContext)
+        var access = await ResolveAccessibleServerIdsAsync(ct);
+        if (!access.HasUserContext)
             return Unauthorized(ApiResponse<VpnServerWithStatusesV2Response>.ErrorResponse("User id missing from token."));
 
-        var scopeKey = restrictToQuotaPlanId is int quotaPlanId ? $"plan:{quotaPlanId}" : "all";
-        var cacheKey = $"v2:open-vpn-servers:get-all-with-status:includeDeleted={includeDeleted}:scope={scopeKey}";
+        var cacheKey = $"v2:open-vpn-servers:get-all-with-status:includeDeleted={includeDeleted}:scope={access.CacheScopeKey}";
         var stamp = await openVpnServerQueryService.GetLastUpdateStamp(
             includeDeleted,
             requireQuotaPlanAssignment: false,
-            restrictToQuotaPlanId,
+            access.RestrictToQuotaPlanId,
+            access.Overrides,
             ct);
         var dataStamp = stamp?.ToUnixTimeMilliseconds().ToString() ?? "empty";
         var stampKey = $"{dataStamp}:status:{statusCacheGenerationService.CurrentStamp}";
@@ -123,9 +128,11 @@ public class VpnServersV2Controller(
             var result = await openVpnServerOverviewQuery.GetAllVpnServersWithStatusAsync(
                 includeDeleted,
                 requireQuotaPlanAssignment: false,
-                restrictToQuotaPlanId,
+                access.RestrictToQuotaPlanId,
+                access.Overrides,
                 token);
             await VpnServerConnectedCountOverlay.ApplyAsync(result, connectedClientsCounterStore, token);
+            await vpnManagerUpdateStatusEnricher.EnrichAsync(result, token);
             var response = new VpnServerWithStatusesV2Response();
             if (result.Count == 0)
                 return ApiResponse<VpnServerWithStatusesV2Response>.SuccessResponse(response);
@@ -148,11 +155,14 @@ public class VpnServersV2Controller(
                     CountConnectedClients = item.CountConnectedClients,
                     CountSessions = item.CountSessions,
                     TotalBytesIn = item.TotalBytesIn,
-                    TotalBytesOut = item.TotalBytesOut
+                    TotalBytesOut = item.TotalBytesOut,
+                    InstalledManagerVersion = item.InstalledManagerVersion,
+                    LatestManagerVersion = item.LatestManagerVersion,
+                    IsManagerUpdateAvailable = item.IsManagerUpdateAvailable,
+                    ManagerReleaseUrl = item.ManagerReleaseUrl
                 };
                 v2.VpnServerResponses.VpnServer.QuotaPlanGroups = groups.GetValueOrDefault(id, []);
-                v2.VpnServerResponses.VpnServer.IsAccessibleForUserQuotaPlan =
-                    allowedSet is null || allowedSet.Contains(id);
+                v2.VpnServerResponses.VpnServer.IsAccessibleForUserQuotaPlan = access.IsAccessible(id);
                 response.VpnServerWithStatuses.Add(v2);
             }
 
@@ -181,19 +191,34 @@ public class VpnServersV2Controller(
         return Ok(cached);
     }
 
-    /// <returns>Privileged: (null, null, true). Non-privileged with plan: (allowed ids, planId, true). Missing user id: (_, _, false).</returns>
-    private async Task<(HashSet<int>? AllowedServerIds, int? RestrictToQuotaPlanId, bool HasUserContext)> ResolveAccessibleServerIdsAsync(
-        CancellationToken ct)
+    /// <returns>Privileged: unrestricted. Non-privileged with a plan: the plan ids plus the user's personal rules. Missing user id: <c>HasUserContext</c> false.</returns>
+    private async Task<ServerAccess> ResolveAccessibleServerIdsAsync(CancellationToken ct)
     {
         if (HttpUserContext.IsPrivileged(User))
-            return (null, null, true);
+            return new ServerAccess(null, null, UserVpnServerAccessOverrides.None, true);
         if (!HttpUserContext.TryGetUserId(User, out var userId))
-            return (null, null, false);
+            return new ServerAccess(null, null, UserVpnServerAccessOverrides.None, false);
+
+        var overrides = await userVpnServerAccessRuleQueryService.GetOverridesByUserId(userId, ct);
         var uqp = await userQuotaPlanQueryService.GetActiveByUserId(userId, ct);
         if (uqp is null)
-            return (null, null, true);
+            return new ServerAccess(null, null, overrides, true);
+
         var set = await quotaPlanAllowedServerQueryService.GetVpnServerIdsByQuotaPlanId(uqp.QuotaPlanId, ct);
-        return (set, uqp.QuotaPlanId, true);
+        return new ServerAccess(set, uqp.QuotaPlanId, overrides, true);
+    }
+
+    private sealed record ServerAccess(
+        HashSet<int>? PlanAllowedServerIds,
+        int? RestrictToQuotaPlanId,
+        UserVpnServerAccessOverrides Overrides,
+        bool HasUserContext)
+    {
+        public string CacheScopeKey =>
+            (RestrictToQuotaPlanId is int planId ? $"plan:{planId}" : "all") + Overrides.CacheScopeSuffix;
+
+        public bool IsAccessible(int vpnServerId) =>
+            Overrides.Allows(vpnServerId, PlanAllowedServerIds is null || PlanAllowedServerIds.Contains(vpnServerId));
     }
 }
 

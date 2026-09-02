@@ -2,6 +2,7 @@ using DataGateMonitor.DataBase.Services.Command.Interfaces;
 using DataGateMonitor.Models;
 using DataGateMonitor.Services.BackgroundServices.Interfaces;
 using DataGateMonitor.Services.Helpers;
+using DataGateMonitor.Services.VpnManagerReleases;
 using DataGateMonitor.Services.XrayNode;
 
 namespace DataGateMonitor.Services.BackgroundServices;
@@ -44,6 +45,9 @@ public sealed class XrayServerProcessor(
 
             var statusLog = scope.ServiceProvider.GetRequiredService<IXrayVpnServerStatusLogService>();
             await statusLog.TryAppendOrUpdateAsync(server, clientsPayload, ct);
+
+            await scope.ServiceProvider.GetRequiredService<IVpnServerManagerVersionPersister>()
+                .TryPersistAsync(server, ct);
 
             var pollNote = TruncatePollMessage(clientsPayload.PollError);
             await serverCmd.UpdateWhere(
